@@ -1,0 +1,42 @@
+# IDE 检测规则 — 优先级链（从上到下，命中即停）
+# env = 检查环境变量，dir = 检查目录存在性
+
+[[rule]]
+env = "QODER_CN_IDE"
+value = "qoder"
+
+[[rule]]
+env = "QODERCN_AGENT"
+value = "qoder"
+
+[[rule]]
+env = "QODERCN_PROJECT_DIR"
+value = "qoder"
+
+[[rule]]
+env = "QODER_PROJECT_DIR"
+value = "qoder"
+
+[[rule]]
+env = "CLAUDE_PROJECT_DIR"
+value = "claude"
+
+[[rule]]
+env = "TERM_PROGRAM"
+match = "vscode"
+value = "vscode"
+
+[[rule]]
+dir = ".claude"
+value = "claude"
+
+[[rule]]
+dir = ".qoder"
+value = "qoder"
+
+[[rule]]
+dir = ".vscode"
+value = "vscode"
+
+[fallback]
+value = "auto"

@@ -1,0 +1,40 @@
+# ============================================================
+# add-coder 裁决中心 (Caijue Hub) — 策略索引
+# ============================================================
+# 本文档是 add-coder CLI 的裁决总览，注册所有决策点。
+# 每条条目指向规则文件（rules）和策略文件（implementation）。
+# 转录器根据规则 TOML 产出 GENERATED 区块，手写 USER CODE 消费规则数据。
+#
+# 裁决类型:
+#   strategy = 策略/参数决策
+# ============================================================
+
+# ──── CLI 决策策略 ────────────────────────────────────────────
+
+[[caijue]]
+id = "detect-ide"
+type = "strategy"
+description = "IDE 环境检测优先级链：env 变量 → 目录检测 → 兜底"
+rules = "detect-rules.toml"
+implementation = "src/caijuehub/strategies/detect.strategy.ts"
+
+[[caijue]]
+id = "resolve-adapters"
+type = "strategy"
+description = "根据 target 决定启用的适配器列表"
+rules = "adapter-rules.toml"
+implementation = "src/caijuehub/strategies/adapter.strategy.ts"
+
+[[caijue]]
+id = "prisma-inject"
+type = "strategy"
+description = "Prisma 模型注入行为决策"
+rules = "prisma-rules.toml"
+implementation = "src/caijuehub/strategies/prisma.strategy.ts"
+
+[[caijue]]
+id = "write-files"
+type = "strategy"
+description = "文件写入模式决策"
+rules = "writer-rules.toml"
+implementation = "src/caijuehub/strategies/writer.strategy.ts"
