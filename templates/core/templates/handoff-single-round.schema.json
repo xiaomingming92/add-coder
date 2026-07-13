@@ -1,0 +1,92 @@
+{
+    "template": "handoff-single-round-template.md",
+    "sections": [
+        {
+            "id": "1.prestate",
+            "heading": "## 1. 交接前状态",
+            "required": true
+        },
+        {
+            "id": "2.poststate",
+            "heading": "## 2. 交接后状态（目标）",
+            "required": true
+        },
+        {
+            "id": "3.changes",
+            "heading": "## 3. 改动清单",
+            "required": true
+        },
+        {
+            "id": "4.rollback",
+            "heading": "## 4. 回滚方案",
+            "required": true
+        },
+        {
+            "id": "5.precheck",
+            "heading": "## 5. 执行前置检查",
+            "required": true
+        },
+        {
+            "id": "6.steps",
+            "heading": "## 6. 执行步骤摘要",
+            "required": true
+        },
+        {
+            "id": "7.risks",
+            "heading": "## 7. 关键风险点",
+            "required": true
+        },
+        {
+            "id": "8.audit",
+            "heading": "## 8. 恢复上下文审计查询",
+            "required": true,
+            "subsections": [
+                {
+                    "id": "8.1",
+                    "heading": "### 总体一键恢复"
+                },
+                {
+                    "id": "8.2",
+                    "heading": "### 逐任务/逐文件审计查询"
+                },
+                {
+                    "id": "8.3",
+                    "heading": "### SQL 管理员验证"
+                },
+                {
+                    "id": "8.4",
+                    "heading": "### 恢复判定标准"
+                }
+            ]
+        },
+        {
+            "id": "9.confirm",
+            "heading": "## 9. 后置确认",
+            "required": true
+        },
+        {
+            "id": "desensitize",
+            "heading": "### 脱敏要求",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{项目名}",
+        "{变更描述}",
+        "{文件路径}",
+        "{新建/修改/删除}",
+        "{检查项1}",
+        "{检查项2}",
+        "{N}",
+        "{汇总关键词}",
+        "{关键字}",
+        "{ACTION_1}",
+        "{ACTION_2}",
+        "{ACTION_3}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "Round",
+        "轮次"
+    ]
+}

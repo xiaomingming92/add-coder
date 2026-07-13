@@ -1,0 +1,43 @@
+{
+    "template": "tasks-template.md",
+    "sections": [
+        {
+            "id": "preconditions",
+            "heading": "## Preconditions",
+            "required": true
+        },
+        {
+            "id": "forbidden",
+            "heading": "## Forbidden",
+            "required": true
+        },
+        {
+            "id": "tasks",
+            "heading": "- [ ] Task",
+            "required": true
+        },
+        {
+            "id": "dependencies",
+            "heading": "## Task Dependencies",
+            "required": false
+        },
+        {
+            "id": "verification",
+            "heading": "## Verification",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{功能名称}",
+        "{阶段名称}",
+        "{任务描述}",
+        "{子任务描述}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "Step",
+        "Round",
+        "阶段",
+        "步骤"
+    ]
+}

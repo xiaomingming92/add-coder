@@ -1,0 +1,105 @@
+# ADD 理论→实践映射
+# 用途：脚本化验证每条理论规则是否有对应的实践落地位置
+# 格式：`location` 使用 "skill:step" 约定，多个位置表示该规则在多处落地
+
+[ADD-0]
+name = "范式边界与消费者定义"
+practice = ["project_rules.md"]
+trigger = "始终"
+
+[ADD-0.1]
+name = "广义文档先行"
+practice = [
+  "add-paradigm:Step 0",
+  "add-paradigm:Step 8 第二阶段"
+]
+trigger = ["变更开始", "收敛后"]
+
+[ADD-1]
+name = "可观测性优先于功能实现"
+practice = ["add-paradigm:Step 2"]
+trigger = "编码前"
+
+[ADD-2]
+name = "阶段标记对称"
+practice = [
+  "add-paradigm:Step 3",
+  "mcp:check_phase_symmetry"
+]
+trigger = ["编码中", "合规检查"]
+
+[ADD-3]
+name = "最小可观测单元"
+practice = ["add-paradigm:Step 3"]
+trigger = "编码中"
+
+[ADD-4]
+name = "三通道输出"
+practice = ["add-paradigm:Step 2"]
+trigger = "编码前"
+
+[ADD-5]
+name = "审计数据即业务数据"
+practice = [
+  "add-paradigm:Step 2.2",
+  "add-paradigm:Step 3"
+]
+trigger = ["编码前", "编码中"]
+
+[ADD-6]
+name = "失败路径等价审计"
+practice = [
+  "add-paradigm:Step 3",
+  "mcp:check_failure_path"
+]
+trigger = ["编码中", "合规检查"]
+
+[ADD-7]
+name = "开发操作审计"
+practice = [
+  "add-paradigm:全程",
+  "session-init:Step 2"
+]
+trigger = ["文件改动", "会话启动"]
+
+[ADD-8]
+name = "目录路径与文件命名约定"
+practice = ["add-paradigm:附录A"]
+trigger = "文件创建时"
+
+[ADD-9]
+name = "方向错误的成本非线性"
+practice = ["add-paradigm:Step 0"]
+trigger = "Plan 完成后"
+
+[ADD-10]
+name = "意图与实现的语义鸿沟"
+practice = ["add-paradigm:Step 3.5"]
+trigger = "checklist [T] 全部通过后"
+
+[ADD-11]
+name = "证据的不可再生性"
+practice = [
+  "session-init:Step 1",
+  "scripts:check-runtime-review.ts"
+]
+trigger = ["运行时异常", "会话启动"]
+
+[ADD-12]
+name = "双源头漂移的必然性"
+practice = ["add-paradigm:Step 8"]
+trigger = "收敛判断通过后"
+
+[ADD-17]
+name = "Report Closure（运行时发现关闭）"
+practice = ["add-paradigm:Step 9"]
+trigger = ["runtime-fix plan 收敛后", "gateway.md 运行时发现修复完成"]
+
+[ADD-16]
+name = "裁决层契约强制门禁"
+practice = [
+  "project_rules.md",
+  "caijue.toml",
+  "add-flow-guardian:Step 3 出口"
+]
+trigger = "涉及审计/日志治理模块的代码变更前"
