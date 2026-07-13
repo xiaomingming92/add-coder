@@ -12,6 +12,7 @@ export interface AddCoderConfig {
     docsDir: string;
     logDir: string;
     envFilePath: string;
+    magicDir: string;
     auditLoggerPath: string;
     mcpServerCommand: string;
     agentAuditImport: string;
@@ -24,6 +25,7 @@ const PLACEHOLDERS: Record<string, keyof AddCoderConfig> = {
     "{{docsDir}}": "docsDir",
     "{{logDir}}": "logDir",
     "{{envFilePath}}": "envFilePath",
+    "{{magicDir}}": "magicDir",
     "{{auditLoggerPath}}": "auditLoggerPath",
     "{{mcpServerCommand}}": "mcpServerCommand",
     "{{agentAuditImport}}": "agentAuditImport",

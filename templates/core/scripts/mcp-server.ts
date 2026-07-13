@@ -23,9 +23,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
 import { readFile, readdir, stat, mkdir, writeFile } from "fs/promises"
-import { join, relative, basename } from "path"
+import { join, relative } from "path"
 import { existsSync } from "fs"
-import { execSync } from "child_process"
+import { spawnSync } from "child_process"
 import { PrismaClient, Prisma } from "@prisma/client"
 
 const prisma = new PrismaClient({
@@ -49,6 +49,31 @@ async function readFileSafe(filePath: string): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+// ── ADD 文档模板校验（共享函数，供 create_plan / check_add_compliance / check_spec_sync 等复用）──
+
+interface GuardResult { ok: boolean; issues: string }
+
+async function validateDocWithGuard(filePath: string): Promise<GuardResult> {
+  const guardScript = join(PROJECT_ROOT, MAGIC_DIR, "hooks", "doc-format-guard.sh")
+  if (!existsSync(guardScript)) return { ok: true, issues: "" }
+  const content = await readFileSafe(filePath)
+  if (!content) return { ok: false, issues: "文件无法读取" }
+  const guardInput = JSON.stringify({
+    tool_input: { file_path: filePath, file_content: content },
+  })
+  const guard = spawnSync("/bin/bash", [guardScript], {
+    input: guardInput,
+    encoding: "utf-8",
+    timeout: 15000,
+    cwd: PROJECT_ROOT,
+    env: { ...process.env, MAGIC_DIR },
+  })
+  if (guard.status === 2 || guard.stderr?.includes("校验不通过")) {
+    return { ok: false, issues: guard.stderr || guard.stdout || "校验失败" }
+  }
+  return { ok: true, issues: "" }
 }
 
 /** 递归读取目录下所有文件（扁平化返回），支持 ${MAGIC_DIR}/plans/2026-06/05/ 等分层结构 */
@@ -2080,7 +2105,9 @@ server.registerTool(
         return errorResponse(`未找到匹配的 Plan 文件（关键词: ${args.planKeyword}）`)
       }
       const planPath = join(plansDir, planMatch)
+      const planGuard = await validateDocWithGuard(planPath)
       lines.push(`Plan: ${planMatch}`)
+      if (!planGuard.ok) lines.push(`  ⚠️ 模板校验: ${planGuard.issues.split("\n")[0]}`)
 
       // 2. 从 Plan 中提取关联的 spec 目录名
       const planContent = await readFileSafe(planPath)
@@ -2387,9 +2414,10 @@ server.registerTool(
       // 5. Git diff 统计
       let changedFiles: string[] = []
       if (isEnabled("gitDiff")) {
-        const { execSync } = await import("child_process")
+        const { spawnSync } = await import("child_process")
         try {
-          const diffStat = execSync("git diff --name-only", { cwd: PROJECT_ROOT, encoding: "utf-8", timeout: 5000 })
+          const diff = spawnSync("git", ["diff", "--name-only"], { cwd: PROJECT_ROOT, encoding: "utf-8", timeout: 5000 })
+          const diffStat = diff.stdout || ""
           changedFiles = diffStat.trim().split("\n").filter(Boolean)
         } catch {
           lines.push("Git diff: 无法获取（可能无 git 仓库或无暂存变更）")
@@ -2576,6 +2604,9 @@ server.registerTool(
         return errorResponse(`add-route 完整性扫描失败：无法读取文件 ${matchedFile}`)
       }
 
+      // 模板格式校验
+      const routeGuard = await validateDocWithGuard(filePath)
+
       const lines = content.split("\n")
 
       // === 3. 解析 Step 结构和勾选状态 ===
@@ -2681,6 +2712,7 @@ server.registerTool(
         "",
         `整体完成度: ${globalChecked}/${globalTotal} (${completionRate}%)`,
         `状态: ${isComplete ? "✅ complete — add-route 完整闭环" : "⚠️ incomplete — 存在未勾选 Step"}`,
+        `模板校验: ${routeGuard.ok ? "✅ 通过" : `⚠️ ${routeGuard.issues.split("\n")[0]}`}`,
         "",
       ]
 
@@ -3198,8 +3230,9 @@ server.registerTool(
       let scopeScore = 100
       let changedFiles: string[] = []
       try {
-        const { execSync } = await import("child_process")
-        const diffStat = execSync("git diff --name-only", { cwd: PROJECT_ROOT, encoding: "utf-8", timeout: 5000 })
+        const { spawnSync } = await import("child_process")
+        const diff = spawnSync("git", ["diff", "--name-only"], { cwd: PROJECT_ROOT, encoding: "utf-8", timeout: 5000 })
+        const diffStat = diff.stdout || ""
         changedFiles = diffStat.trim().split("\n").filter(Boolean)
       } catch { /* ignore */ }
 
@@ -3240,12 +3273,13 @@ server.registerTool(
       // ====== 维度二：类型安全（权重 20%） ======
       let typeScore = 100
       try {
-        const { execSync } = await import("child_process")
-        const tscOut = execSync("npx tsc --noEmit 2>&1 || true", {
+        const { spawnSync } = await import("child_process")
+        const tsc = spawnSync("npx", ["tsc", "--noEmit"], {
           cwd: PROJECT_ROOT,
           encoding: "utf-8",
           timeout: 30000,
         })
+        const tscOut = (tsc.stdout || "") + (tsc.stderr || "")
         // 统计 error TS 行数
         const errorLines = tscOut.split("\n").filter(l => l.includes("error TS")).length
         typeScore = Math.max(0, 100 - errorLines * 10)
@@ -3431,20 +3465,28 @@ server.registerTool(
 
       // 写入 Plan 文件
       await writeFile(filePath, content, "utf-8")
+
+      // 写后校验
+      const guard = await validateDocWithGuard(filePath)
+      if (!guard.ok) {
+        try { await import("fs/promises").then(m => m.unlink(filePath)) } catch { }
+        return errorResponse(`Plan 模板校验不通过，拒绝写入：\n${guard.issues}`)
+      }
+
       parts.push(`✅ Plan 文件已创建: ${relativePath}`)
 
       // 更新 index.md
       const indexScript = join(PROJECT_ROOT, "scripts", "gen-plan-index.sh")
       if (existsSync(indexScript)) {
-        try {
-          const result = execSync(`/bin/bash "${indexScript}"`, {
-            cwd: PROJECT_ROOT,
-            encoding: "utf-8",
-            timeout: 10000,
-          })
-          parts.push(`📋 index.md 已更新: ${result.trim()}`)
-        } catch (indexErr) {
-          parts.push(`⚠️ index.md 更新失败（将在 crontab 或下次调用时自动更新）: ${indexErr instanceof Error ? indexErr.message : String(indexErr)}`)
+        const result = spawnSync("/bin/bash", [indexScript], {
+          cwd: PROJECT_ROOT,
+          encoding: "utf-8",
+          timeout: 10000,
+        })
+        if (result.status === 0) {
+          parts.push(`📋 index.md 已更新: ${result.stdout?.trim() || "ok"}`)
+        } else {
+          parts.push(`⚠️ index.md 更新失败: ${result.stderr?.trim() || result.error?.message || "unknown"}`)
         }
       } else {
         parts.push(`⚠️ gen-plan-index.sh 不存在，index.md 将在 crontab 自动更新`)

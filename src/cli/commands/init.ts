@@ -2,6 +2,7 @@ import { detectIDE, resolveAdapters } from "../detect";
 import { loadConfig } from "../config-loader";
 import { writeFiles } from "../writer";
 import { renderCore } from "../../core/renderer";
+import type { AddCoderConfig as RenderConfig } from "../../core/renderer";
 import { renderAdapter as renderClaude } from "../../adapters/claude/renderer";
 import { renderAdapter as renderQoder } from "../../adapters/qoder/renderer";
 import { renderAdapter as renderVSCode } from "../../adapters/vscode/renderer";
@@ -34,13 +35,21 @@ export async function initCommand(options: InitOptions) {
     const config = await loadConfig(projectRoot, options.config, { yes: options.yes, force: options.force });
     config.projectRoot = projectRoot;
 
+    // ②b 根据 adapter 推导 magicDir
+    const MAGIC_DIR_MAP: Record<string, string> = { claude: ".claude", qoder: ".qoder", vscode: ".vscode" };
+    const magicDir = MAGIC_DIR_MAP[target] || ".qoder";
+    console.log(`magicDir: ${magicDir}`);
+
+    // ③ 合并 magicDir 到配置中供模板渲染使用
+    const renderConfig = { ...config, magicDir } as unknown as RenderConfig;
+
     // ③ Prisma 注入（硬阻断：无 Prisma 则 ADD MCP 工具链不可用，不部署模板）
     if (!options.dryRun) {
         await injectPrisma(projectRoot, { yes: options.yes, force: options.force, dryRun: options.dryRun });
     }
 
     // ④ 渲染 core 模板 → 输出到 .add/
-    const coreFiles = renderCore(config, !!options.dryRun);
+    const coreFiles = renderCore(renderConfig, !!options.dryRun);
     console.log(`Core 模板: ${coreFiles.size} 文件`);
 
     // ④b core 内容同步到 .qoder/ .claude/（IDE 只认自身 magic path）
