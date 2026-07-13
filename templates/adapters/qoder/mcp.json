@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "add-dev-tools": {
+      "command": "{{mcpServerCommand}}",
+      "args": [
+        "{{projectRoot}}/.qoder/scripts/mcp-server.ts"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}

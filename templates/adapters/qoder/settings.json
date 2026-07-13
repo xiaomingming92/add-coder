@@ -1,0 +1,125 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/prompt-submit.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "create_file|CreateFile|Write|search_replace|SearchReplace|Edit|edit_file|EditFile|delete_file|DeleteFile|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/pre-tool-use.sh"
+          },
+          {
+            "type": "command",
+            "command": ".qoder/hooks/doc-format-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "create_file|CreateFile|Write|search_replace|SearchReplace|Edit|edit_file|EditFile|delete_file|DeleteFile",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/post-tool-use.sh"
+          },
+          {
+            "type": "command",
+            "command": ".qoder/hooks/doc-format-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/post-tool-failure.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/stop-check.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/subagent-guard.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/subagent-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/pre-compact.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "result",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/notification.sh"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".qoder/hooks/permission-gate.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

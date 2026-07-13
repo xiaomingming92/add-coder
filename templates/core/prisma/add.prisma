@@ -1,0 +1,34 @@
+// add.prisma — ADD 治理模型（npm 包写入，不修改用户业务文件）
+// 前置条件：用户项目必须已有 User 模型（id: String），否则 prisma migrate 失败
+
+model DevOperation {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planKeyword String
+  action      String
+  targetType  String
+  targetId    String
+  beforeState Json?
+  afterState  Json?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([planKeyword])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String
+  targetType  String
+  targetId    String
+  traceId     String?
+  beforeState Json?
+  afterState  Json?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([traceId])
+}

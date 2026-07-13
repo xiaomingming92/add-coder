@@ -1,0 +1,13 @@
+{
+    "mcpServers": {
+        "add-dev-tools": {
+            "command": "{{mcpServerCommand}}",
+            "args": [
+                "{{projectRoot}}/.claude/scripts/mcp-server.ts"
+            ],
+            "env": {
+                "NODE_ENV": "development"
+            }
+        }
+    }
+}

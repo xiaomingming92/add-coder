@@ -1,0 +1,42 @@
+{
+    "template": "review-template.md",
+    "sections": [
+        {
+            "id": "meta",
+            "heading": "## Review 元信息",
+            "required": true
+        },
+        {
+            "id": "problem",
+            "heading": "## 1. 问题复现",
+            "required": true
+        },
+        {
+            "id": "compare",
+            "heading": "## 2. 方案对比",
+            "required": false
+        },
+        {
+            "id": "conclusion",
+            "heading": "## 3. 决策结论",
+            "required": true
+        },
+        {
+            "id": "impact",
+            "heading": "## 4. 影响评估",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{标题}",
+        "{被评审的 spec",
+        "{方案 A vs 方案 B",
+        "{YYYY-MM-DD}",
+        "{架构决策",
+        "{关联的 plan"
+    ],
+    "forbidden_terms": [ "Phase", 
+        "阶段",
+        "步骤"
+    ]
+}
