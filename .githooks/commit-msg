@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# commit-msg hook — 校验语义化提交规范（Conventional Commits）
+# 零依赖，仅依赖 Git 原生 hook 机制 + bash 正则
+
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(head -n 1 "$COMMIT_MSG_FILE")
+
+# 允许的提交类型
+VALID_TYPES="feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert|merge|rebase"
+
+# 正则：type(optional-scope): message
+# 匹配示例：
+#   feat: 新增用户登录
+#   fix(agent-gateway): 修复 SSE 断连
+#   chore: 升级 prisma 到 6.19
+PATTERN="^($VALID_TYPES)(\([a-zA-Z0-9._/@-]+\))?:\ .+"
+
+if [[ "$COMMIT_MSG" =~ $PATTERN ]]; then
+  exit 0
+fi
+
+cat <<EOF >&2
+
+╔═════════════════════════════════════════════════════════════════════════════════╗
+║  ❌ 提交信息不符合语义化规范                                                    ║
+╠═════════════════════════════════════════════════════════════════════════════════╣
+║  格式: type(scope): description                                                 ║
+║                                                                                 ║
+║  类型: feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert|merge|rebase║
+║                                                                                 ║
+║  示例:                                                                          ║
+║    feat: 新增生产计划成本核算接口                                               ║
+║    fix(agent-gateway): 修复 SSE 推送断连问题                                    ║
+║    chore: 升级 @langchain/core 到 1.1.48                                        ║
+║    docs: 补充 H5 API 契约文档                                                   ║
+╚═════════════════════════════════════════════════════════════════════════════════╝
+
+EOF
+exit 1
