@@ -24,4 +24,11 @@ if ! pnpm lint --no-warnings > /dev/null 2>&1; then
   exit 1
 fi
 
-printf "✅ build + lint 通过\n后续: npm version patch && git push origin main --tags\n"
+cat <<'NEXT'
+✅ build + lint 通过
+
+后续:
+  1. npm version patch -m "v%s"
+  2. git tag -af "v$(node -p "require('./package.json').version")" -m "Release notes ..."
+  3. git push origin main --tags
+NEXT
