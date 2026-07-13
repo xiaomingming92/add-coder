@@ -1,0 +1,47 @@
+{
+    "template": "review-runtime-template.md",
+    "sections": [
+        {
+            "id": "meta",
+            "heading": "## Review 元信息",
+            "required": true
+        },
+        {
+            "id": "findings",
+            "heading": "## 1. 发现列表",
+            "required": true
+        },
+        {
+            "id": "improvements",
+            "heading": "## 2. review 流程改进项",
+            "required": true
+        },
+        {
+            "id": "fixed",
+            "heading": "## 3. 已运行时修复项",
+            "required": false
+        },
+        {
+            "id": "feedback",
+            "heading": "## 4. 回流确认",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{标题}",
+        "{前置方案 review 文档路径}",
+        "{前置实现 review 文档路径}",
+        "{前置 checklist 文档路径}",
+        "{YYYY-MM-DD}",
+        "{用户报告",
+        "{问题标题}",
+        "{N}",
+        "{hash}",
+        "{日期}",
+        "{提交信息}"
+    ],
+    "forbidden_terms": [ "Phase", 
+        "阶段",
+        "步骤"
+    ]
+}

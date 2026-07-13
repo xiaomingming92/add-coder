@@ -1,0 +1,16 @@
+{
+    "mcp": {
+        "servers": {
+            "{{projectName}}-dev-tools": {
+                "command": "npx",
+                "args": [
+                    "tsx",
+                    "scripts/add-coder-mcp-server.ts"
+                ],
+                "env": {
+                    "NODE_ENV": "development"
+                }
+            }
+        }
+    }
+}
