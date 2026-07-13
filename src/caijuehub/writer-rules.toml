@@ -1,0 +1,6 @@
+# 文件写入模式规则
+
+[behavior]
+on_existing = "ask"              # 已有文件: ask | skip | overwrite
+json_merge = "deep"              # JSON 合并: deep | replace
+shell_chmod = true               # .sh 文件自动设置可执行权限

@@ -1,0 +1,15 @@
+# Prisma 注入规则 — 参数声明
+# 修改后运行 npm run generate 更新 strategies/prisma.strategy.ts
+
+[requires]
+user_model = true
+
+[behavior]
+on_missing = "ask"            # 交互式：询问是否执行 prisma init
+on_existing_add_prisma = "ask"
+on_migrate_fail = "rollback"
+auto_generate = true
+
+[migration]
+name = "add_workflow_init"
+schema_arg = "--schema=prisma/"
