@@ -1,0 +1,71 @@
+{
+  "name": "add-coder",
+  "version": "0.1.6",
+  "private": false,
+  "description": "[codein2027](https://github.com/xiaomingming92/codein2027) 快速构建 ADD 编程范式的完整脚手架——AI 代码治理的落地方案。以「审计即基础设施」为核心，彻底打破编程过程黑盒与跨轮失忆，让编程范式进化为可审计、可追溯、可收敛的新时代。npx 即用，人人可体验。",
+  "type": "module",
+  "bin": {
+    "add-coder": "bin/add-coder.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./config": "./dist/config/schema.js",
+    "./renderer": "./dist/core/renderer.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.9.0",
+  "files": [
+    "bin",
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "prepare": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "generate": "tsx src/caijuehub/transcribe.ts",
+    "test": "node bin/add-coder.js --help"
+  },
+  "keywords": [
+    "add",
+    "add-paradigm",
+    "claude",
+    "qoder",
+    "vscode",
+    "mcp",
+    "workflow",
+    "codein2027"
+  ],
+  "author": "xiaomingming",
+  "email": "wujixmm@gmail.com",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "commander": "^13.1.0",
+    "smol-toml": "^1.7.0",
+    "zod": "^3.24.0"
+  },
+  "peerDependencies": {
+    "@prisma/client": "^6.9.0 || ^7.0.0",
+    "prisma": "^6.9.0 || ^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@prisma/client": {
+      "optional": false
+    },
+    "prisma": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^22.20.1",
+    "eslint": "^9.39.4",
+    "tsup": "^8.4.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1"
+  }
+}
