@@ -223,3 +223,5 @@ Task 10 ── detectPm + gitignore
 - **init.ts peerDeps 自动装**：不再手工维护安装列表，改为读 `package.json` 的 `peerDependencies`，install 全部。
 - **detectPm 工具函数**：`existsSync(pnpm-lock.yaml)` 判断提取到 `lib/utils.ts`，prisma.strategy.ts 和 init.ts 两处引用合并。
 - **gitignore 补充**：根 `.gitignore` 加 `*.tgz` + `test-output/`。
+
+> **继任 Plan**：Prisma 7 适配 + 裁决层接入 + AddUser 模型重构 → [add-coder-init-prisma7-refactor-plan-v2.md](./add-coder-init-prisma7-refactor-plan-v2.md)

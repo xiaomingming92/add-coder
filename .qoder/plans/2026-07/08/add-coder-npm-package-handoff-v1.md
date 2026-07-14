@@ -104,8 +104,8 @@ query_audit_logs({ targetId: "packages/add-coder/templates/core/prisma/add.prism
 
 | 文件 | 操作 | 改什么 |
 |------|------|--------|
-| `packages/add-coder/templates/core/prisma/add.prisma` | 新建 | DevOperation + AuditLog 模型定义 |
-| `packages/add-coder/src/cli/prisma-injector.ts` | 新建 | Prisma 注入器（检测→复制→迁移→generate） |
+| `packages/add-coder/templates/core/prisma/add.prisma` | 新建 | AddUser（id/username/email）+ DevOperation + AuditLog 模型定义 |
+| `packages/add-coder/src/caijuehub/strategies/prisma.strategy.ts` | 修改 | 裁决层：migrate dev→db push + backupAddTables + ensurePrismaConfig |
 | `templates/` 下 15 个 `.md` 模板 | 修改 | `farm-agent-*` → `add-coder-*` |
 | `skills/` 下 2 个 SKILL.md | 修改 | `/home/xmm/` → `/home/xmm/ai/add-coder/` |
 | `scripts/mcp-server.ts` + `add-coder-mcp-server.ts` | 修改 | 数据库密码 → `process.env.DATABASE_URL` |
@@ -615,6 +615,9 @@ npm run generate → transcribe.ts → GENERATED 区块         │ injectPrisma
 | plans/specs 示例 | 无 | `templates/core/plans/` `specs/` 含 add-coder 示例 | 用户首次 init 即可看到完整 ADD 文档样例 |
 | 三目录部署 | 仅 `.add/` | Plan 已设计，`renderCore()` 改造待执行 | 见 Plan §3.2 改造待执行清单 |
 | Review v2 回流 | 无 | `.qoder/reviews/farm-agent-add-coder-npm-package-review-v2.md` | 代码实现评审：2 条 P0（spawnSync catch 失能、ask 重复定义）在 Plan §4.8 回流，P0-1 已补充至 Task 1.0 验收项 |
+| **2026-07-14 Prisma 7 适配** | 旧 `migrate dev` + User 注入 | `db push` + AddUser 自包含 | Prisma 7 移除 schema 内 datasource.url、migrate dev 需 history；裁决层 injectPrisma 激活；db-ensure.sh 瘦身 |
+| **2026-07-14 调用链重组** | init.ts → db-ensure.sh 直接调 prisma | init.ts → db-ensure.sh(运维) + injectPrisma(裁决层) | 职责分离：shell 管容器，TS 管 Prisma |
+| **2026-07-14 mcp-server 适配** | `prisma.user` + password 字段 | `prisma.addUser` + 去 password + override:true | AddUser 自包含后 MCP 需同步改模型引用 |
 
 ## §8 验证结果
 
@@ -622,11 +625,13 @@ npm run generate → transcribe.ts → GENERATED 区块         │ injectPrisma
 |------|:--:|------|
 | `tsup` 构建 | ✅ | ESM 构建成功 |
 | `tsc --noEmit` | ✅ | 零类型错误 |
-| `init` 默认模式 | ✅ | Core 50 文件 |
+| `init` 默认模式 | ✅ | Core 56 文件 |
 | `init --adapter claude/qoder/vscode` | ✅ | 三端正确 |
 | `add-coder generate` | ✅ | 4 策略全部产出 |
 | 模板硬编码清零 | ✅ | `grep -r` 返回空 |
 | `add-coder --help` | ✅ | 4 命令可见 |
+| **2026-07-14: coder-test init 集成测试** | ✅ | prisma init → db push → generate 全链通过，AddUser/DevOperation/AuditLog 三表创建 |
+| **2026-07-14: MCP devlog 写入验证** | ✅ | `record_dev_operation` 5 条成功落库 add-coder + coder-test DB |
 
 ## §9 后置确认
 
@@ -634,7 +639,8 @@ npm run generate → transcribe.ts → GENERATED 区块         │ injectPrisma
 - [x] checklist.md 全部可验证项已勾选
 - [x] `grep -r "farm.agent\|大田\|/home/xmm" templates/` 返回空
 - [ ] `npm pack` → `npm install` 端到端（待运行时验证）
-- [x] ADD-7 `query_audit_logs` 回查确认 — 共 20 条记录，覆盖 6 轮全部关键文件
+- [x] ADD-7 `query_audit_logs` 回查确认 — 共 25 条记录，覆盖 6 轮 + 2026-07-14 增量全部关键文件
+- [x] 2026-07-14: `prisma db push` 三表创建通过（DevOperation + AuditLog + AddUser）
 - [x] Review v2 P0-1（spawnSync catch 失能）已记录至 Plan 并补充验收项
 - [ ] Review v2 P0-2（ask 重复定义）待第6轮 CaijueHub 重构时提取到 utils
 - [ ] Review v2 P1-1（unlinkSync 缺口）、P1-2/3（gitignore）待 CI 基建清单补充

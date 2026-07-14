@@ -78,21 +78,29 @@ ADD 范式的 MCP 工具链（`record_dev_operation`、`check_dps`、`check_rahs
 | B: 独立 PostgreSQL Schema | ⚠️ 逻辑隔离 | 1 个 Client（multiSchema） | 中 | ❌ 外键无法跨 Schema |
 | **C: 独立 `add.prisma` 文件** | **同库同 Schema** | **1 个 Client** | **低（Prisma 多文件自动融合）** | **✅** |
 
-**选 C 的理由**：
+**选 C 的理由**（2026-07-14 修正）：
 
-1. **DevOperation 和 AuditLog 有外键 `userId → User.id`**——ADD 治理数据与业务数据（User 表）天然关联，拆到独立 DB/Schema 会导致外键失效
-2. **Prisma 6.7+ 多文件 Schema** 特性——`add.prisma` 作为独立文件放入用户 `prisma/` 目录，`prisma migrate dev --schema=prisma/` 自动融合所有 `.prisma` 文件，跨文件外键自动解析
-3. **零侵入**——npm 包只新增一个文件，不修改用户已有的 `schema.prisma`、`main.prisma`。卸载只需 `rm prisma/add.prisma`
+1. **自包含 AddUser 模型**——`add.prisma` 自带 `AddUser`（id/username/email）表，DevOperation/AuditLog 引用 AddUser 而非用户项目的 User。不依赖用户 schema 结构，`prisma db push` 不碰用户表。
+2. **Prisma 7 多文件 Schema** 特性——`add.prisma` 放入用户 `prisma/` 目录，`prisma db push --schema=prisma/` 自动融合所有 `.prisma` 文件。
+3. **零侵入**——npm 包只新增一个文件 `prisma/add.prisma`，不修改用户已有的 `schema.prisma`、`main.prisma`。卸载只需 `rm prisma/add.prisma` + `DROP TABLE "AddUser","DevOperation","AuditLog"`。
 
-**`add.prisma` 内容**：
+**`add.prisma` 内容**（2026-07-14 更新为 AddUser 自包含）：
 
 ```prisma
-// add.prisma — ADD 治理模型（npm 包写入，不修改用户业务文件）
+// add.prisma — ADD 治理模型，独立于用户业务表
+
+model AddUser {
+  id              String          @id @default(cuid())
+  username        String          @unique
+  email           String?
+  devOperations   DevOperation[]
+  auditLogs       AuditLog[]
+}
 
 model DevOperation {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        AddUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
   planKeyword String
   action      String
   targetType  String
@@ -101,14 +109,13 @@ model DevOperation {
   afterState  Json?
   reason      String?
   createdAt   DateTime @default(now())
-
   @@index([planKeyword])
 }
 
 model AuditLog {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        AddUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
   action      String
   targetType  String
   targetId    String
@@ -117,17 +124,13 @@ model AuditLog {
   afterState  Json?
   reason      String?
   createdAt   DateTime @default(now())
-
   @@index([traceId])
 }
 ```
 
-**前置条件**：用户项目必须已有 `User` 模型（`id: String`），否则 `prisma migrate` 失败并报外键错误。`init` 时检测并提示。
+> **2026-07-14 变更**：`User` → `AddUser` 自包含。不再依赖用户项目的 User 模型，`prisma db push` 只管理 ADD 三张表，不碰用户业务表。
 
-**依赖声明**：
-- `prisma` → `peerDependencies`（用户项目已有或需安装）
-- `@prisma/client` → `peerDependencies`
-- `prisma migrate dev` → `init` 时自动执行（幂等，已应用的迁移跳过）
+**迁移命令**：`prisma db push --schema=prisma/`（仅新增表/列，不删数据，不依赖 migration 历史）。
 
 ---
 
@@ -181,20 +184,14 @@ src/cli/commands/init.ts        ── 主命令
         │     → 遍历 templates/adapters/{target}/ 下所有模板文件
         │     → 替换 adapter 特定占位符（如 matcher 工具名映射）
         │
-        ├── ⑤ Prisma 模型注入 + 数据库迁移
-        │     src/cli/prisma-injector.ts
-        │     → 检测用户项目是否已有 Prisma（prisma/ 目录 + schema.prisma）
-        │     → 无 Prisma → **阻断退出**（ADD 工作流依赖 Prisma + PostgreSQL，
-        │       无 Prisma 则 DevOperation 表无法创建，MCP 工具链不可用）
-        │     → 检测 User 模型是否存在（id: String）→ 无则阻断退出
-        │     → 复制 templates/core/prisma/add.prisma → 用户 prisma/ 目录
-        │     → 执行 prisma migrate dev --name add_workflow_init --schema=prisma/
-        │       （幂等：已应用的迁移自动跳过）
-        │     → 执行 prisma generate（用户已有 Client 自动包含 DevOperation + AuditLog）
-        │
-        │     ⚠️ Prisma 注入是 init 的硬阻断步骤。即使模板已部署，
-        │     无 Prisma 则 record_dev_operation、check_dps、check_rahs 等
-        │     MCP 工具无法运行，ADD 范式不可用。
+        ├── ⑤ 数据库部署（裁决层驱动）
+        │     src/caijuehub/strategies/prisma.strategy.ts
+        │     → db-ensure.sh：容器启动 + env 写入 + pg_dump 备份（仅运维，不含 prisma 命令）
+        │     → injectPrisma()：prisma init → add.prisma 复制 → ensurePrismaConfig
+        │       （datasource.url 写入 prisma.config.ts，env 优先级链 .env.development）
+        │       → backupAddTables pg_dump → prisma db push（仅新增表，不删数据）
+        │       → prisma generate
+        │     ⚠️ AddUser 自包含，不依赖用户 User 模型。db push 不碰用户业务表。
         │
         ├── ⑥ 写入目标路径
         │     src/cli/writer.ts
@@ -615,20 +612,21 @@ packages/add-coder/
 
 ### 第1轮：基础准备
 
-#### Task 0: Prisma 模型准备
+#### Task 0: Prisma 模型准备（2026-07-14 更新：AddUser 自包含）
 
-**范围**：`templates/core/prisma/add.prisma` + `src/cli/prisma-injector.ts`
+**范围**：`templates/core/prisma/add.prisma` + `src/caijuehub/strategies/prisma.strategy.ts`
 
 - 从 farm-agent 的 `prisma/main.prisma` 中提取 DevOperation 和 AuditLog 模型定义
-- 写入 `templates/core/prisma/add.prisma`（模型定义，无参数化）
-- 实现 `src/cli/prisma-injector.ts`：
-  - 检测用户项目是否已有 Prisma（`prisma/` 目录 + `schema.prisma`）→ 无则报错
-  - 检测 User 模型是否存在（`id: String`）→ 无则报错
+- 写入 `templates/core/prisma/add.prisma`：自包含 `AddUser`（id/username/email）+ DevOperation + AuditLog
+- 实现 `src/caijuehub/strategies/prisma.strategy.ts`：
+  - 检测用户项目是否已有 Prisma（`prisma/` 目录 + `schema.prisma`）→ 无则引导安装
   - 复制 `add.prisma` → 用户 `prisma/` 目录
-  - 执行 `prisma migrate dev --name add_workflow_init --schema=prisma/`（幂等）
+  - `ensurePrismaConfig`：写入 `prisma.config.ts`，datasource.url 走 `.env.development` 优先级链
+  - `backupAddTables`：pg_dump 备份三表
+  - 执行 `prisma db push --schema=prisma/`（仅新增，不删数据）
   - 执行 `prisma generate`
 
-**验收**：在空白 Prisma 项目中执行 `prisma migrate dev --schema=prisma/` 成功创建 DevOperation 和 AuditLog 表
+**验收**：空白 Prisma 项目中 `prisma db push --schema=prisma/` 成功创建 AddUser + DevOperation + AuditLog 三表
 
 > **Review v2 回流（P0-1）**：`prisma-injector.ts` 中 `spawnSync` 返回状态须检查 `r.status`，不可依赖 try/catch。迁移失败时 `add.prisma` 回滚删除。
 
@@ -835,8 +833,9 @@ packages/add-coder/
 | CLI 可用性 | 空白项目中 `npx add-coder init` 端到端通过 | 完整 ADD 模板生成 |
 | TypeScript 编译 | `tsc --noEmit` 通过 | 0 errors |
 | 集成测试 | 9 个 Task 对应测试全部通过 | 9/9 通过 |
-| Prisma 数据库迁移 | 空白 Prisma 项目中 `prisma migrate dev --schema=prisma/` 成功创建 DevOperation + AuditLog 表 | 2 表创建成功 |
-| Prisma 模型幂等 | 重复执行 `prisma migrate dev` 不报错 | 0 errors |
+| **Prisma 数据库同步（2026-07-14 更新）** | 空白 Prisma 项目中 `prisma db push --schema=prisma/` 成功创建 AddUser + DevOperation + AuditLog 表 | **3 表创建成功** |
+| Prisma 模型幂等 | 重复执行 `prisma db push` 不报错，已有数据不丢失 | 0 errors |
+| backupAddTables | `pg_dump` 备份 AddUser/DevOperation/AuditLog 三表 | 备份文件可恢复 |
 | CaijueHub 裁决可配置 | 修改 `caijue.toml` 后 IDE 检测/Prisma 注入/Writer 模式行为随之改变 | 3/3 裁决点可配置 |
 
 **收敛标准**：
@@ -858,8 +857,9 @@ packages/add-coder/
 - `npm pack` + `npx add-coder init` 在空白项目中端到端验证
 - 三个适配器（claude/qoder/vscode）分别验证
 - 验证已有配置合并行为（不覆盖用户 settings.json）
-- 验证 Prisma 迁移幂等（重复 `init` 不报错）
-- 验证 `prisma/add.prisma` 正确注入用户项目（`prisma migrate dev --schema=prisma/` 成功）
+- 验证 `prisma db push` 幂等（重复 `init` 不报错，数据不丢）
+- 验证 `backupAddTables` pg_dump 备份可恢复
+- 验证 `prisma/add.prisma` 正确注入用户项目，AddUser/DevOperation/AuditLog 三表创建成功
 
 ---
 
@@ -875,9 +875,10 @@ packages/add-coder/
 - [ ] `npx tsc --noEmit` 通过
 - [ ] `npm pack` 产出的 tarball 包含 `dist/` + `templates/` + `bin/`，不包含 `src/`
 - [ ] `package.json` 中 `"private": false`
-- [ ] `prisma/add.prisma` 通过 `prisma migrate dev --schema=prisma/` 成功创建 DevOperation + AuditLog 表
-- [ ] 重复执行 `add-coder init` 时 Prisma 迁移幂等（不报错）
-- [ ] 项目无 User 模型时 `init` 报错提示（而非静默失败）
+- [ ] `prisma/add.prisma` 通过 `prisma db push --schema=prisma/` 成功创建 AddUser + DevOperation + AuditLog 三表
+- [ ] 重复执行 `add-coder init` 时 `prisma db push` 幂等（不报错，数据不丢失）
+- [ ] 已有 `AddUser`/`DevOperation`/`AuditLog` 数据时 `backupAddTables` 生成 pg_dump 备份
+- [ ] `add.prisma` 不进 IDE magic path（`.add/` `.qoder/` `.claude/` `.vscode/` 下无 `prisma/`）
 - [ ] `caijue.toml` 可覆盖 IDE 检测优先级、Prisma 注入行为、Writer 写入模式
 - [ ] 修改 `caijue.toml` 后重新 `init`，行为随之改变
 
