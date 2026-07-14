@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const AdapterEnum = z.enum(["claude", "qoder", "vscode", "auto"]);
+export const AdapterEnum = z.enum(["claude", "qoder", "vscode"]);
 export type Adapter = z.infer<typeof AdapterEnum>;
 
 export const AddCoderConfigSchema = z.object({
@@ -13,7 +13,8 @@ export const AddCoderConfigSchema = z.object({
     auditLoggerPath: z.string().default("src/lib/agent-audit-logger.ts"),
     mcpServerCommand: z.string().default("tsx"),
     agentAuditImport: z.string().default("@/lib/agent-audit-logger"),
-    adapters: z.array(AdapterEnum).default(["auto"]),
+    magicDir: z.string(),
+    adapters: z.array(AdapterEnum).default([]),
     overrides: z.record(z.string(), z.string()).default({}),
 });
 

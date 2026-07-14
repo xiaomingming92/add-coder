@@ -20,6 +20,7 @@ export async function writeFiles(
 ): Promise<{ created: number; skipped: number; overwritten: number }> {
     const C = WRITER_CONFIG;
     let created = 0, skipped = 0, overwritten = 0;
+    let skipAll = false;
 
     for (const [relPath, content] of files) {
         const dest = join(projectRoot, relPath);
@@ -27,9 +28,10 @@ export async function writeFiles(
 
         if (existsSync(dest)) {
             if (options.force) { overwritten++; }
-            else if (options.yes || C.onExisting === "skip") { skipped++; continue; }
+            else if (options.yes || skipAll || C.onExisting === "skip") { skipped++; continue; }
             else {
-                const choice = await ask(`文件已存在 ${relPath}：[s]跳过 / [o]覆盖（默认 s）: `);
+                const choice = await ask(`文件已存在 ${relPath}：[s]跳过 / [o]覆盖 / [a]全部跳过（默认 s）: `);
+                if (choice === "a") { skipAll = true; skipped++; continue; }
                 if (choice !== "o" && choice !== "overwrite") { skipped++; continue; }
                 overwritten++;
             }

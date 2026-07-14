@@ -1,0 +1,58 @@
+{
+    "template": "review-implementation-template.md",
+    "sections": [
+        {
+            "id": "meta",
+            "heading": "## Review 元信息",
+            "required": true
+        },
+        {
+            "id": "contract",
+            "heading": "## 1. 跨仓库格式契约",
+            "required": true
+        },
+        {
+            "id": "framework",
+            "heading": "## 2. 框架版本兼容性",
+            "required": true
+        },
+        {
+            "id": "datamodel",
+            "heading": "## 3. 数据模型约束",
+            "required": true
+        },
+        {
+            "id": "env",
+            "heading": "## 4. 环境变量加载链",
+            "required": true
+        },
+        {
+            "id": "api",
+            "heading": "## 5. 多 API 场景匹配",
+            "required": true
+        },
+        {
+            "id": "e2e",
+            "heading": "## 6. E2E 逐端点 curl",
+            "required": true
+        },
+        {
+            "id": "checklist",
+            "heading": "## 7. 关联 Checklist",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{标题}",
+        "{被评审的代码变更",
+        "{前置方案 review 文档路径}",
+        "{YYYY-MM-DD}",
+        "{关联的 plan",
+        "{端点1}",
+        "{checklist 文档路径}"
+    ],
+    "forbidden_terms": [ "Phase", 
+        "阶段",
+        "步骤"
+    ]
+}

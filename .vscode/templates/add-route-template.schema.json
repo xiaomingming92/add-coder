@@ -1,0 +1,35 @@
+{
+    "template": "add-route-template.md",
+    "shared_by": [
+        "add-route-template.md",
+        "add-route-template-heavyweight.md"
+    ],
+    "sections": [
+        {
+            "id": "step0",
+            "heading": "## Step 0",
+            "required": true
+        },
+        {
+            "id": "step3",
+            "heading": "## Step 3",
+            "required": true
+        },
+        {
+            "id": "step8",
+            "heading": "## Step 8",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{需求域名}",
+        "{核心内容}",
+        "{版本号}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "Round",
+        "轮次",
+        "阶段"
+    ]
+}

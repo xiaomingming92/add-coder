@@ -19,9 +19,8 @@ program
 program
     .command("init")
     .description("初始化 ADD 模板到当前项目")
-    .option("--adapter <type>", "目标 IDE: claude | qoder | vscode | auto", "auto")
+    .option("--adapter <type>", "目标 IDE: claude | qoder | vscode")
     .option("--config <path>", "指定配置文件路径")
-    .option("--yes", "跳过交互，只创建新文件")
     .option("--force", "覆盖已有文件，不交互")
     .option("--dry-run", "预览模式，不实际写入")
     .action(initCommand);

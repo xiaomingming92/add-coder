@@ -1,17 +1,17 @@
 import { existsSync } from "fs";
 import { resolve } from "path";
 import { renderCore } from "../../core/renderer";
+import type { AddCoderConfig } from "../../config/schema";
 import { writeFiles } from "../writer";
 import { loadConfig } from "../config-loader";
 
 export async function syncCommand() {
     const projectRoot = process.cwd();
-    const config = await loadConfig(projectRoot);
+    const config: AddCoderConfig = await loadConfig(projectRoot);
     config.projectRoot = projectRoot;
 
     const coreFiles = renderCore(config, false);
 
-    // 只同步缺失文件
     const missing = new Map<string, string>();
     for (const [relPath, content] of coreFiles) {
         if (!existsSync(resolve(projectRoot, relPath))) {
@@ -24,6 +24,6 @@ export async function syncCommand() {
         return;
     }
 
-    const result = await writeFiles(projectRoot, missing, { yes: true });
+    const result = await writeFiles(projectRoot, missing, {});
     console.log(`同步完成: 新建 ${result.created}, 跳过 ${result.skipped}`);
 }
