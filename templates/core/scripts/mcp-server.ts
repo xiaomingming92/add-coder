@@ -11,7 +11,7 @@ const MAGIC_DIR = basename(dirname(__dirname)) // ".qoder" or ".claude"
 const ENV_CANDIDATES = [".env.development.local", ".env.development", ".env.local", ".env"];
 for (const f of ENV_CANDIDATES) {
     const p = resolve(PROJECT_ROOT, f);
-    if (existsSync(p)) { dotenv.config({ path: p }); break; }
+    if (existsSync(p)) { dotenv.config({ path: p, override: true }); break; }
 }
 
 const DATABASE_URL = process.env.DATABASE_URL
@@ -26,10 +26,25 @@ import { readFile, readdir, stat, mkdir, writeFile } from "fs/promises"
 import { join, relative } from "path"
 import { existsSync } from "fs"
 import { spawnSync } from "child_process"
-import { PrismaClient, Prisma } from "@prisma/client"
+
+const { PrismaClient } = await import("@prisma/client").catch(() =>
+  import("../../generated/prisma/client.js").catch(() =>
+    import("../../src/generated/prisma/client.js"))
+)
+
+// Prisma 7 按 DATABASE_URL 前缀自动选 adapter
+let adapter = undefined
+if (DATABASE_URL.startsWith("postgresql://") || DATABASE_URL.startsWith("postgres://")) {
+  const { PrismaPg } = await import("@prisma/adapter-pg")
+  adapter = new PrismaPg({ connectionString: DATABASE_URL })
+} else if (DATABASE_URL.startsWith("file:") || DATABASE_URL.startsWith("sqlite:")) {
+  const { PrismaLibSQL } = await import("@prisma/adapter-libsql")
+  const url = DATABASE_URL.replace(/^file:/, "")
+  adapter = new PrismaLibSQL({ url })
+}
 
 const prisma = new PrismaClient({
-  datasourceUrl: DATABASE_URL,
+  ...(adapter ? { adapter } : {}),
   log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
 })
 
@@ -1108,11 +1123,11 @@ server.registerTool(
         }
       }
 
-      let parsedBefore: Prisma.InputJsonValue | undefined
-      let parsedAfter: Prisma.InputJsonValue | undefined
+      let parsedBefore: any | undefined
+      let parsedAfter: any | undefined
       try {
-        if (beforeState) parsedBefore = JSON.parse(beforeState) as Prisma.InputJsonValue
-        if (afterState) parsedAfter = JSON.parse(afterState) as Prisma.InputJsonValue
+        if (beforeState) parsedBefore = JSON.parse(beforeState)
+        if (afterState) parsedAfter = JSON.parse(afterState)
       } catch {
         const beforePreview = beforeState ? beforeState.slice(0, 80) : "(未传)"
         const afterPreview = afterState ? afterState.slice(0, 80) : "(未传)"
@@ -1123,18 +1138,17 @@ server.registerTool(
         )
       }
 
-      let systemUser = await prisma.user.findUnique({
+      let systemUser = await prisma.addUser.findUnique({
         where: { username: "ai-assistant" },
         select: { id: true },
       })
 
       if (!systemUser) {
-        systemUser = await prisma.user.create({
+        systemUser = await prisma.addUser.create({
           data: {
             id: "ai-assistant",
             username: "ai-assistant",
-            email: "ai-assistant@internal",
-            password: "internal",
+            email: "ai-assistant@internal"
           },
           select: { id: true },
         })
@@ -1147,8 +1161,8 @@ server.registerTool(
           action,
           targetType,
           targetId: targetId || "unknown",
-          beforeState: parsedBefore ?? Prisma.JsonNull,
-          afterState: parsedAfter ?? Prisma.JsonNull,
+          beforeState: parsedBefore ?? null,
+          afterState: parsedAfter ?? null,
           reason: reason || null,
         },
       })
