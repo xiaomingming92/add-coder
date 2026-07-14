@@ -1,0 +1,66 @@
+# {标题}
+
+## Review 元信息
+
+- **Review 对象**: {被评审的代码变更 / 跨仓库集成}
+- **关联方案 review**: {前置方案 review 文档路径}
+- **Review 时间**: {YYYY-MM-DD}
+- **Review 类型**: 实现 review（ADD 0.1.2）
+- **前置阅读**: {关联的 plan / spec / checklist}
+
+---
+
+## 1. 跨仓库格式契约
+
+列出所有跨系统 API，逐对验证请求/响应格式：
+
+| API | 发送方 | 期望类型 | 接收方 | 实际类型 | 匹配? |
+|-----|--------|---------|--------|---------|:---:|
+| {端点1} | {客户端文件:行} | {格式} | {服务端文件:行} | {格式} | ✅/❌ |
+
+- [ ] 所有字段名和嵌套结构一致（如 `data.messages[].role`）
+- [ ] 响应 Content-Type 匹配客户端解析器（JSON vs `text/event-stream` vs NDJSON）
+
+---
+
+## 2. 框架版本兼容性
+
+- [ ] `cat package.json | jq .dependencies.next` 确认主版本号
+- [ ] 查该版本的 breaking changes
+- [ ] 编译产物 mtime 晚于源码（如 `.next/server/middleware.js` ≥ `src/proxy.ts`）
+
+---
+
+## 3. 数据模型约束
+
+- [ ] Prisma `create()` / `update()` 的外键字段对应表中有记录
+- [ ] `@unique` 字段无重复插入风险
+- [ ] 非外键但语义上引用其他表的字段（如 `userId: "system"`）是真实存在的 ID
+
+---
+
+## 4. 环境变量加载链
+
+- [ ] 列出 `npm run` 命令 → `--mode` → `.env.*` → 每个变量的实际值
+- [ ] 三套环境（dev/local/prod）指向正确后端地址
+
+---
+
+## 5. 多 API 场景匹配
+
+- [ ] 模块导出多个功能相似函数时，确认调用方选的是场景匹配的
+- [ ] 检查：chat/SSE 场景不能用同步版 API，批处理场景不能用流式版 API
+
+---
+
+## 6. E2E 逐端点 curl
+
+- [ ] 用有效凭证对每个端点 curl，检查 HTTP 状态码 + 响应 body 格式
+- [ ] OPTIONS 预检返回正确的 CORS 头
+
+---
+
+## 7. 关联 Checklist
+
+- 本 review 的检查项与 `{checklist 文档路径}` 的"跨项目联调检查"章节一一对应
+- [ ] checklist 全部通过后，流转至运行时验证

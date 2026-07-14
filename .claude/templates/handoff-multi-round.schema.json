@@ -1,0 +1,48 @@
+{
+    "template": "handoff-multi-round-template.md",
+    "sections": [
+        {
+            "id": "meta",
+            "heading": "## 全局元信息",
+            "required": true
+        },
+        {
+            "id": "boundary",
+            "heading": "## 原子事务边界说明",
+            "required": true
+        },
+        {
+            "id": "round",
+            "heading": "## <第N轮>",
+            "required": true
+        },
+        {
+            "id": "convergence",
+            "heading": "## 每轮收敛判定补充规则",
+            "required": true
+        },
+        {
+            "id": "appendix",
+            "heading": "## 附录：每轮启动模板",
+            "required": true
+        },
+        {
+            "id": "desensitize",
+            "heading": "### 脱敏要求",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{项目名}",
+        "{轮次数}",
+        "{plan文件名}",
+        "{execution文件名}",
+        "{仓库绝对路径}",
+        "{N}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "阶段",
+        "步骤"
+    ]
+}

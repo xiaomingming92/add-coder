@@ -1,22 +1,10 @@
 import { readFileSync, readdirSync, statSync } from "fs";
 import { join, relative, dirname } from "path";
 import { fileURLToPath } from "url";
+import type { AddCoderConfig } from "../config/schema";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-export interface AddCoderConfig {
-    projectName: string;
-    projectRoot: string;
-    sourceDir: string;
-    docsDir: string;
-    logDir: string;
-    envFilePath: string;
-    magicDir: string;
-    auditLoggerPath: string;
-    mcpServerCommand: string;
-    agentAuditImport: string;
-}
 
 const PLACEHOLDERS: Record<string, keyof AddCoderConfig> = {
     "{{projectName}}": "projectName",
@@ -34,7 +22,7 @@ const PLACEHOLDERS: Record<string, keyof AddCoderConfig> = {
 export function render(content: string, config: AddCoderConfig): string {
     let result = content;
     for (const [placeholder, key] of Object.entries(PLACEHOLDERS)) {
-        result = result.replaceAll(placeholder, config[key]);
+        result = result.replaceAll(placeholder, String(config[key]));
     }
     return result;
 }
@@ -42,6 +30,7 @@ export function render(content: string, config: AddCoderConfig): string {
 const TEMPLATES_ROOT = join(__dirname, "../templates");
 const CORE_DIR = join(TEMPLATES_ROOT, "core");
 const CORE_TARGET = ".add";
+const SKIP_DIRS = new Set(["prisma"]); // Prisma schema 不进 IDE magic path
 
 export function renderCore(
     config: AddCoderConfig,
@@ -53,7 +42,7 @@ export function renderCore(
         for (const name of readdirSync(dir)) {
             const full = join(dir, name);
             if (statSync(full).isDirectory()) {
-                walk(full, join(base, name));
+                if (!SKIP_DIRS.has(name)) walk(full, join(base, name));
             } else {
                 const content = readFileSync(full, "utf-8");
                 const rendered = render(content, config);

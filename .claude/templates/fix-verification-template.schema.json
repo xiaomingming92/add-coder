@@ -1,0 +1,54 @@
+{
+    "template": "fix-verification-template.md",
+    "sections": [
+        {
+            "id": "overview",
+            "heading": "## 总览",
+            "required": true
+        },
+        {
+            "id": "details",
+            "heading": "## 逐条对照",
+            "required": true
+        },
+        {
+            "id": "summary",
+            "heading": "## 状态汇总表",
+            "required": true
+        },
+        {
+            "id": "refactor",
+            "heading": "## 本验证周期发现的重构变化",
+            "required": false
+        },
+        {
+            "id": "priority",
+            "heading": "## 修复优先级",
+            "required": true
+        },
+        {
+            "id": "trend",
+            "heading": "## 修复趋势",
+            "required": false
+        },
+        {
+            "id": "runtime",
+            "heading": "## 运行时验证",
+            "required": false
+        }
+    ],
+    "placeholders": [
+        "{项目名}",
+        "{YYYY-MM-DD}",
+        "{N}",
+        "{n}",
+        "{p}",
+        "{combined-report.md}",
+        "{issue编号}",
+        "{问题标题}"
+    ],
+    "forbidden_terms": [ "Phase", 
+        "阶段",
+        "步骤"
+    ]
+}

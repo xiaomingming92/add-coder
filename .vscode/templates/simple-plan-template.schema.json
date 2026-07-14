@@ -1,0 +1,109 @@
+{
+    "template": "simple-plan-template.md",
+    "sections": [
+        {
+            "id": "overview",
+            "heading": "## 一、Plan 概述",
+            "required": true
+        },
+        {
+            "id": "changes",
+            "heading": "## 二、变更范围",
+            "required": true
+        },
+        {
+            "id": "tasks",
+            "heading": "## 三、Tasks",
+            "required": true
+        },
+        {
+            "id": "handoff",
+            "heading": "## 四、Handoff",
+            "required": true,
+            "subsections": [
+                {
+                    "id": "4.1",
+                    "heading": "### 4.1 交接前状态"
+                },
+                {
+                    "id": "4.2",
+                    "heading": "### 4.2 交接后状态（目标）"
+                },
+                {
+                    "id": "4.3",
+                    "heading": "### 4.3 改动清单"
+                },
+                {
+                    "id": "4.4",
+                    "heading": "### 4.4 回滚方案"
+                },
+                {
+                    "id": "4.5",
+                    "heading": "### 4.5 执行前置检查"
+                },
+                {
+                    "id": "4.6",
+                    "heading": "### 4.6 执行 Task 摘要"
+                },
+                {
+                    "id": "4.7",
+                    "heading": "### 4.7 关键风险点"
+                },
+                {
+                    "id": "4.8",
+                    "heading": "### 4.8 恢复上下文审计查询",
+                    "subsubsections": [
+                        "#### 总体一键恢复",
+                        "#### 逐任务/逐文件审计查询",
+                        "#### SQL 管理员验证",
+                        "#### 恢复判定标准"
+                    ]
+                },
+                {
+                    "id": "4.9",
+                    "heading": "### 4.9 后置确认"
+                },
+                {
+                    "id": "4.10",
+                    "heading": "### 4.10 脱敏要求"
+                }
+            ]
+        },
+        {
+            "id": "acceptance",
+            "heading": "## 五、验收标准",
+            "required": true
+        },
+        {
+            "id": "references",
+            "heading": "## 六、关联",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{需求名}",
+        "{版本号}",
+        "{ISO 时间戳}",
+        "{AI 助手标识}",
+        "{文件路径}",
+        "{新建/修改/删除}",
+        "{检查项1}",
+        "{检查项2}",
+        "{描述}",
+        "{风险描述}",
+        "{影响说明}",
+        "{缓解措施}",
+        "{汇总关键词}",
+        "{N}",
+        "{关键字}",
+        "{ACTION_1}",
+        "{ACTION_2}",
+        "{ACTION_3}"
+    ],
+    "forbidden_terms": [ "Phase", 
+        "Round",
+        "轮次",
+        "阶段",
+        "步骤"
+    ]
+}

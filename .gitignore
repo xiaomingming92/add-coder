@@ -1,2 +1,8 @@
 node_modules
 dist
+/src/generated/prisma
+podman-compose.yml
+docker-compose.yml
+.env.development
+.env
+.prisma

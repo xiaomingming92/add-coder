@@ -1,0 +1,48 @@
+{
+    "template": "runtime-report-template.md",
+    "sections": [
+        {
+            "id": "meta",
+            "heading": "## 报告元信息",
+            "required": true
+        },
+        {
+            "id": "findings",
+            "heading": "## 1. 发现列表",
+            "required": true
+        },
+        {
+            "id": "format",
+            "heading": "## 2. 发现条目格式",
+            "required": false
+        },
+        {
+            "id": "stats",
+            "heading": "## 3. 统计数据",
+            "required": true
+        },
+        {
+            "id": "linked",
+            "heading": "## 4. 关联 Report Issue",
+            "required": false
+        },
+        {
+            "id": "feedback",
+            "heading": "## 5. 回流确认",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{项目名}",
+        "{subsystem}",
+        "{写入函数或模块}",
+        "{YYYY-MM-DD}",
+        "{触发条件描述}",
+        "{n}",
+        "{发现描述}"
+    ],
+    "forbidden_terms": [ "Phase", 
+        "阶段",
+        "步骤"
+    ]
+}

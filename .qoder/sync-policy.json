@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/example/sync-policy-schema/v1.json",
+  "description": "add-coder 项目 check_spec_sync 拦截策略。重型模式：全部检查开启，核心项 block 级拦截。",
+  "checks": {
+    "add_route_exists": { "enabled": true, "severity": "block" },
+    "add_route_completeness": { "enabled": true, "severity": "block" },
+    "dps": { "enabled": true, "severity": "block", "threshold": 85 },
+    "rahs": { "enabled": true, "severity": "block", "threshold": 90 },
+    "tasks": { "enabled": true, "severity": "block" },
+    "checklist": { "enabled": true, "severity": "block" },
+    "handoff": { "enabled": true, "severity": "block" },
+    "addRoute": { "enabled": true, "severity": "warn" },
+    "crossRef": { "enabled": true, "severity": "warn" },
+    "rollback": { "enabled": true, "severity": "block" },
+    "gitDiff": { "enabled": true, "severity": "warn" },
+    "auditLog": { "enabled": true, "severity": "block" }
+  }
+}

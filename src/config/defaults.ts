@@ -10,6 +10,7 @@ export const defaults: AddCoderConfig = {
     auditLoggerPath: "src/lib/agent-audit-logger.ts",
     mcpServerCommand: "tsx",
     agentAuditImport: "@/lib/agent-audit-logger",
-    adapters: ["auto"],
+    magicDir: "",
+    adapters: [],
     overrides: {},
 };

@@ -1,4 +1,4 @@
-import type { AddCoderConfig } from "../../core/renderer";
+import type { AddCoderConfig } from "../../config/schema";
 import { render } from "../../core/renderer";
 import { readFileSync, readdirSync, statSync } from "fs";
 import { join, relative, dirname } from "path";

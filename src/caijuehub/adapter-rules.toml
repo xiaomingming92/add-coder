@@ -1,5 +1,11 @@
 # 适配器选择规则
 
+[magic_path]
+claude = ".claude"
+qoder = ".qoder"
+vscode = ".vscode"
+# 适配器选择规则
+
 [auto]
 deploy = ["claude", "qoder", "vscode"]
 

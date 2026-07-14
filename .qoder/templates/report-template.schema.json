@@ -1,0 +1,69 @@
+{
+    "template": "report-template.md",
+    "sections": [
+        {
+            "id": "overview",
+            "heading": "## Issue 总览",
+            "required": true
+        },
+        {
+            "id": "stats",
+            "heading": "## 分类统计",
+            "required": true
+        },
+        {
+            "id": "security",
+            "heading": "## 一、安全风险",
+            "required": true
+        },
+        {
+            "id": "duplication",
+            "heading": "## 二、代码重复",
+            "required": true
+        },
+        {
+            "id": "robustness",
+            "heading": "## 三、健壮性",
+            "required": true
+        },
+        {
+            "id": "cleanliness",
+            "heading": "## 四、代码整洁",
+            "required": true
+        },
+        {
+            "id": "infra",
+            "heading": "## 五、基础设施",
+            "required": true
+        },
+        {
+            "id": "priority",
+            "heading": "## 修复优先级",
+            "required": true
+        },
+        {
+            "id": "trend",
+            "heading": "## 修复趋势",
+            "required": false
+        },
+        {
+            "id": "runtime",
+            "heading": "## 运行时反馈",
+            "required": false
+        }
+    ],
+    "placeholders": [
+        "{项目名称}",
+        "{YYYY-MM-DD}",
+        "{触发方式",
+        "{P0-P3}",
+        "{n}",
+        "{ID列表}",
+        "{ID}",
+        "{ts}"
+    ],
+    "forbidden_terms": [ "Phase", 
+        "阶段",
+        "步骤"
+    ]
+}
