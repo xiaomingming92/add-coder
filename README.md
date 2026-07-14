@@ -74,25 +74,15 @@ hook 不是「通知推送」，而是 **IDE 运行时拦截层**：
 npx add-coder init
 ```
 
-首次 init 自动检测 IDE，交互式引导完成 Prisma 初始化、User 模型注入、ADD 模板部署。
-
-### 完整初始化流程
+首次 init 自动检测 IDE，交互式引导完成数据库选择（PostgreSQL / SQLite / 自行管理）、容器运行时（podman / docker / 自行管理）、Prisma 初始化、ADD 模板部署。
 
 ```bash
-# ① 首次执行（自动：prisma init + User 模型 + add.prisma + 模板部署）
 npx add-coder init
-# → 是否执行 prisma init？[Y/n] y
-# → 已将 DATABASE_URL 迁移到 .env.development
-# → 已注入 User 模型
-# → 已复制 add.prisma
-# → Core 模板: 55 文件 + adapter 模板已就位
-
-# ② 编辑 .env.development 配置数据库连接串
-DATABASE_URL="postgresql://user:pass@localhost:5432/mydb?schema=public"
-
-# ③ 第二次执行（自动：prisma migrate + generate）
-npx add-coder init --yes
-# → prisma migrate dev（创建 DevOperation + AuditLog 表）
+# → 选择 IDE（Qoder / Claude / VS Code）
+# → 选择数据库（PostgreSQL / SQLite / 自行管理）
+# → 选择容器（podman / docker / 自行管理）
+# → prisma init + add.prisma 复制
+# → prisma db push（仅新增表，不删数据）
 # → prisma generate
 # → ADD 治理模型已就绪 ✓
 ```
@@ -113,7 +103,7 @@ npx add-coder init --yes
 |------|------|------|
 | ① | 检测 IDE | 扫描 `.qoder/` `.claude/` `.vscode/` 存在性，或通过 `--adapter` 指定 |
 | ② | 加载配置 | 交互式问答 > `add-coder.config.ts` > 自动检测 > 默认值 |
-| ③ | Prisma 注入 | 检测 Prisma → 引导安装 → 注入 User 模型 → 复制 `add.prisma` → 迁移 |
+| ③ | 数据库部署 | `db-ensure.sh` 启容器/PG 连接 + `injectPrisma()` 裁决层（Prisma init → AddUser 模型复制 → db push → generate） |
 | ④ | 渲染模板 | 55 个 core 模板文件（skills/agents/templates/plans/specs/scripts…） |
 | ⑤ | 部署适配 | 将 core 内容复制到 `.add/` `.qoder/` `.claude/` 三目录，补 IDE 专属 hooks/mcp |
 | ⑥ | 写入文件 | 交互/yes/force/dry-run 四种模式，`.sh` 脚本自动 `chmod` |
@@ -197,8 +187,8 @@ npx add-coder init --yes
 ## 前置条件
 
 - Node.js >= 20
-- Prisma >= 6.9 / ^7.0（`init` 时自动检测，无则引导安装）
-- PostgreSQL（MCP 工具链依赖 DevOperation + AuditLog 表）
+- Prisma ^7.0（`init` 时自动检测，无则引导安装）
+- PostgreSQL / SQLite（MCP 工具链依赖 DevOperation + AuditLog 表）
 
 > **推荐**：使用 Podman/Docker 运行 PostgreSQL，参考配置：
 > ```yaml
