@@ -8,27 +8,27 @@
 services:
   postgres:
     image: docker.io/postgres:16-alpine
-    container_name: ${PROJECT_NAME}-postgres
+    container_name: ${PROJECT_NAME:-add-project}-postgres
     restart: unless-stopped
     ports:
       - "127.0.0.1:${DATABASE_PORT:-5433}:5432"
     volumes:
-      - ./data/postgres/${PROJECT_NAME}:/var/lib/postgresql/data
+      - ./data/postgres/${PROJECT_NAME:-add-project}:/var/lib/postgresql/data
     env_file:
       - .env.development
     environment:
       POSTGRES_USER: ${DATABASE_USER:-admin}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-change-me-in-production}
-      POSTGRES_DB: ${PROJECT_NAME}
+      POSTGRES_DB: ${PROJECT_NAME:-add-project}
       TZ: "Asia/Shanghai"
     networks:
-      - ${PROJECT_NAME}-network
+      - ${PROJECT_NAME:-add-project}-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-admin} -d ${PROJECT_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-admin} -d ${PROJECT_NAME:-add-project}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 networks:
-  ${PROJECT_NAME}-network:
+  ${PROJECT_NAME:-add-project}-network:
     driver: bridge
