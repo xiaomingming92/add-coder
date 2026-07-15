@@ -1,7 +1,7 @@
 # ADD 模板术语权威规范
 
 > **定位**：项目所有 ADD 模板的术语唯一真相源。模板修改、守卫校验、LLM prompt 均以此为准。
-> **消费方**：16 个模板、`doc-format-guard.sh`、`pre-tool-use.sh`、`AGENTS.md`、`.qoder/hooks/lib/vocabulary.sh`
+> **消费方**：16 个模板、`doc-format-guard.sh`、`pre-tool-use.sh`、`AGENTS.md`、`{{magicDir}}/hooks/lib/vocabulary.sh`
 > **关联 Plan**：`{{projectName}}-add-template-standardization-plan-v1.md`
 
 ---

@@ -1,0 +1,27 @@
+{
+    "template": "prd-standard-template.md",
+    "description": "PRD 校验只验证与 ADD 体系的交互接口——Plan 拆分建议 + 裁决层关联。内部需求章节是人工写作内容，不做结构校验。",
+    "sections": [
+        {
+            "id": "plan-split",
+            "heading": "## 十、Plan 拆分建议",
+            "required": true,
+            "description": "PRD 必须给出推荐 Plan 拆分链路和 Plan 间依赖关系。没有这个，AI 拿到 PRD 不知道如何落地为 Plan。"
+        },
+        {
+            "id": "caijuehub-link",
+            "heading": "## 十一、裁决层关联",
+            "required": true,
+            "description": "PRD 必须列出建议集中到 caijue.toml 管理的规则和边界约束。约束不进裁决层等于没有被强制执行。"
+        }
+    ],
+    "placeholders": [
+        "{需求名称}",
+        "{版本号}",
+        "{ISO 时间戳}",
+        "{作者标识}"
+    ],
+    "forbidden_terms": [
+        "TBD"
+    ]
+}
