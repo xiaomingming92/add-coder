@@ -84,10 +84,12 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 | 规范文档 | `docs/*/knowledge/02-规范/` 或 `03-规范/` | 开发规范、状态机规范、核心规范 |
 | AI 核心文档 | `docs/*/knowledge/03-规范/` | AI 智能体核心规范 |
 
-**此外，ADD 工作流的核心产物由 `.qoder/templates/` 下的 11 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
+**此外，ADD 工作流的核心产物由 `.qoder/templates/` 下的 13 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
 
 | 模板 | 用途 | 对应阶段 |
 |------|------|---------|
+| `prd-standard-template.md` | 产品/系统需求文档（新建）：背景目标 + 用户场景 + 功能需求 + 非功能需求 + 验收标准 | 需求定义 |
+| `prd-incremental-template.md` | 产品/系统需求文档（增量）：在已有 PRD 基础上追加/修改/删除 | 需求变更 |
 | `plan-template.md` | 需求方案：元信息 + 背景目标 + 方案选型 + 架构设计 + 实施步骤 + 验收标准 + ADD-7审计策略 | 需求理解 |
 | `add-route-template.md` | Plan→ADD 十阶段执行映射：Step 0-9 具体动作 + Task 映射表 + 审计阶段清单 + 依赖拓扑 | Step 0 |
 | `spec-template.md` | 功能规格：Why / What Changes / Impact / WHEN-THEN Requirements | Step 0~1 |
@@ -100,7 +102,7 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 | `handoff-single-round-template.md` | 单轮交接：9 章节（含恢复上下文审计查询） | 单轮变更完成后 |
 | `handoff-multi-round-template.md` | 多轮交接：全局拓扑 + 每轮 13 子章节 + 收敛规则 + 启动模板 | 多轮原子事务完成后 |
 
-> **AI 首次学习 ADD 范式时，必须读取上述全部 11 个模板文件。遗漏模板 = 遗漏范式全貌。**
+> **AI 首次学习 ADD 范式时，必须读取上述全部 13 个模板文件。遗漏模板 = 遗漏范式全貌。**
 >
 > **每次根据模板生成文档时（plan/spec/review/handoff），MUST 先重新读取对应的模板文件，再填充内容。禁止凭记忆生成——模板可能已在迭代中更新，记忆中的版本可能不完整。**
 

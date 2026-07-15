@@ -1,0 +1,32 @@
+{
+    "template": "prd-incremental-template.md",
+    "description": "增量 PRD 校验只验证 ADD 交互接口——Plan 拆分影响 + 裁决层影响。变更内容本身是人工写作，不做结构校验。",
+    "sections": [
+        {
+            "id": "plan-impact",
+            "heading": "## 四、Plan 拆分影响",
+            "required": true,
+            "description": "增量改动必须声明是否影响原 PRD 的 Plan 拆分链路。"
+        },
+        {
+            "id": "caijuehub-impact",
+            "heading": "## 五、裁决层影响",
+            "required": true,
+            "description": "增量改动必须声明涉及哪些裁决规则的增删改。"
+        }
+    ],
+    "placeholders": [
+        "{需求名称}",
+        "{版本号}",
+        "{ISO 时间戳}",
+        "{作者标识}",
+        "{原PRD文件名}",
+        "{原版本号}"
+    ],
+    "forbidden_terms": [
+        "TBD",
+        "Phase",
+        "Step",
+        "Task"
+    ]
+}

@@ -394,7 +394,7 @@ server.registerTool(
 
         // ADD 工作流产物目录
         parts.push(`=== ${MAGIC_DIR}/ ADD 工作流产物 ===`)
-        const qoderDirs = [
+        const magicDirs = [
           { dir: "templates", desc: "ADD 文档模板（11 个）" },
           { dir: "specs", desc: "specs 三元组（spec+tasks+checklist）" },
           { dir: "reviews", desc: "方案审查 + 实现审查 + 运行时审查" },
@@ -403,7 +403,7 @@ server.registerTool(
           { dir: "skills", desc: "SKILL 行为定义（add-paradigm / session-init）" },
           { dir: "scripts", desc: "工具脚本 + MCP 服务器" },
         ]
-        for (const { dir, desc } of qoderDirs) {
+        for (const { dir, desc } of magicDirs) {
           const fullPath = join(PROJECT_ROOT, MAGIC_DIR, dir)
           if (existsSync(fullPath)) {
             const entries = await readdir(fullPath)
@@ -981,7 +981,7 @@ export async function record${featureName}Audit(record: ${featureName}AuditRecor
 server.registerTool(
   "query_audit_logs",
   {
-    description: "稀疏查询开发操作审计日志（DevOperation 表，MCP-5 稀疏推理恢复）。支持多维度检索，AI 可在不同对话会话中通过任意维度组合查询之前的开发操作记录，实现跨会话的上下文恢复。\n\n典型用法:\n- query_audit_logs({ targetType: \"API_ROUTE\" }) — 查所有 API 路由改动\n- query_audit_logs({ targetId: \"src/app/api/knowledge/route.ts\" }) — 查特定文件改动\n- query_audit_logs({ keyword: \"pagination\" }) — 按关键词搜索\n- query_audit_logs({ planKeyword: \"add-qoder\" }) — 按 Plan 关键词查该 Plan 下所有 devlog\n- query_audit_logs({}) — 查最近的记录（session-init 会话恢复）",
+    description: "稀疏查询开发操作审计日志（DevOperation 表，MCP-5 稀疏推理恢复）。支持多维度检索，AI 可在不同对话会话中通过任意维度组合查询之前的开发操作记录，实现跨会话的上下文恢复。\n\n典型用法:\n- query_audit_logs({ targetType: \"API_ROUTE\" }) — 查所有 API 路由改动\n- query_audit_logs({ targetId: \"src/app/api/knowledge/route.ts\" }) — 查特定文件改动\n- query_audit_logs({ keyword: \"pagination\" }) — 按关键词搜索\n- query_audit_logs({ planKeyword: \"add-coder\" }) — 按 Plan 关键词查该 Plan 下所有 devlog\n- query_audit_logs({}) — 查最近的记录（session-init 会话恢复）",
     inputSchema: {
       targetType: z.string().optional().describe("按目标类型精确过滤"),
       action: z.string().optional().describe("按操作类型精确过滤"),
@@ -1148,7 +1148,7 @@ server.registerTool(
           data: {
             id: "ai-assistant",
             username: "ai-assistant",
-            email: "ai-assistant@internal",
+            email: "ai-assistant@internal"
           },
           select: { id: true },
         })
@@ -1223,7 +1223,7 @@ server.registerTool(
       }
 
       // ${MAGIC_DIR}/ 产物类别映射
-      const qoderCategoryMap: Record<string, string> = {
+      const magicCategoryMap: Record<string, string> = {
         plans: "plan",
         specs: "spec",
         reviews: "review",
@@ -1232,7 +1232,7 @@ server.registerTool(
       // 收集所有 Markdown 文件
       const allFiles: Array<{ path: string; relativePath: string; category: string }> = []
 
-      const walkDir = async (dir: string, relativeDir: string, sourceType: "docs" | "qoder" = "docs"): Promise<void> => {
+      const walkDir = async (dir: string, relativeDir: string, sourceType: "docs" | "magic" = "docs"): Promise<void> => {
         try {
           const entries = await readdir(dir, { withFileTypes: true })
           for (const entry of entries) {
@@ -1242,10 +1242,10 @@ server.registerTool(
               await walkDir(fullPath, relPath, sourceType)
             } else if (entry.isFile() && (entry.name.endsWith(".md") || entry.name.endsWith(".html"))) {
               let docCategory = "unknown"
-              if (sourceType === "qoder") {
+              if (sourceType === "magic") {
                 // ${MAGIC_DIR}/ 产物按目录分类
                 const topDir = relPath.split("/")[0]
-                docCategory = qoderCategoryMap[topDir] || "unknown"
+                docCategory = magicCategoryMap[topDir] || "unknown"
                 // handoff 文件特殊识别（存放在 plans/ 下但含 handoff 关键词）
                 if (topDir === "plans" && entry.name.includes("handoff")) {
                   docCategory = "handoff"
@@ -1274,11 +1274,11 @@ server.registerTool(
       // 搜索 docs/ 目录
       await walkDir(docsDir, "", "docs")
       // 搜索 ${MAGIC_DIR}/ 产物目录（plans/specs/reviews）
-      const qoderSearchDirs = ["plans", "specs", "reviews"]
-      for (const qDir of qoderSearchDirs) {
-        const qPath = join(PROJECT_ROOT, MAGIC_DIR, qDir)
-        if (existsSync(qPath)) {
-          await walkDir(qPath, qDir, "qoder")
+      const magicSearchDirs = ["plans", "specs", "reviews"]
+      for (const mDir of magicSearchDirs) {
+        const mPath = join(PROJECT_ROOT, MAGIC_DIR, mDir)
+        if (existsSync(mPath)) {
+          await walkDir(mPath, mDir, "magic")
         }
       }
 
@@ -2127,12 +2127,12 @@ server.registerTool(
       const planContent = await readFileSafe(planPath)
       let specDirName = ""
       if (planContent) {
-        const specMatch = planContent.match(/Spec:\s*\.qoder\/specs\/([^/\s]+)/)
+        const specMatch = planContent.match(/Spec:\s*\.(qoder|claude|add|vscode)\/specs\/([^/\s]+)/)
         if (specMatch) specDirName = specMatch[1]
       }
       if (!specDirName) {
         // 退而求其次：从 tasks.md 引用提取
-        const taskMatch = planContent?.match(/Tasks:\s*\.qoder\/specs\/([^/\s]+)/)
+        const taskMatch = planContent?.match(/Tasks:\s*\.(qoder|claude|add|vscode)\/specs\/([^/\s]+)/)
         if (taskMatch) specDirName = taskMatch[1]
       }
       if (!specDirName) {
@@ -2809,7 +2809,7 @@ server.registerTool(
       if (existsSync(reviewsDir)) {
         const reviewFiles = await readdir(reviewsDir)
         // 从 Plan 全文提取所有 Review 引用，优先匹配含 planKeyword 的
-        const allReviewRefs = Array.from(planContent.matchAll(/\.qoder\/reviews\/([^\s)]+\.md)/g))
+        const allReviewRefs = Array.from(planContent.matchAll(/\.(qoder|claude|add|vscode)\/reviews\/([^\s)]+\.md)/g))
           .map(m => m[1].split("/").pop() || "")
           .filter(Boolean)
         // 策略1: 在所有引用中优先选含 planKeyword 的
@@ -2837,10 +2837,10 @@ server.registerTool(
       let specContent = ""
       let tasksContent = ""
       // 从 Plan 绑定或 §7 提取
-      const specRef = planContent.match(/Spec:\s*\.qoder\/specs\/([^/\s]+)/)
+      const specRef = planContent.match(/Spec:\s*\.(qoder|claude|add|vscode)\/specs\/([^/\s]+)/)
       if (specRef) specDirName = specRef[1]
       if (!specDirName) {
-        const taskRef = planContent.match(/Tasks:\s*\.qoder\/specs\/([^/\s]+)/)
+        const taskRef = planContent.match(/Tasks:\s*\.(qoder|claude|add|vscode)\/specs\/([^/\s]+)/)
         if (taskRef) specDirName = taskRef[1]
       }
       if (!specDirName) {
@@ -3450,9 +3450,9 @@ server.registerTool(
   {
     description: "创建 ADD Plan 文件到 ${MAGIC_DIR}/plans/{YYYY-MM}/{DD}/ 目录，自动调用 gen-plan-index.sh 更新 index.md。AI 助手在 ADD 范式 Step 0（方案设计）完成后应调用此工具落盘 Plan 文件。\n\n自动处理：\n1. 根据当前日期创建目录 ${MAGIC_DIR}/plans/{YYYY-MM}/{DD}/\n2. 写入 planName-v{version}.md（markdown 正文）\n3. 执行 scripts/gen-plan-index.sh 更新 index.md\n4. 自动调用 record_dev_operation 记录创建操作",
     inputSchema: {
-      planName: z.string().describe("Plan 名称（kebab-case），如 '{{projectName}}-domain-vocabulary'"),
+      planName: z.string().describe("Plan 名称（kebab-case），如 'add-coder-domain-vocabulary'"),
       version: z.string().describe("版本号，如 'v1', 'v2'"),
-      title: z.string().describe("Plan 标题（markdown H1 第一行），如 '# {{projectName}}-domain-vocabulary-plan-v2'"),
+      title: z.string().describe("Plan 标题（markdown H1 第一行），如 '# add-coder-domain-vocabulary-plan-v2'"),
       content: z.string().describe("Plan 完整 markdown 正文（从 H1 标题行开始）"),
       planKeyword: z.string().optional().describe("Plan 关键词（用于 session-init 恢复定位），默认使用 planName"),
     },
