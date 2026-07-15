@@ -8,7 +8,7 @@ import { renderAdapter as renderVSCode } from "../../adapters/vscode/renderer";
 import { ask, detectPm } from "../../lib/utils";
 import { injectPrisma } from "../prisma-injector";
 import type { Adapter } from "../../config/schema";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { spawnSync } from "child_process";
 import { createConnection } from "net";
@@ -230,7 +230,7 @@ export async function initCommand(options: InitOptions) {
     // ── 阶段 C：数据库部署 ──
     if (db.engine === "postgresql" && db.container && db.container !== "manual") {
         if (!options.dryRun) {
-            const dbScript = resolve(projectRoot, ".qoder", "scripts", "db-ensure.sh");
+            const dbScript = resolve(projectRoot, magicDir, "scripts", "db-ensure.sh");
             const dbEnv = { ...process.env, DATABASE_USER: db.user, DATABASE_PASSWORD: db.password, DATABASE_PORT: db.port, PROJECT_NAME: config.projectName };
             const mode = db.reuseExisting ? "manual" : db.container;
             console.log(db.reuseExisting ? "复用已有 PostgreSQL ..." : `部署数据库 (${db.container}) ...`);
@@ -243,15 +243,15 @@ export async function initCommand(options: InitOptions) {
 
     if (db.engine === "postgresql" && db.container === "manual") {
         if (!options.dryRun) {
-            const dbScript = resolve(projectRoot, ".qoder", "scripts", "db-ensure.sh");
+            const dbScript = resolve(projectRoot, magicDir, "scripts", "db-ensure.sh");
             if (existsSync(dbScript)) spawnSync("bash", [dbScript, "postgresql", "manual"], { cwd: projectRoot, stdio: "inherit" });
-            console.log(["", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "ADD 模板已就位。在完成以下操作前 MCP 不可用：", "", "1. 编辑 .env.development，配置 DATABASE_URL", "2. 重新运行 add-coder init 完成迁移", "", "⚠️  非 PG 数据库需编辑 .qoder/scripts/mcp-server.ts 手动配 Prisma 7 adapter", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"].join("\n"));
+            console.log(["", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "ADD 模板已就位。在完成以下操作前 MCP 不可用：", "", "1. 编辑 .env.development，配置 DATABASE_URL", "2. 重新运行 add-coder init 完成迁移", "", `⚠️  非 PG 数据库需编辑 ${magicDir}/scripts/mcp-server.ts 手动配 Prisma 7 adapter`, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"].join("\n"));
         }
     }
 
     if (db.engine === "manual") {
         if (!options.dryRun) {
-            console.log(["", "Prisma 支持的 datasource: postgresql / mysql / sqlite / sqlserver / cockroachdb", "自行 prisma init + 编辑 .env.development，重新 run init 完成迁移。", "", "⚠️ Prisma 7 adapter 需手动配 → .qoder/scripts/mcp-server.ts"].join("\n"));
+            console.log(["", "Prisma 支持的 datasource: postgresql / mysql / sqlite / sqlserver / cockroachdb", "自行 prisma init + 编辑 .env.development，重新 run init 完成迁移。", "", `⚠️ Prisma 7 adapter 需手动配 → ${magicDir}/scripts/mcp-server.ts`].join("\n"));
         }
     }
 
@@ -265,7 +265,26 @@ export async function initCommand(options: InitOptions) {
         }
     }
 
-    // ── 阶段 D：摘要 ──
+    // ── 阶段 D：部署 docs 项目文档（模板 grounding 文档）──
+    if (!options.dryRun) {
+        const pn = config.projectName || "add-project";
+        const docsBase = resolve(projectRoot, "docs", pn, "knowledge");
+        const groundingSrc = resolve(import.meta.dirname!, "../templates/core/templates");
+        for (const d of ["00-需求", "01-架构", "02-规范"]) {
+            const srcDir = resolve(groundingSrc, d);
+            const destDir = resolve(docsBase, d);
+            if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true });
+            if (!existsSync(srcDir)) continue;
+            for (const f of readdirSync(srcDir)) {
+                const src = resolve(srcDir, f);
+                const dest = resolve(destDir, f);
+                if (existsSync(dest)) continue; // 不覆盖已有文件
+                try { copyFileSync(src, dest); } catch { /* skip */ }
+            }
+        }
+    }
+
+    // ── 阶段 E：摘要 ──
     console.log(`\n完成: 新建 ${result.created}, 跳过 ${result.skipped}, 覆盖 ${result.overwritten}`);
 
     if (!options.dryRun) {
