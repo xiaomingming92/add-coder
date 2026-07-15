@@ -1,6 +1,6 @@
 # add-coder npm 包 — 6 轮原子事务交接手册
 
-> **适用场景**：6 轮原子事务变更，每轮独立收敛。将 ADD 范式从 farm-agent 内部工具改造为可发布的 npm 包。
+> **适用场景**：6 轮原子事务变更，每轮独立收敛。将 ADD 范式从 add-coder 内部工具改造为可发布的 npm 包。
 >
 > **用途**：每个新对话开始时，把对应轮次章节粘贴给 LLM。
 
@@ -8,9 +8,9 @@
 
 ## 全局元信息
 
-- **父 Plan**: `farm-agent-add-coder-npm-package-plan-v1.md`
-- **原子事务拓扑**: `farm-agent-add-coder-npm-package-add-route-v1.md`
-- **目标仓库**: `/home/xmm/ai/farm-agent`
+- **父 Plan**: `add-coder-add-coder-npm-package-plan-v1.md`
+- **原子事务拓扑**: `add-coder-add-coder-npm-package-add-route-v1.md`
+- **目标仓库**: `/home/xmm/ai/add-coder`
 - **总文件数**: 约 90 个独立文件
 - **轮次数**: 6 轮局部闭包
 - **拆分原则**: 以业务原子闭包为主，以对话上下文容量为辅
@@ -47,7 +47,7 @@
 
 ### 交接手册与 spec 的优先级
 
-- 本 handoff 是新对话的入口索引。具体实现细节以 `.qoder/specs/farm-agent-add-coder-npm-package/spec.md`、`tasks.md`、`checklist.md` 为准。
+- 本 handoff 是新对话的入口索引。具体实现细节以 `.qoder/specs/add-coder-add-coder-npm-package/spec.md`、`tasks.md`、`checklist.md` 为准。
 - 如果 handoff 摘要与 spec/tasks/checklist 存在颗粒度差异，以 spec/tasks/checklist 为准。
 
 ---
@@ -83,9 +83,9 @@ query_audit_logs({ targetId: "packages/add-coder/templates/core/prisma/add.prism
 ```
 1. session-init SKILL
 2. query_audit_logs({ planKeyword: "add-coder-npm-package" }) → 查看本轮 4 条记录
-3. read ".qoder/specs/farm-agent-add-coder-npm-package/spec.md"
-4. read ".qoder/specs/farm-agent-add-coder-npm-package/tasks.md"（第1轮）
-5. read ".qoder/specs/farm-agent-add-coder-npm-package/checklist.md"（一、二、四）
+3. read ".qoder/specs/add-coder-add-coder-npm-package/spec.md"
+4. read ".qoder/specs/add-coder-add-coder-npm-package/tasks.md"（第1轮）
+5. read ".qoder/specs/add-coder-add-coder-npm-package/checklist.md"（一、二、四）
 ```
 
 ### 原子事务目标
@@ -96,9 +96,9 @@ query_audit_logs({ targetId: "packages/add-coder/templates/core/prisma/add.prism
 
 ### spec 文件
 
-- `.qoder/specs/farm-agent-add-coder-npm-package/spec.md`
-- `.qoder/specs/farm-agent-add-coder-npm-package/tasks.md`（第1轮）
-- `.qoder/specs/farm-agent-add-coder-npm-package/checklist.md`（一、二、四）
+- `.qoder/specs/add-coder-add-coder-npm-package/spec.md`
+- `.qoder/specs/add-coder-add-coder-npm-package/tasks.md`（第1轮）
+- `.qoder/specs/add-coder-add-coder-npm-package/checklist.md`（一、二、四）
 
 ### 你要改的文件（Task 1.0: 2 新建 + Task 1.1: ~70 修改）
 
@@ -106,7 +106,7 @@ query_audit_logs({ targetId: "packages/add-coder/templates/core/prisma/add.prism
 |------|------|--------|
 | `packages/add-coder/templates/core/prisma/add.prisma` | 新建 | AddUser（id/username/email）+ DevOperation + AuditLog 模型定义 |
 | `packages/add-coder/src/caijuehub/strategies/prisma.strategy.ts` | 修改 | 裁决层：migrate dev→db push + backupAddTables + ensurePrismaConfig |
-| `templates/` 下 15 个 `.md` 模板 | 修改 | `farm-agent-*` → `add-coder-*` |
+| `templates/` 下 15 个 `.md` 模板 | 修改 | `add-coder-*` → `add-coder-*` |
 | `skills/` 下 2 个 SKILL.md | 修改 | `/home/xmm/` → `/home/xmm/ai/add-coder/` |
 | `scripts/mcp-server.ts` + `add-coder-mcp-server.ts` | 修改 | 数据库密码 → `process.env.DATABASE_URL` |
 | `.qoder/settings.json` / `.qoder/mcp.json` | 修改 | 硬编码路径 → 占位符 |
@@ -182,7 +182,7 @@ query_audit_logs({ targetId: "packages/add-coder/src/adapters/" })
 **恢复顺序建议**：
 ```
 1. query_audit_logs({ planKeyword: "add-coder-npm-package" })
-2. read ".qoder/specs/farm-agent-add-coder-npm-package/tasks.md"（第2轮）
+2. read ".qoder/specs/add-coder-add-coder-npm-package/tasks.md"（第2轮）
 ```
 
 ### 原子事务目标
@@ -191,7 +191,7 @@ query_audit_logs({ targetId: "packages/add-coder/src/adapters/" })
 
 ### spec 文件
 
-- `.qoder/specs/farm-agent-add-coder-npm-package/tasks.md`（第2轮）
+- `.qoder/specs/add-coder-add-coder-npm-package/tasks.md`（第2轮）
 
 ### 你要改的文件（22 迁移 + 4 新建）
 
@@ -258,8 +258,8 @@ query_audit_logs({ targetId: "packages/add-coder/src/adapters/claude/renderer.ts
 **恢复顺序建议**：
 ```
 1. query_audit_logs({ planKeyword: "add-coder-npm-package" })
-2. read ".qoder/specs/farm-agent-add-coder-npm-package/tasks.md"（第3轮）
-3. read ".qoder/specs/farm-agent-add-coder-npm-package/checklist.md"（三）
+2. read ".qoder/specs/add-coder-add-coder-npm-package/tasks.md"（第3轮）
+3. read ".qoder/specs/add-coder-add-coder-npm-package/checklist.md"（三）
 ```
 
 ### 原子事务目标
@@ -268,8 +268,8 @@ query_audit_logs({ targetId: "packages/add-coder/src/adapters/claude/renderer.ts
 
 ### spec 文件
 
-- `.qoder/specs/farm-agent-add-coder-npm-package/tasks.md`（第3轮）
-- `.qoder/specs/farm-agent-add-coder-npm-package/checklist.md`（三）
+- `.qoder/specs/add-coder-add-coder-npm-package/tasks.md`（第3轮）
+- `.qoder/specs/add-coder-add-coder-npm-package/checklist.md`（三）
 
 ### 你要改的文件（Task 3.0 Claude: 14 新建 / Task 3.1 Qoder: 3 / Task 3.2 VS Code: 3）
 
@@ -336,8 +336,8 @@ query_audit_logs({ targetId: "packages/add-coder/src/cli/commands/init.ts" })
 **恢复顺序建议**：
 ```
 1. query_audit_logs({ planKeyword: "add-coder-npm-package" })
-2. read ".qoder/specs/farm-agent-add-coder-npm-package/tasks.md"（第4轮）
-3. read ".qoder/specs/farm-agent-add-coder-npm-package/checklist.md"（五）
+2. read ".qoder/specs/add-coder-add-coder-npm-package/tasks.md"（第4轮）
+3. read ".qoder/specs/add-coder-add-coder-npm-package/checklist.md"（五）
 ```
 
 ### 原子事务目标
@@ -346,8 +346,8 @@ query_audit_logs({ targetId: "packages/add-coder/src/cli/commands/init.ts" })
 
 ### spec 文件
 
-- `.qoder/specs/farm-agent-add-coder-npm-package/tasks.md`（第4轮）
-- `.qoder/specs/farm-agent-add-coder-npm-package/checklist.md`（五）
+- `.qoder/specs/add-coder-add-coder-npm-package/tasks.md`（第4轮）
+- `.qoder/specs/add-coder-add-coder-npm-package/checklist.md`（五）
 
 ### 你要改的文件（Task 4.0: 2 新建 + Task 4.1: 10 文件）
 
@@ -412,8 +412,8 @@ query_audit_logs({ targetId: "packages/add-coder/package.json" })
 **恢复顺序建议**：
 ```
 1. query_audit_logs({ planKeyword: "add-coder-npm-package" })
-2. read ".qoder/specs/farm-agent-add-coder-npm-package/tasks.md"（第5轮）
-3. read ".qoder/specs/farm-agent-add-coder-npm-package/checklist.md"（五、六、八）
+2. read ".qoder/specs/add-coder-add-coder-npm-package/tasks.md"（第5轮）
+3. read ".qoder/specs/add-coder-add-coder-npm-package/checklist.md"（五、六、八）
 ```
 
 ### 原子事务目标
@@ -422,8 +422,8 @@ query_audit_logs({ targetId: "packages/add-coder/package.json" })
 
 ### spec 文件
 
-- `.qoder/specs/farm-agent-add-coder-npm-package/tasks.md`（第5轮）
-- `.qoder/specs/farm-agent-add-coder-npm-package/checklist.md`（五、六、八）
+- `.qoder/specs/add-coder-add-coder-npm-package/tasks.md`（第5轮）
+- `.qoder/specs/add-coder-add-coder-npm-package/checklist.md`（五、六、八）
 
 ### 你要改的文件（6 文件）
 
@@ -495,8 +495,8 @@ query_audit_logs({ targetId: "packages/add-coder/src/cli/detect.ts" })
 **恢复顺序建议**：
 ```
 1. query_audit_logs({ planKeyword: "add-coder-npm-package" })
-2. read ".qoder/specs/farm-agent-add-coder-npm-package/tasks.md"（第6轮）
-3. read ".qoder/specs/farm-agent-add-coder-npm-package/checklist.md"（七）
+2. read ".qoder/specs/add-coder-add-coder-npm-package/tasks.md"（第6轮）
+3. read ".qoder/specs/add-coder-add-coder-npm-package/checklist.md"（七）
 4. 执行 npm run generate 确保 GENERATED 区块最新
 ```
 
@@ -507,9 +507,9 @@ query_audit_logs({ targetId: "packages/add-coder/src/cli/detect.ts" })
 
 ### spec 文件
 
-- `.qoder/specs/farm-agent-add-coder-npm-package/spec.md`（Requirement: CaijueHub 裁决层）
-- `.qoder/specs/farm-agent-add-coder-npm-package/tasks.md`（第6轮）
-- `.qoder/specs/farm-agent-add-coder-npm-package/checklist.md`（七）
+- `.qoder/specs/add-coder-add-coder-npm-package/spec.md`（Requirement: CaijueHub 裁决层）
+- `.qoder/specs/add-coder-add-coder-npm-package/tasks.md`（第6轮）
+- `.qoder/specs/add-coder-add-coder-npm-package/checklist.md`（七）
 
 ### 你要改的文件（~16 个）
 
@@ -614,7 +614,7 @@ npm run generate → transcribe.ts → GENERATED 区块         │ injectPrisma
 | `templates/core/prisma/` | add.prisma 模板 | 删除，由 injectPrisma 直接处理 | Prisma 文件不应在 `.add/` 下 |
 | plans/specs 示例 | 无 | `templates/core/plans/` `specs/` 含 add-coder 示例 | 用户首次 init 即可看到完整 ADD 文档样例 |
 | 三目录部署 | 仅 `.add/` | Plan 已设计，`renderCore()` 改造待执行 | 见 Plan §3.2 改造待执行清单 |
-| Review v2 回流 | 无 | `.qoder/reviews/farm-agent-add-coder-npm-package-review-v2.md` | 代码实现评审：2 条 P0（spawnSync catch 失能、ask 重复定义）在 Plan §4.8 回流，P0-1 已补充至 Task 1.0 验收项 |
+| Review v2 回流 | 无 | `.qoder/reviews/add-coder-add-coder-npm-package-review-v2.md` | 代码实现评审：2 条 P0（spawnSync catch 失能、ask 重复定义）在 Plan §4.8 回流，P0-1 已补充至 Task 1.0 验收项 |
 | **2026-07-14 Prisma 7 适配** | 旧 `migrate dev` + User 注入 | `db push` + AddUser 自包含 | Prisma 7 移除 schema 内 datasource.url、migrate dev 需 history；裁决层 injectPrisma 激活；db-ensure.sh 瘦身 |
 | **2026-07-14 调用链重组** | init.ts → db-ensure.sh 直接调 prisma | init.ts → db-ensure.sh(运维) + injectPrisma(裁决层) | 职责分离：shell 管容器，TS 管 Prisma |
 | **2026-07-14 mcp-server 适配** | `prisma.user` + password 字段 | `prisma.addUser` + 去 password + override:true | AddUser 自包含后 MCP 需同步改模型引用 |
@@ -656,15 +656,15 @@ npm run generate → transcribe.ts → GENERATED 区块         │ injectPrisma
 
 你在执行 add-coder npm 包工程化的 [第N轮]。
 上游 [第1轮~第N-1轮] 已完成。
-先读 .qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-handoff-v1.md 的 <第N轮> 章节。
+先读 .qoder/plans/2026-07/08/add-coder-add-coder-npm-package-handoff-v1.md 的 <第N轮> 章节。
 
 ## 启动步骤（按顺序）
 
 1. 执行 session-init SKILL
 2. 执行 add-paradigm SKILL
-3. 读 .qoder/specs/farm-agent-add-coder-npm-package/spec.md
-4. 读 .qoder/specs/farm-agent-add-coder-npm-package/tasks.md（第N轮）
-5. 读 .qoder/specs/farm-agent-add-coder-npm-package/checklist.md
+3. 读 .qoder/specs/add-coder-add-coder-npm-package/spec.md
+4. 读 .qoder/specs/add-coder-add-coder-npm-package/tasks.md（第N轮）
+5. 读 .qoder/specs/add-coder-add-coder-npm-package/checklist.md
 6. 按 tasks.md 顺序执行代码修改
 7. 每完成一个 Task：读 checklist.md → 逐项验证 → 附证据 → 勾选
 8. 每完成一个文件修改：record_dev_operation 写入 ADD-7 审计

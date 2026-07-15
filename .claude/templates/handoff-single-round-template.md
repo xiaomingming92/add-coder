@@ -120,7 +120,7 @@ ORDER BY "createdAt" DESC;
 - grep 验证命令：
 
 ```bash
-grep -R "{关键字}" .qoder/specs/
+grep -R "{关键字}" .claude/specs/
 ```
 
 ---

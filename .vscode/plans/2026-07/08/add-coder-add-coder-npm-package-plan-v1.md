@@ -1,24 +1,24 @@
-# farm-agent-add-coder-npm-package-plan-v1
+# add-coder-add-coder-npm-package-plan-v1
 
 > **Plan/Spec 边界提醒**：Plan 回答"改什么、为什么改、改哪里"——写到让 Review 能判断方向对不对、有没有遗漏维度的程度（文件路径 + Task 验收标准 + 架构维度全覆盖）。**不要**在 Plan 中写完整 TS 类型定义、WHEN-THEN 场景、精确函数签名——那是 Spec 的职责。
 
 ## PLAN 元信息
 
-- **Plan 名称**: farm-agent-add-coder-npm-package-v1
+- **Plan 名称**: add-coder-add-coder-npm-package-v1
 - **启动时间**: 2026-07-08T00:00:00+08:00
 - **主导 AI**: Qoder (Claude 4)
 - **关联文档**:
-  - ADD Route: `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-add-route-v1.md` ✅
-  - Handoff: `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-handoff-v1.md` ✅
-  - Review: `.qoder/reviews/farm-agent-add-coder-npm-package-review-v1.md` ✅
-  - Review v2: `.qoder/reviews/farm-agent-add-coder-npm-package-review-v2.md` ✅ — 代码实现评审，2 条 P0（spawnSync catch 失能、ask 重复定义）
+  - ADD Route: `.qoder/plans/2026-07/08/add-coder-add-coder-npm-package-add-route-v1.md` ✅
+  - Handoff: `.qoder/plans/2026-07/08/add-coder-add-coder-npm-package-handoff-v1.md` ✅
+  - Review: `.qoder/reviews/add-coder-add-coder-npm-package-review-v1.md` ✅
+  - Review v2: `.qoder/reviews/add-coder-add-coder-npm-package-review-v2.md` ✅ — 代码实现评审，2 条 P0（spawnSync catch 失能、ask 重复定义）
 - **ADD-7 审计策略**:
 
 | 文件 | targetType | action | beforeState | afterState | 状态 |
 |-----|-----------|--------|------------|-----------|------|
 | packages/add-coder/package.json | PACKAGE | PACKAGE_CONFIG_UPDATED | private:true, 无构建流程 | public, TypeScript 构建, 发布就绪 | 待实施 |
 | packages/add-coder/src/ | SOURCE | SOURCE_CREATED | 无 src 目录 | 完整 CLI + 适配器源码 | 待实施 |
-| packages/add-coder/templates/ | TEMPLATE | TEMPLATE_REFACTORED | 硬编码 farm-agent 专属 | 参数化占位符 + 通用化 | 待实施 |
+| packages/add-coder/templates/ | TEMPLATE | TEMPLATE_REFACTORED | 硬编码 add-coder 专属 | 参数化占位符 + 通用化 | 待实施 |
 
 ---
 
@@ -28,7 +28,7 @@
 
 当前 `packages/add-coder/` 是一个 **不可发布的半成品**：
 
-1. **模板硬编码**：`templates/` 下所有文件直接来自 farm-agent 项目，包含数据库密码、项目名、特定路径等不可移植内容
+1. **模板硬编码**：`templates/` 下所有文件直接来自 add-coder 项目，包含数据库密码、项目名、特定路径等不可移植内容
 2. **CLI 纯搬运**：`bin/add-coder.js`（113 行 CommonJS）只有 `init/sync/status` 三个命令，全是 `fs.copyFileSync`，无参数化渲染、无配置合并
 3. **无适配层抽象**：`.qoder` 和 `.vscode` 是两套独立静态模板，无共享逻辑。加 Claude 适配需要再复制一套
 4. **VS Code 无 hook 层**：`.vscode/` 只有 MCP 配置，缺少 Qoder 的 11 个 hook 等价物
@@ -431,11 +431,11 @@ const adapterDir = path.join(TEMPLATES_ROOT, 'adapters', target)
 ### 3.5 裁决层：CaijueHub（三段式裁决生成管线）
 
 > **定位**：add-coder 聚焦管线阶段 ③④——通用转录引擎 + 编译集成。
-> 阶段 ①②（产品文档 → 规则提取 → caijue.toml）由 farm-agent 的独立 Plan 承接，add-coder 不耦合业务域。
+> 阶段 ①②（产品文档 → 规则提取 → caijue.toml）由 add-coder 的独立 Plan 承接，add-coder 不耦合业务域。
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 阶段 ①②: farm-agent Plan 承接                              │
+│ 阶段 ①②: add-coder Plan 承接                              │
 │                                                             │
 │ 产品文档 → 提取函数 → caijue.toml                           │
 │ （业务规则）  （AI/规则引擎）  （规则索引）                    │
@@ -619,7 +619,7 @@ packages/add-coder/
 
 **范围**：`templates/core/prisma/add.prisma` + `src/cli/prisma-injector.ts`
 
-- 从 farm-agent 的 `prisma/main.prisma` 中提取 DevOperation 和 AuditLog 模型定义
+- 从 add-coder 的 `prisma/main.prisma` 中提取 DevOperation 和 AuditLog 模型定义
 - 写入 `templates/core/prisma/add.prisma`（模型定义，无参数化）
 - 实现 `src/cli/prisma-injector.ts`：
   - 检测用户项目是否已有 Prisma（`prisma/` 目录 + `schema.prisma`）→ 无则报错
@@ -644,18 +644,18 @@ packages/add-coder/
 
 | # | 文件组 | 文件 | 典型硬编码 | 改为 | 变量类型 |
 |---|--------|------|----------|------|---------|
-| 1 | 模板 | 15 个 `.md` 模板（plan/spec/tasks/checklist/handoff/review/add-route 等） | `docs/大田精准耕播智能决策系统/`、`farm-agent-*` 文件名示例 | `docs/`、`add-coder-*` | Init-time |
+| 1 | 模板 | 15 个 `.md` 模板（plan/spec/tasks/checklist/handoff/review/add-route 等） | `docs/大田精准耕播智能决策系统/`、`add-coder-*` 文件名示例 | `docs/`、`add-coder-*` | Init-time |
 | 2 | 模板 Schema | 15 个 `.schema.json` | 无硬编码（结构定义） | 无需修改 | — |
-| 3 | Skills | `skills/add-paradigm/SKILL.md` | `docs/大田精准耕播智能决策系统/`、`/home/xmm/ai/farm-agent/`、`farm-agent-response-strategy/` 示例 | `docs/`、`/home/xmm/ai/add-coder/`、`add-coder-*` | Init-time |
-| 4 | Skills | `skills/session-init/SKILL.md` | `farm-agent-review-runtime.md` 示例 | `add-coder-review-runtime.md` | Init-time |
+| 3 | Skills | `skills/add-paradigm/SKILL.md` | `docs/大田精准耕播智能决策系统/`、`/home/xmm/ai/add-coder/`、`add-coder-response-strategy/` 示例 | `docs/`、`/home/xmm/ai/add-coder/`、`add-coder-*` | Init-time |
+| 4 | Skills | `skills/session-init/SKILL.md` | `add-coder-review-runtime.md` 示例 | `add-coder-review-runtime.md` | Init-time |
 | 5 | Agents | `agents/add-flow-guardian.md` | 无项目特定硬编码 | 检查确认 | — |
 | 6 | Agents | `agents/add-orchestrator.md` | 无项目特定硬编码 | 检查确认 | — |
-| 7 | Rules | `rules/project_rules.md` | `farm-agent` 项目名、`src/agents/` 路径 | `add-coder`、`src/agents/` | Init-time |
+| 7 | Rules | `rules/project_rules.md` | `add-coder` 项目名、`src/agents/` 路径 | `add-coder`、`src/agents/` | Init-time |
 | 8 | Rules | `rules/theory-practice-map.toml` | 无项目特定硬编码 | 检查确认 | — |
 | 9 | 词汇 | `vocabulary/add-governance-vocabulary.md` | 无项目特定硬编码 | 检查确认 | — |
 | 10 | 脚本 | `scripts/mcp-server.ts` | `DATABASE_URL \|\| "postgresql://farm_admin:farm_secure_pass_2024@..."`、`".env.development"` | `process.env.DATABASE_URL`（无兜底值）、`".env"` | Runtime + Init-time |
 | 11 | 脚本 | `scripts/add-coder-mcp-server.ts` | 同上 | 同上 | Runtime + Init-time |
-| 12 | Hook 配置 | `.qoder/settings.json` | hook 脚本绝对路径 `/home/xmm/ai/farm-agent/.qoder/hooks/` | `/home/xmm/ai/add-coder/.qoder/hooks/` | Init-time |
+| 12 | Hook 配置 | `.qoder/settings.json` | hook 脚本绝对路径 `/home/xmm/ai/add-coder/.qoder/hooks/` | `/home/xmm/ai/add-coder/.qoder/hooks/` | Init-time |
 | 13 | MCP 配置 | `.qoder/mcp.json` | `DATABASE_URL` 硬编码密码 | `process.env.DATABASE_URL`（无兜底值） | Runtime |
 | 14 | 同步策略 | `.qoder/sync-policy.json` | 无项目特定硬编码 | 检查确认 | — |
 | 15 | Hook 脚本 | `.qoder/hooks/` 下 14 个 `.sh` 文件 | `state-detect.sh` 中项目名提取逻辑、hook 脚本内部绝对路径 | 使用 `$CLAUDE_PROJECT_DIR` 或 `/home/xmm/ai/add-coder` 替代 | Init-time |
@@ -663,10 +663,10 @@ packages/add-coder/
 | 17 | VS Code | `.vscode/tasks.json` | 无项目特定硬编码 | 检查确认 | — |
 | 18 | VS Code | `.vscode/launch.json` | 无项目特定硬编码 | 检查确认 | — |
 | 19 | VS Code | `.vscode/extensions.json` | 无项目特定硬编码 | 检查确认 | — |
-| 20 | Reports | `reports/` 下 7 个文件 | `farm-agent`、`/Users/milkytea/WebstormProjects/rfMain/智能体/farm-agent/` 等绝对路径 | 全部 `add-coder`、`/home/xmm/ai/add-coder` | Init-time |
+| 20 | Reports | `reports/` 下 7 个文件 | `add-coder`、`/Users/milkytea/WebstormProjects/rfMain/智能体/add-coder/` 等绝对路径 | 全部 `add-coder`、`/home/xmm/ai/add-coder` | Init-time |
 | 21 | 工具 | `tools/README.md` | 无项目特定硬编码 | 检查确认 | — |
 | 22 | Prisma | `prisma/add.prisma` | 无硬编码（模型定义，直接复制到用户项目） | 无需修改 | — |
-| 23 | Grounding 文档 | `docs/01-架构/《ADD开发工作路径与文档协同规范》.md` | `docs/大田精准耕播智能决策系统/`、`farm-agent-*` 文件名示例（15 处） | `docs/`、`add-coder-*` | Init-time |
+| 23 | Grounding 文档 | `docs/01-架构/《ADD开发工作路径与文档协同规范》.md` | `docs/大田精准耕播智能决策系统/`、`add-coder-*` 文件名示例（15 处） | `docs/`、`add-coder-*` | Init-time |
 
 - 创建 `src/core/renderer.ts`：接收 config 对象，执行 `"add-coder".replace("add-coder", config.name)`
 
@@ -869,7 +869,7 @@ packages/add-coder/
 - [ ] `npx add-coder init --adapter claude` 生成 `.claude/` 目录
 - [ ] `npx add-coder init --adapter qoder` 生成 `.qoder/` 目录
 - [ ] `npx add-coder init --adapter vscode` 生成 `.vscode/` 目录
-- [ ] 模板中无 farm-agent 硬编码（`grep -r "farm.agent\|大田" dist/` 返回空）
+- [ ] 模板中无 add-coder 硬编码（`grep -r "farm.agent\|大田" dist/` 返回空）
 - [ ] `add-coder.config.ts` 可覆盖项目名、源码目录、日志目录等
 - [ ] 已有 `.qoder/settings.json` 时 `init` 不覆盖，展示 diff 并交互确认
 - [ ] `npx tsc --noEmit` 通过
@@ -887,9 +887,9 @@ packages/add-coder/
 
 | 文档 | 路径 | 状态 |
 |------|------|:--:|
-| ADD Route | `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-add-route-v1.md` | ✅ |
-| Handoff | `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-handoff-v1.md` | ✅ |
-| Review | `.qoder/reviews/farm-agent-add-coder-npm-package-review-v1.md` | ✅ |
-| Spec | `.qoder/specs/farm-agent-add-coder-npm-package/spec.md` | ✅ |
-| Tasks | `.qoder/specs/farm-agent-add-coder-npm-package/tasks.md` | ✅ |
-| Checklist | `.qoder/specs/farm-agent-add-coder-npm-package/checklist.md` | ✅ |
+| ADD Route | `.qoder/plans/2026-07/08/add-coder-add-coder-npm-package-add-route-v1.md` | ✅ |
+| Handoff | `.qoder/plans/2026-07/08/add-coder-add-coder-npm-package-handoff-v1.md` | ✅ |
+| Review | `.qoder/reviews/add-coder-add-coder-npm-package-review-v1.md` | ✅ |
+| Spec | `.qoder/specs/add-coder-add-coder-npm-package/spec.md` | ✅ |
+| Tasks | `.qoder/specs/add-coder-add-coder-npm-package/tasks.md` | ✅ |
+| Checklist | `.qoder/specs/add-coder-add-coder-npm-package/checklist.md` | ✅ |

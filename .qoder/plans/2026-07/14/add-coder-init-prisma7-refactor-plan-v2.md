@@ -217,5 +217,5 @@ Task 7: 集成验证 + 文档 + devlog
 |------|------|
 | 本 Plan | `.qoder/plans/2026-07/14/add-coder-init-prisma7-refactor-plan-v2.md` |
 | 上游 Plan | `.qoder/plans/2026-07/14/add-coder-init-database-setup-plan-v1.md` |
-| Handoff（增量更新） | `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-handoff-v1.md` |
-| 父 Plan（增量更新） | `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-plan-v1.md` |
+| Handoff（增量更新） | `.qoder/plans/2026-07/08/add-coder-add-coder-npm-package-handoff-v1.md` |
+| 父 Plan（增量更新） | `.qoder/plans/2026-07/08/add-coder-add-coder-npm-package-plan-v1.md` |
