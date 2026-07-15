@@ -9,7 +9,7 @@
 
 ## Forbidden
 
-- 禁止修改 farm-agent 业务代码（`src/`、`docs/` 等）
+- 禁止修改 add-coder 业务代码（`src/`、`docs/` 等）
 - 禁止引入第三方模板引擎（Handlebars/EJS 等）
 - 禁止在模板代码中保留 `process.env.X || "兜底值"` 反模式
 
@@ -30,13 +30,13 @@
     - [x] 已有 `add.prisma` 时：交互三选一（跳过/覆盖/diff+备份）
 
 - [x] Task 1.1: 清理硬编码 + 参数化 core 模板 — 验证: `grep -r "farm.agent\|farm_secure_pass\|大田精准\|/home/xmm\|/Users/milkytea" templates/` 返回空
-  - [x] 15 个 `.md` 模板（plan/spec/tasks/checklist/handoff/review/add-route 等）：`docs/大田精准耕播智能决策系统/` → `docs/`、`farm-agent-*` → `add-coder-*`
+  - [x] 15 个 `.md` 模板（plan/spec/tasks/checklist/handoff/review/add-route 等）：`docs/大田精准耕播智能决策系统/` → `docs/`、`add-coder-*` → `add-coder-*`
   - [x] 15 个 `.schema.json`：检查确认无硬编码
-  - [x] `skills/add-paradigm/SKILL.md`：`/home/xmm/ai/farm-agent/` → `/home/xmm/ai/add-coder/`
-  - [x] `skills/session-init/SKILL.md`：`farm-agent-*` → `add-coder-*`
+  - [x] `skills/add-paradigm/SKILL.md`：`/home/xmm/ai/add-coder/` → `/home/xmm/ai/add-coder/`
+  - [x] `skills/session-init/SKILL.md`：`add-coder-*` → `add-coder-*`
   - [x] `agents/add-flow-guardian.md`：检查确认
   - [x] `agents/add-orchestrator.md`：检查确认
-  - [x] `rules/project_rules.md`：`farm-agent` → `add-coder`、`src/agents/` → `src/agents/`
+  - [x] `rules/project_rules.md`：`add-coder` → `add-coder`、`src/agents/` → `src/agents/`
   - [x] `rules/theory-practice-map.toml`：检查确认
   - [x] `vocabulary/add-governance-vocabulary.md`：检查确认
   - [x] `scripts/mcp-server.ts`：`DATABASE_URL || "postgresql://..."` → `process.env.DATABASE_URL`（无兜底值）、`.env.development` → `.env`
@@ -46,7 +46,7 @@
   - [x] `.qoder/sync-policy.json`：检查确认
   - [x] `.qoder/hooks/` 下 14 个 `.sh` + `lib/`：项目名提取逻辑 → 使用 `$CLAUDE_PROJECT_DIR` 或 `/home/xmm/ai/add-coder`
   - [x] `.vscode/` 下 4 个文件：MCP 配置中的项目特定路径 → `/home/xmm/ai/add-coder`
-  - [x] `reports/` 下 7 个文件：`farm-agent`、绝对路径 → `add-coder`、`/home/xmm/ai/add-coder`
+  - [x] `reports/` 下 7 个文件：`add-coder`、绝对路径 → `add-coder`、`/home/xmm/ai/add-coder`
   - [x] `tools/README.md`：检查确认
   - [x] 创建 `src/core/renderer.ts`：接收 config 对象，执行 `"{{key}}".replace("{{key}}", config.key)`
 

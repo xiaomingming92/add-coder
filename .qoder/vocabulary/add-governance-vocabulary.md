@@ -16,6 +16,7 @@
 
 | 触发词 | LLM 默认操作 | 优先级 |
 |--------|-------------|--------|
+| `PRD` / `prd` / `需求文档` / `产品需求` | ①新建：读 `prd-standard-template.md` → 写 `docs/*/knowledge/00-需求/`；②增量：读 `prd-incremental-template.md` → 在已有PRD基础上追加/修改 | 🟡 P1 |
 | `Plan` / `plan` | **二段式**: ①先读 `.qoder/plans/index.md` 按 planName 匹配路径（P0 优先）；②无匹配才全局 glob 搜索 `*-plan-v*.md`。**禁止跳过 index.md 直接 glob** | 🔴 P0 |
 | `Spec` / `spec` | 查 `.qoder/specs/{name}/spec.md` | 🔴 P0 |
 | `Tasks` / `tasks` | 查 `.qoder/specs/{name}/tasks.md` | 🟡 P1 |
@@ -252,7 +253,8 @@ LLM: "验收通过 → 自动写 devlog日志(走mcp)（无需用户提醒）→
 
 | 优先级 | 触发词 | LLM 默认操作 |
 |:--:|------|-------------|
-| P0 | `index.md` / `Plan索引` / `看依赖` / `依赖哪个plan` / `看下计划` / `相关计划` / `某个plan` | **Plan 查询入口** — 先读 `.qoder/plans/index.md` 按 planName/主题精确匹配 plan 路径，无结果再全局搜索 |
+| P0 | `PRD` / `prd` / `需求文档` / `产品需求` | ①新建：读 `prd-standard-template.md` → 写 `docs/*/knowledge/00-需求/`；②增量：读 `prd-incremental-template.md` → 在已有PRD基础上追加/修改 |
+| P1 | `增量更新 PRD` / `修改PRD` / `PRD变更` | 读 `prd-incremental-template.md` → 在原 PRD 上追加/修改/删除 |
 | P0 | `Plan` / `plan` | **二段式**: ①先读 `.qoder/plans/index.md` 按 planName 匹配路径；②无匹配才全局 glob。**index.md 优先** |
 | P0 | `Spec` / `spec` | 查 `.qoder/specs/{name}/spec.md` |
 | P1 | `Tasks` / `tasks` | 查 `.qoder/specs/{name}/tasks.md` |

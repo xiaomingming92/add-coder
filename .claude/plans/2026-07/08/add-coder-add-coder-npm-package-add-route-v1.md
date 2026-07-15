@@ -1,10 +1,10 @@
-# farm-agent-add-coder-npm-package-add-route-v1
+# add-coder-add-coder-npm-package-add-route-v1
 
 > **定位**：Plan → ADD Step 执行映射。不重复 Plan 的架构设计和 Specs 的任务细节——只定义每个 ADD Step 在本 Plan 中的具体动作、输入、产出。
 >
-> **模式**：重型（Heavyweight）——每一步产出检查强制执行"验证并更新项目状态"。本项目为 npm 包工程化，代码产物在 `packages/add-coder/`，不修改 farm-agent 业务代码。
+> **模式**：重型（Heavyweight）——每一步产出检查强制执行"验证并更新项目状态"。本项目为 npm 包工程化，代码产物在 `packages/add-coder/`，不修改 add-coder 业务代码。
 >
-> **绑定**：Plan: `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-plan-v1.md` · Spec: `.qoder/specs/farm-agent-add-coder-npm-package/spec.md` ✅ · Tasks: `.qoder/specs/farm-agent-add-coder-npm-package/tasks.md` ✅ · Handoff: `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-handoff-v1.md` ✅
+> **绑定**：Plan: `.claude/plans/2026-07/08/add-coder-add-coder-npm-package-plan-v1.md` · Spec: `.claude/specs/add-coder-add-coder-npm-package/spec.md` ✅ · Tasks: `.claude/specs/add-coder-add-coder-npm-package/tasks.md` ✅ · Handoff: `.claude/plans/2026-07/08/add-coder-add-coder-npm-package-handoff-v1.md` ✅
 
 ---
 
@@ -13,9 +13,9 @@
 **目的**：代码动工前，确认 Plan + Specs + Handoff 三元组齐全，项目文档反映即将实现的变更。
 
 **输入**：
-- 上游 Review：`.qoder/reviews/farm-agent-add-coder-npm-package-review-v1.md` ✅
-- 上游 Review v2：`.qoder/reviews/farm-agent-add-coder-npm-package-review-v2.md` ✅ — 代码实现评审
-- Plan 文档：`.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-plan-v1.md` ✅
+- 上游 Review：`.claude/reviews/add-coder-add-coder-npm-package-review-v1.md` ✅
+- 上游 Review v2：`.claude/reviews/add-coder-add-coder-npm-package-review-v2.md` ✅ — 代码实现评审
+- Plan 文档：`.claude/plans/2026-07/08/add-coder-add-coder-npm-package-plan-v1.md` ✅
 
 **动作**：
 1. 确认 Specs 三元组就绪：`spec.md` + `tasks.md` + `checklist.md` ✅
@@ -44,7 +44,7 @@
 
 ## Step 1：功能分析与审计打点定义
 
-**目的**：本 Plan 为 npm 包工程化，不修改 farm-agent 业务代码。无需新增 `AgentAuditPhase` 字面量。审计通过 `record_dev_operation`（ADD-7）落库 DevOperation 表。
+**目的**：本 Plan 为 npm 包工程化，不修改 add-coder 业务代码。无需新增 `AgentAuditPhase` 字面量。审计通过 `record_dev_operation`（ADD-7）落库 DevOperation 表。
 
 **输入**：
 - Plan §3 的 Task 列表（6 轮 11 个 Task）
@@ -60,7 +60,7 @@
 | 审计方式 | 适用场景 | 工具 |
 |---------|---------|------|
 | `record_dev_operation` | 文件变更（CREATE/MODIFY/DELETE） | MCP 工具 |
-| 无 AgentAuditPhase | 本 Plan 不修改 farm-agent 业务代码 | — |
+| 无 AgentAuditPhase | 本 Plan 不修改 add-coder 业务代码 | — |
 
 ---
 
@@ -108,7 +108,7 @@
 | 4 | 3 | Claude 适配器实现 | `templates/adapters/claude/`、`src/adapters/claude/renderer.ts` | `record_dev_operation` (CREATE) | — | 第2轮 Task 0 | ⬜ |
 | 5 | 3 | Qoder 适配器实现 | `templates/adapters/qoder/`、`src/adapters/qoder/renderer.ts` | `record_dev_operation` (CREATE/MODIFY) | — | 第3轮 Task 0 | ⬜ |
 | 6 | 3 | VS Code 适配器实现 | `templates/adapters/vscode/`、`src/adapters/vscode/renderer.ts` | `record_dev_operation` (CREATE/MODIFY) | — | 第3轮 Task 1 | ⬜ |
-| 6b | 3 | 三目录部署（core→.add/.qoder/.claude） | `src/core/renderer.ts`、`src/cli/commands/init.ts`、adapter renderers | `record_dev_operation` (MODIFY) | — | 第3轮 Task 2 | ⬜ |
+| 6b | 3 | 三目录部署（core→.add/.claude/.claude） | `src/core/renderer.ts`、`src/cli/commands/init.ts`、adapter renderers | `record_dev_operation` (MODIFY) | — | 第3轮 Task 2 | ⬜ |
 | 7 | 4 | 配置系统（Zod schema） | `src/config/schema.ts`、`src/config/defaults.ts` | `record_dev_operation` (CREATE) | — | 无 | ⬜ |
 | 8 | 4 | CLI 重写 | `src/cli/`、`bin/add-coder.js`、`tsup.config.ts` | `record_dev_operation` (CREATE/MODIFY) | — | 第1轮 Task 0 + 第4轮 Task 0 | ⬜ |
 | 9 | 5 | 集成测试 + 文档 + devlog | 测试文件、`README.md`、`package.json` | `record_dev_operation` (CREATE/MODIFY) | — | 全部前序 Task | ⬜ |

@@ -8,9 +8,9 @@
 - **启动时间**: {ISO 时间戳}
 - **主导 AI**: {AI 助手标识}
 - **关联文档**:
-  - ADD Route: `.qoder/plans/{YYYY-MM}/{DD}/{需求域名}-{核心内容}-add-route-v{版本}.md`
-  - Handoff: `.qoder/plans/{YYYY-MM}/{DD}/{需求域名}-{核心内容}-handoff-v{版本}.md`
-  - Review: `.qoder/reviews/{需求域名}-review-v{版本}.md`
+  - ADD Route: `.add/plans/{YYYY-MM}/{DD}/{需求域名}-{核心内容}-add-route-v{版本}.md`
+  - Handoff: `.add/plans/{YYYY-MM}/{DD}/{需求域名}-{核心内容}-handoff-v{版本}.md`
+  - Review: `.add/reviews/{需求域名}-review-v{版本}.md`
 - **ADD-7 审计策略**:
 
 | 文件 | targetType | action | beforeState | afterState | 状态 |
@@ -88,9 +88,9 @@ Task 6 (编译/测试)
 
 | 文档 | 路径 |
 |------|------|
-| ADD Route | `.qoder/plans/...` |
-| Handoff | `.qoder/plans/...` |
-| Review | `.qoder/reviews/...` |
-| Spec | `.qoder/specs/{name}/spec.md` |
-| Tasks | `.qoder/specs/{name}/tasks.md` |
-| Checklist | `.qoder/specs/{name}/checklist.md` |
+| ADD Route | `.add/plans/...` |
+| Handoff | `.add/plans/...` |
+| Review | `.add/reviews/...` |
+| Spec | `.add/specs/{name}/spec.md` |
+| Tasks | `.add/specs/{name}/tasks.md` |
+| Checklist | `.add/specs/{name}/checklist.md` |

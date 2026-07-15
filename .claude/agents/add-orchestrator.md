@@ -29,7 +29,7 @@ mcpServers:
 
 **0.1 加载 Plan 索引**
 
-读取 `.qoder/plans/index.md`，提取最近的 Plan 列表。如文件不存在 → 跳过，继续。
+读取 `.claude/plans/index.md`，提取最近的 Plan 列表。如文件不存在 → 跳过，继续。
 
 **0.2 获取 ADD 状态快照**
 
@@ -141,7 +141,7 @@ mcpServers:
 ✅ Step 8 收敛判断通过！
 
 ⚠️ 验收闭环四步（不可跳过）：
-  ① 写 devlog日志(走mcp) → .qoder/plans/{YYYY-MM}/{DD}/
+  ① 写 devlog日志(走mcp) → .claude/plans/{YYYY-MM}/{DD}/
   ② 更新 handoff（记录实际产出与偏离）
   ③ Step 9 Report Closure（如为 runtime-fix plan）→ gateway.md 追 - [x]
   ④ 架构文档回看（ADD-12）

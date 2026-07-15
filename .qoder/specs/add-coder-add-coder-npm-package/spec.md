@@ -4,7 +4,7 @@
 
 当前 `packages/add-coder/` 是一个不可发布的半成品：
 
-1. **模板硬编码**：`templates/` 下所有文件直接来自 farm-agent 项目，包含数据库密码、项目名、特定路径等不可移植内容
+1. **模板硬编码**：`templates/` 下所有文件直接来自 add-coder 项目，包含数据库密码、项目名、特定路径等不可移植内容
 2. **CLI 纯搬运**：`bin/add-coder.js`（113 行 CommonJS）只有 `init/sync/status` 三个命令，全是 `fs.copyFileSync`，无参数化渲染、无配置合并
 3. **无适配层抽象**：`.qoder` 和 `.vscode` 是两套独立静态模板，无共享逻辑。加 Claude 适配需要再复制一套
 4. **VS Code 无 hook 层**：`.vscode/` 只有 MCP 配置，缺少 Qoder 的 11 个 hook 等价物
@@ -75,14 +75,14 @@
 ## Impact
 
 - Affected specs: 无（本 Plan 为全新举措）
-- Affected code: `packages/add-coder/`（约 90 个文件变更），不修改 farm-agent 业务代码
-- 父 Plan: `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-plan-v1.md`
+- Affected code: `packages/add-coder/`（约 90 个文件变更），不修改 add-coder 业务代码
+- 父 Plan: `.qoder/plans/2026-07/08/add-coder-add-coder-npm-package-plan-v1.md`
 - 依赖: 无
 - 后续依赖: 无
 
 ## Boundaries
 
-- 本次只改造 `packages/add-coder/` 目录，不修改 farm-agent 业务代码
+- 本次只改造 `packages/add-coder/` 目录，不修改 add-coder 业务代码
 - 本次不新增 AgentAuditPhase 字面量（npm 包工程化，无业务逻辑审计点）
 - 审计通过 `record_dev_operation`（ADD-7）落库 DevOperation 表
 - 模板引擎不引入第三方依赖（Handlebars/EJS 等），用 TypeScript 原生字符串替换
@@ -121,7 +121,7 @@
 
 ### Requirement: 模板参数化（硬编码清理）
 
-系统 SHALL 将 `templates/` 下所有文件中的 farm-agent 硬编码替换为 `{{placeholder}}` 占位符。
+系统 SHALL 将 `templates/` 下所有文件中的 add-coder 硬编码替换为 `{{placeholder}}` 占位符。
 
 #### Scenario: 占位符语法
 

@@ -4,7 +4,7 @@
 
 当前 `packages/add-coder/` 是一个不可发布的半成品：
 
-1. **模板硬编码**：`templates/` 下所有文件直接来自 farm-agent 项目，包含数据库密码、项目名、特定路径等不可移植内容
+1. **模板硬编码**：`templates/` 下所有文件直接来自 add-coder 项目，包含数据库密码、项目名、特定路径等不可移植内容
 2. **CLI 纯搬运**：`bin/add-coder.js`（113 行 CommonJS）只有 `init/sync/status` 三个命令，全是 `fs.copyFileSync`，无参数化渲染、无配置合并
 3. **无适配层抽象**：`.qoder` 和 `.vscode` 是两套独立静态模板，无共享逻辑。加 Claude 适配需要再复制一套
 4. **VS Code 无 hook 层**：`.vscode/` 只有 MCP 配置，缺少 Qoder 的 11 个 hook 等价物
@@ -75,14 +75,14 @@
 ## Impact
 
 - Affected specs: 无（本 Plan 为全新举措）
-- Affected code: `packages/add-coder/`（约 90 个文件变更），不修改 farm-agent 业务代码
-- 父 Plan: `.qoder/plans/2026-07/08/farm-agent-add-coder-npm-package-plan-v1.md`
+- Affected code: `packages/add-coder/`（约 90 个文件变更），不修改 add-coder 业务代码
+- 父 Plan: `.add/plans/2026-07/08/add-coder-add-coder-npm-package-plan-v1.md`
 - 依赖: 无
 - 后续依赖: 无
 
 ## Boundaries
 
-- 本次只改造 `packages/add-coder/` 目录，不修改 farm-agent 业务代码
+- 本次只改造 `packages/add-coder/` 目录，不修改 add-coder 业务代码
 - 本次不新增 AgentAuditPhase 字面量（npm 包工程化，无业务逻辑审计点）
 - 审计通过 `record_dev_operation`（ADD-7）落库 DevOperation 表
 - 模板引擎不引入第三方依赖（Handlebars/EJS 等），用 TypeScript 原生字符串替换
@@ -121,7 +121,7 @@
 
 ### Requirement: 模板参数化（硬编码清理）
 
-系统 SHALL 将 `templates/` 下所有文件中的 farm-agent 硬编码替换为 `{{placeholder}}` 占位符。
+系统 SHALL 将 `templates/` 下所有文件中的 add-coder 硬编码替换为 `{{placeholder}}` 占位符。
 
 #### Scenario: 占位符语法
 
@@ -174,11 +174,11 @@
 #### Scenario: 三目录部署（core 内容同步到 IDE magic path）
 
 - **WHEN** 执行 `init` 渲染 core 模板后
-- **THEN** `templates/core/` 的所有文件 SHALL 同时写入 `.add/`、`.qoder/`、`.claude/` 三个目标目录
+- **THEN** `templates/core/` 的所有文件 SHALL 同时写入 `.add/`、`.add/`、`.claude/` 三个目标目录
 - **AND** adapter renderers SHALL 只处理 adapter 专属文件（hooks/mcp.json/settings.json/sync-policy.json），不再单独渲染 core 内容
 
 **改造步骤**：
-1. `src/core/renderer.ts`：`renderCore()` 返回值改为输出三份文件的映射（`.add/` + `.qoder/` + `.claude/`）
+1. `src/core/renderer.ts`：`renderCore()` 返回值改为输出三份文件的映射（`.add/` + `.add/` + `.claude/`）
 2. `src/cli/commands/init.ts`：写入阶段对三目录同名文件去重（内容相同则 skip）
 3. `src/adapters/{claude,qoder,vscode}/renderer.ts`：删除 core 渲染逻辑，只保留 hooks + mcp + settings 等 adapter 专属文件
 
@@ -201,7 +201,7 @@
 #### Scenario: Qoder 适配器
 
 - **WHEN** 执行 `npx add-coder init --adapter qoder`
-- **THEN** 生成正确的 `.qoder/` 目录，hook 配置 matcher 适配双套工具名（`Write|write_to_file`, `Edit|edit_file`, `Bash`）
+- **THEN** 生成正确的 `.add/` 目录，hook 配置 matcher 适配双套工具名（`Write|write_to_file`, `Edit|edit_file`, `Bash`）
 
 #### Scenario: VS Code 适配器
 
@@ -272,7 +272,7 @@
 
 #### Scenario: JSON 合并
 
-- **WHEN** 用户已有 `.qoder/settings.json` 或 `.vscode/settings.json`
+- **WHEN** 用户已有 `.add/settings.json` 或 `.vscode/settings.json`
 - **THEN** deep merge，已有 `hooks` 数组追加新 hook 而非全量替换
 
 ---
@@ -331,12 +331,12 @@
 #### Scenario: 空项目 init
 
 - **WHEN** 在空白项目中执行 `npx add-coder init`
-- **THEN** `.add/` `.qoder/` `.claude/` 三目录均含完整 ADD 内容（agents/skills/templates/rules/vocabulary/scripts/hooks/plans/specs/reports/tools），`.vscode/` 含 IDE 配置
+- **THEN** `.add/` `.add/` `.claude/` 三目录均含完整 ADD 内容（agents/skills/templates/rules/vocabulary/scripts/hooks/plans/specs/reports/tools），`.vscode/` 含 IDE 配置
 
 #### Scenario: plans/specs 示例
 
 - **WHEN** 用户首次 init
-- **THEN** `.qoder/plans/` 含 add-coder 6轮范例，`.qoder/specs/` 含 spec/tasks/checklist 范例
+- **THEN** `.add/plans/` 含 add-coder 6轮范例，`.add/specs/` 含 spec/tasks/checklist 范例
 
 #### Scenario: 三端兼容
 
@@ -345,7 +345,7 @@
 
 #### Scenario: 已有配置不覆盖
 
-- **WHEN** 用户已有 `.qoder/settings.json` 时执行 `init`
+- **WHEN** 用户已有 `.add/settings.json` 时执行 `init`
 - **THEN** 不覆盖已有配置，展示 diff 并交互确认
 
 #### Scenario: Prisma 迁移幂等

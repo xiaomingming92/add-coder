@@ -2,7 +2,7 @@
 
 > 自动生成: 2026-07-01 11:41:22 | 共 6 份 Report | 下次更新: 每天 2:10 AM
 >
-> 扫描范围: `.qoder/reports/`（Plan Review 在 `.qoder/reviews/`，由 Plan 管线管理）
+> 扫描范围: `.claude/reports/`（Plan Review 在 `.claude/reviews/`，由 Plan 管线管理）
 
 ---
 

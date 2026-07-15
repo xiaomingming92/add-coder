@@ -35,9 +35,9 @@
   - [ ] [E] `.claude/settings.json` 含 hook 配置，matcher 使用标准工具名（`Write`, `Edit`, `Bash`）
   - [ ] [E] `.claude/mcp.json` 存在且格式正确
   - [ ] [E] `.claude/hooks/` 下 12 个脚本存在且可执行
-- [ ] [T] `npx add-coder init --adapter qoder` 生成正确的 `.qoder/` 目录 — 证据: (待填写)|审计: (待填写)
-  - [ ] [E] `.qoder/settings.json` matcher 使用双套工具名（`Write|write_to_file`, `Edit|edit_file`, `Bash`）
-  - [ ] [E] `.qoder/hooks/` 下 12 个脚本 + `lib/` 存在
+- [ ] [T] `npx add-coder init --adapter qoder` 生成正确的 `.claude/` 目录 — 证据: (待填写)|审计: (待填写)
+  - [ ] [E] `.claude/settings.json` matcher 使用双套工具名（`Write|write_to_file`, `Edit|edit_file`, `Bash`）
+  - [ ] [E] `.claude/hooks/` 下 12 个脚本 + `lib/` 存在
 - [ ] [T] `npx add-coder init --adapter vscode` 生成正确的 `.vscode/` 目录 — 证据: (待填写)|审计: (待填写)
   - [ ] [E] `.vscode/settings.json`、`launch.json`、`tasks.json`、`extensions.json` 存在
 
@@ -74,7 +74,7 @@
 - [ ] [T] `--force` 和 `--yes` 互斥，同时指定时报错 — 证据: (待填写)|审计: (待填写)
 - [ ] [T] `add-coder sync` 只同步缺失文件 — 证据: (待填写)|审计: (待填写)
 - [ ] [T] `add-coder status` 检查完整性 — 证据: (待填写)|审计: (待填写)
-- [ ] [T] 已有 `.qoder/settings.json` 时 `init` 不覆盖，展示 diff 并交互确认 — 证据: (待填写)|审计: (待填写)
+- [ ] [T] 已有 `.claude/settings.json` 时 `init` 不覆盖，展示 diff 并交互确认 — 证据: (待填写)|审计: (待填写)
 - [ ] [T] 单元测试：`renderer.ts`、`config-loader.ts`、`detect.ts`、`writer.ts` 全部通过 — 证据: (待填写)|审计: (待填写)
 
 ---
@@ -90,7 +90,7 @@
 
 > ADD 用双层报告替代传统 E2E：代码审查报告（review-implementation.md + review-runtime.md）覆盖实现质量，
 > Runtime Report 体系（gateway.md + boundary-runtime-report.md）覆盖边界合约持续监测。
-> 参考: `policy-update-loop.ts` 的持续反馈闭环模式 + `.qoder/reports/REPORT-WORKFLOW.md`。
+> 参考: `policy-update-loop.ts` 的持续反馈闭环模式 + `.claude/reports/REPORT-WORKFLOW.md`。
 
 - [ ] [T] `review-implementation.md` 已生成，覆盖全部 9 个 Task 的变更范围 — 证据: (待填写)|审计: (待填写)
 - [ ] [T] `review-runtime.md` 已生成（含本 checklist 全部 `[R]` 项清单） — 证据: (待填写)|审计: (待填写)
@@ -108,7 +108,7 @@
 - [ ] [E] Plan/Spec 一致性 — 证据: `check_spec_sync` 结果|审计: (待填写)
 - [ ] [E] Plan/Spec 修订记录 — 证据: `record_dev_operation` 审计 ID|审计: (待填写)
 - [ ] [E] 无新增依赖（模板引擎等） — 证据: `git diff package.json` 无新增 dependency|审计: (待填写)
-- [ ] [E] 不改 farm-agent 业务代码 — 证据: 仅改动 `packages/add-coder/`|审计: (待填写)
+- [ ] [E] 不改 add-coder 业务代码 — 证据: 仅改动 `packages/add-coder/`|审计: (待填写)
 - [ ] [E] 审计日志记录完整 — 证据: `query_audit_logs` 回查确认|审计: (待填写)
 
 ---
@@ -118,7 +118,7 @@
 > 当所有 `[T]` 和 `[E]` 编译期检查项均为 `[x]` 时（`[R]` 和 `[H]` 项可保持 `[ ]`），AI 必须执行：
 >
 > 1. **读取** `review-implementation-template.md`，逐项填写实现审查内容
-> 2. **读取** `review-runtime-template.md`，复制为 `.qoder/reviews/{project}-review-runtime.md`
+> 2. **读取** `review-runtime-template.md`，复制为 `.claude/reviews/{project}-review-runtime.md`
 >    - 替换占位符（标题、关联文档路径）
 >    - §1 发现列表初始化为 "尚无运行时发现"
 >    - §1 末尾自动插入本 checklist 中所有 `[R]` 项的清单，标记为 "待运行时验证"

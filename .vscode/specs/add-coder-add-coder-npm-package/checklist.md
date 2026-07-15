@@ -108,7 +108,7 @@
 - [ ] [E] Plan/Spec 一致性 — 证据: `check_spec_sync` 结果|审计: (待填写)
 - [ ] [E] Plan/Spec 修订记录 — 证据: `record_dev_operation` 审计 ID|审计: (待填写)
 - [ ] [E] 无新增依赖（模板引擎等） — 证据: `git diff package.json` 无新增 dependency|审计: (待填写)
-- [ ] [E] 不改 farm-agent 业务代码 — 证据: 仅改动 `packages/add-coder/`|审计: (待填写)
+- [ ] [E] 不改 add-coder 业务代码 — 证据: 仅改动 `packages/add-coder/`|审计: (待填写)
 - [ ] [E] 审计日志记录完整 — 证据: `query_audit_logs` 回查确认|审计: (待填写)
 
 ---

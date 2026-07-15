@@ -207,7 +207,7 @@ class AddToolProvider {
 
 **实现方式**：
 ```typescript
-// .qoder/tools/index.ts - 工具注册中心
+// .claude/tools/index.ts - 工具注册中心
 export interface ToolDefinition {
   name: string
   description: string
@@ -358,4 +358,4 @@ export function integrateWithCopilot(executor: ToolExecutor) {
 - **互补关系**：Skill 定义"应该怎么做"，Tools 提供"怎么执行"
 
 通过 Tools 机制，可以让 AI 助手从"只能建议代码"升级为"可以直接执行开发操作"，形成真正的 AI 编程助手生态。</content>
-<parameter name="filePath">/home/xmm/ai/add-coder/.qoder/tools/README.md
+<parameter name="filePath">/home/xmm/ai/add-coder/.claude/tools/README.md
