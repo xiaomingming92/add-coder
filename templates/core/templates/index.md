@@ -6,6 +6,8 @@
 
 **我要做…** | **用这个模板** | **为什么**
 --|--|--
+| 写产品需求文档 | `prd-standard-template.md` | 含 Plan 拆分建议 + 裁决层关联 |
+| 增量更新 PRD | `prd-incremental-template.md` | 在原 PRD 上追加/修改 |
 | 新建开发任务（需要架构设计） | `standard-plan-template.md` | 含方案选型、架构设计、依赖图，适合复杂改动（**默认**）
 | 新建开发任务（简单修复） | `simple-plan-template.md` | 内联 Handoff，无需独立 spec 文件（仅小修改/用户主动提）
 | 定义功能需求 | `spec-template.md` | Why/What/Impact/Requirements
@@ -20,12 +22,14 @@
 | 运行时评审 | `review-runtime-template.md` | 发现列表、流程改进
 | 写代码审查报告 | `report-template.md` | Issue 总览、分类统计
 | 写运行时异常报告 | `runtime-report-template.md` | 发现列表、关联 Issue
-| 写修复验证报告 | `fix-verification-template.md` | 逐条对照、修复趋势
+| 写修复验证报告 | `fix-verification-template.md` | 逐条对照、修复趋势 |
 
 ## 模板→Schema 索引
 
 | 模板 | Schema |
 |------|------|
+| `prd-standard-template.md` | `prd-standard-template.schema.json` |
+| `prd-incremental-template.md` | `prd-incremental-template.schema.json` |
 | `standard-plan-template.md` | `standard-plan-template.schema.json` |
 | `simple-plan-template.md` | `simple-plan-template.schema.json` |
 | `spec-template.md` | `spec-template.schema.json` |

@@ -33,7 +33,7 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 
 **0.1 从 MCP 获取 ADD 状态快照**
 
-读取 `.qoder/plans/` 目录（递归搜索子目录 `**/*.md`，目录已按 `YYYY-MM/DD/` 分层），定位当前活跃的 Plan 和 add-route 文件：
+读取 `{{magicDir}}/plans/` 目录（递归搜索子目录 `**/*.md`，目录已按 `YYYY-MM/DD/` 分层），定位当前活跃的 Plan 和 add-route 文件：
 
 1. 使用 Glob `**/*add-route*.md` 递归搜索所有 add-route 文件
 2. 从 add-route 提取绑定的 Plan / Specs / Tasks / Checklist 路径
@@ -76,7 +76,7 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 #### Step 3 入口（业务逻辑实现）
 | 检查项 | 方法 | 不通过 |
 |--------|------|--------|
-| add-route 存在性 | 递归搜索 `.qoder/plans/`（含 `YYYY-MM/DD/` 子目录）确认 `*add-route*.md` 文件存在 | 不存在 → **BLOCKED** — 回退 Step 0.5 |
+| add-route 存在性 | 递归搜索 `{{magicDir}}/plans/`（含 `YYYY-MM/DD/` 子目录）确认 `*add-route*.md` 文件存在 | 不存在 → **BLOCKED** — 回退 Step 0.5 |
 | add-route 审计记录 | 检查 add-route 文件内容中 Steps 0/1/2 的产出 checkbox 是否已全部 `[x]` | 有 `[ ]` → **BLOCKED** — 回退完成前置 Step |
 | Tasks 文件就绪 | 确认 `tasks.md` 存在且 Task 清单与 add-route 映射表一致 | 缺失 → **BLOCKED** |
 
@@ -108,7 +108,7 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 | 检查项 | 方法 | 不通过 |
 |--------|------|--------|
 | Plan 为 runtime-fix 类型 | 检查 Plan 元信息是否标注 runtime-fix | 非 runtime-fix → **SKIP** |
-| gateway.md 发现可定位 | 确认 `.qoder/reports/{{projectName}}-runtime-report/gateway.md` 存在 | 缺失 → **FAIL** |
+| gateway.md 发现可定位 | 确认 `{{magicDir}}/reports/{{projectName}}-runtime-report/gateway.md` 存在 | 缺失 → **FAIL** |
 | report-handoff-template 已读取 | 确认模板存在 | 缺失 → **FAIL** |
 
 ---
@@ -118,10 +118,10 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 #### Step 0 出口
 | 检查项 | 方法 | 判定 |
 |--------|------|------|
-| Plan 文件存在 | 确认 `.qoder/plans/` 下（含日期子目录）有对应的 `-plan-v*.md` | 缺失 → **BLOCKED** |
+| Plan 文件存在 | 确认 `{{magicDir}}/plans/` 下（含日期子目录）有对应的 `-plan-v*.md` | 缺失 → **BLOCKED** |
 | Specs 三元组就绪 | 确认 `spec.md` + `tasks.md` + `checklist.md` 存在 | 缺失 → **BLOCKED** |
-| Review 文件存在 | 确认 `.qoder/reviews/` 下有对应的 review 文件 | 缺失 → **BLOCKED** |
-| add-route 已生成 | 确认 `.qoder/plans/` 下（含日期子目录）有 `*add-route*.md` | 缺失 → **BLOCKED** |
+| Review 文件存在 | 确认 `{{magicDir}}/reviews/` 下有对应的 review 文件 | 缺失 → **BLOCKED** |
+| add-route 已生成 | 确认 `{{magicDir}}/plans/` 下（含日期子目录）有 `*add-route*.md` | 缺失 → **BLOCKED** |
 | 项目文档已更新 | 检查 add-route Step 0 产出中是否勾选了"项目文档已更新"或"无需更新声明已记录" | 未勾选 → **FAIL** |
 | 0.6.5 回流完成 | 检查 add-route §0.8 是否记录了 DPS ≥ 85（或有 DPS 待通过标记） | 无记录 → **FAIL** |
 | 原子闭包判定已执行 | add-route 含"原子闭包三可性判定"章节且有结论 | 缺失 → **BLOCKED** |
