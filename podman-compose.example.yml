@@ -13,7 +13,7 @@ services:
     ports:
       - "127.0.0.1:${DATABASE_PORT:-5433}:5432"
     volumes:
-      - ./data/postgres/${PROJECT_NAME:-add-project}:/var/lib/postgresql/data
+      - ./data/${PROJECT_NAME:-add-project}/postgres:/var/lib/postgresql/data
     env_file:
       - .env.development
     environment:
