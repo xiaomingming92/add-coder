@@ -207,7 +207,7 @@ export async function initCommand(options: InitOptions) {
     const coreFiles = renderCore(config, !!options.dryRun);
     console.log(`Core 模板: ${coreFiles.size} 文件`);
 
-    const CORE_TARGETS = [".add", ".qoder", ".claude", ".vscode"];
+    const CORE_TARGETS = [".add", magicDir];
     const allFiles = new Map<string, string>();
     for (const [relPath, content] of coreFiles) {
         for (const t of CORE_TARGETS) {
