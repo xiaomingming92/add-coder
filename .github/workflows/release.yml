@@ -37,7 +37,7 @@ jobs:
 
       - run: pnpm install
       - run: pnpm build
-      - run: pnpm lint --no-warnings
+      - run: pnpm lint --max-warnings 0
 
       - name: Collect changes since last tag
         run: |
@@ -91,7 +91,7 @@ jobs:
 
       - run: pnpm install
       - run: pnpm build
-      - run: pnpm lint --no-warnings
+      - run: pnpm lint --max-warnings 0
 
       - run: pnpm publish --no-git-checks --tag latest
 
