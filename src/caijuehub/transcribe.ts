@@ -15,13 +15,15 @@ const HEADER = `// ⚠️ 由 caijuehub/transcribe.ts 自动生成，不要手�
 const GENERATED_MARKER = "// >>> CAIJUE GENERATED START >>>";
 const GENERATED_END = "// <<< CAIJUE GENERATED END <<<";
 
-type RuleGenerator = (rules: any) => string;
+type TomlData = Record<string, unknown>;
+type RuleGenerator = (rules: TomlData) => string;
 
 // ── 每个生成器只产出【规则数据】，不写业务逻辑 ──
 
-function genDetectRules(rules: any): string {
+function genDetectRules(rules: TomlData): string {
+    const d = rules as { rule?: Array<{ env?: string; dir?: string; match?: string; value?: string }>; fallback?: { value?: string } };
     const items: string[] = [];
-    for (const r of (rules.rule || [])) {
+    for (const r of (d.rule || [])) {
         if (r.env) {
             const m = r.match ? `, match: "${r.match}"` : "";
             items.push(`  { env: "${r.env}"${m}, value: "${r.value}" },`);
@@ -29,17 +31,21 @@ function genDetectRules(rules: any): string {
             items.push(`  { dir: "${r.dir}", value: "${r.value}" },`);
         }
     }
-    return `export const DETECT_RULES = [\n${items.join("\n")}\n];\nexport const DETECT_FALLBACK = "${rules.fallback?.value || "auto"}";`;
+    return `export const DETECT_RULES = [\n${items.join("\n")}\n];\nexport const DETECT_FALLBACK = "${d.fallback?.value || "auto"}";`;
 }
 
-function genAdapterRules(rules: any): string {
-    const d = (rules.auto?.deploy || ["claude", "qoder", "vscode"]).map((s: string) => `"${s}"`).join(", ");
-    return `export const AUTO_DEPLOY_ADAPTERS = [${d}];`;
+function genAdapterRules(rules: TomlData): string {
+    const d = rules as { auto?: { deploy?: string[] } };
+    const s = (d.auto?.deploy || ["claude", "qoder", "vscode"]).map((s: string) => `"${s}"`).join(", ");
+    return `export const AUTO_DEPLOY_ADAPTERS = [${s}];`;
 }
 
-function genPrismaRules(rules: any): string {
-    const b = rules.behavior || {};
-    const m = rules.migration || {};
+function genPrismaRules(rules: TomlData): string {
+    type B = { on_missing?: string; on_existing_add_prisma?: string; on_migrate_fail?: string; auto_generate?: boolean };
+    type M = { name?: string; schema_arg?: string };
+    const d = rules as { behavior?: B; migration?: M; requires?: { user_model?: boolean } };
+    const b = d.behavior || {};
+    const m = d.migration || {};
     return `export const PRISMA_CONFIG = {
     onMissing: "${b.on_missing || "block"}",
     onExistingAddPrisma: "${b.on_existing_add_prisma || "ask"}",
@@ -47,12 +53,13 @@ function genPrismaRules(rules: any): string {
     autoGenerate: ${b.auto_generate !== false},
     migrationName: "${m.name || "add_workflow_init"}",
     schemaArg: "${m.schema_arg || "--schema=prisma/"}",
-    requiresUserModel: ${(rules.requires?.user_model) !== false},
+    requiresUserModel: ${(d.requires?.user_model) !== false},
 };`;
 }
 
-function genWriterRules(rules: any): string {
-    const b = rules.behavior || {};
+function genWriterRules(rules: TomlData): string {
+    const d = rules as { behavior?: { on_existing?: string; json_merge?: string; shell_chmod?: boolean } };
+    const b = d.behavior || {};
     return `export const WRITER_CONFIG = {
     onExisting: "${b.on_existing || "ask"}",
     jsonMerge: "${b.json_merge || "deep"}",
