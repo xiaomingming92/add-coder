@@ -48,7 +48,8 @@ jobs:
             git log --oneline --no-merges | sed 's/^/- /' > /tmp/release-notes.txt
           fi
           echo "---" >> /tmp/release-notes.txt
-          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...v\$(node -p "require('./package.json').version")" >> /tmp/release-notes.txt
+          VER=$(node -p "require('./package.json').version")
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...v$VER" >> /tmp/release-notes.txt
 
       - name: Bump version
         run: |
