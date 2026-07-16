@@ -26,9 +26,16 @@ fi
 
 cat <<'NEXT'
 ✅ build + lint 通过
-
-后续:
-  1. npm version patch -m "v%s"
-  2. git tag -af "v$(node -p "require('./package.json').version")" -m "Release notes ..."
-  3. git push origin main --tags
 NEXT
+
+# 只在推 main 时提醒发版
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [[ "$remote_ref" == "refs/heads/main" ]]; then
+    cat <<'HINT'
+📦 准备发版？
+  前往 Actions → "release" → Run workflow 选择版本号
+  (main 受保护，由 CI 统一完成 bump + tag + publish)
+HINT
+    break
+  fi
+done
