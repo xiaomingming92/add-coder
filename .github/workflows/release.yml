@@ -1,20 +1,91 @@
 name: release
 
 on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options: [patch, minor, major]
+        default: patch
   push:
     tags: ["v*"]
 
 jobs:
-  publish:
+  # ---- workflow_dispatch 路径：在 CI 内完成 bump + commit + tag + publish ----
+  bump-and-publish:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - run: pnpm install
+      - run: pnpm build
+      - run: pnpm lint --no-warnings
+
+      - name: Collect changes since last tag
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            git log --oneline --no-merges "$PREV_TAG..HEAD" | sed 's/^/- /' > /tmp/release-notes.txt
+          else
+            git log --oneline --no-merges | sed 's/^/- /' > /tmp/release-notes.txt
+          fi
+          echo "---" >> /tmp/release-notes.txt
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...v\$(node -p "require('./package.json').version")" >> /tmp/release-notes.txt
+
+      - name: Bump version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm version ${{ inputs.bump }} -m "v%s"
+          git push --follow-tags
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_COMMITTER_NAME: github-actions[bot]
+
+      - run: pnpm publish --no-git-checks --tag latest
+
+      - name: Create GitHub Release
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          gh release create "$TAG" --title "$TAG" --notes-file /tmp/release-notes.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  # ---- push tags 路径：tag 已存在，直接 publish ----
+  publish-only:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
           registry-url: "https://registry.npmjs.org"
           cache: pnpm
 
@@ -23,14 +94,20 @@ jobs:
       - run: pnpm lint --no-warnings
 
       - run: pnpm publish --no-git-checks --tag latest
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - run: |
-          BODY=$(git tag -l --format='%(contents)' "${{ github.ref_name }}")
-          if [ -z "$BODY" ]; then BODY="${{ github.ref_name }}"; fi
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
-            --notes "$BODY"
+      - name: Collect changes since last tag
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 "${{ github.ref_name }}"~1 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            git log --oneline --no-merges "$PREV_TAG..${{ github.ref_name }}" | sed 's/^/- /' > /tmp/release-notes.txt
+          else
+            git log --oneline --no-merges "${{ github.ref_name }}" | sed 's/^/- /' > /tmp/release-notes.txt
+          fi
+          echo "---" >> /tmp/release-notes.txt
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...${{ github.ref_name }}" >> /tmp/release-notes.txt
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --notes-file /tmp/release-notes.txt
         env:
           GH_TOKEN: ${{ github.token }}
