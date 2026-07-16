@@ -1,3 +1,11 @@
+/*
+ * @Author       : xiaomingming wujixmm@gmail.com
+ * @Date         : 2026-07-15 17:09:32
+ * @LastEditors  : xiaomingming wujixmm@gmail.com
+ * @LastEditTime : 2026-07-16 10:18:47
+ * @FilePath     : /farm-agent/home/xmm/ai/add-coder/src/cli/commands/init.ts
+ * @Description  : init流程核心
+ */
 import { detectIDE, resolveAdapters } from "../detect";
 import { loadConfig } from "../config-loader";
 import { writeFiles } from "../writer";
@@ -7,7 +15,7 @@ import { renderAdapter as renderQoder } from "../../adapters/qoder/renderer";
 import { renderAdapter as renderVSCode } from "../../adapters/vscode/renderer";
 import { ask, detectPm } from "../../lib/utils";
 import { injectPrisma } from "../prisma-injector";
-import type { Adapter } from "../../config/schema";
+import type { Adapter, AddCoderConfig } from "../../config/schema";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { spawnSync } from "child_process";
@@ -16,13 +24,19 @@ import { createConnection } from "net";
 interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; }
 interface DbChoice { engine: "postgresql" | "sqlite" | "manual"; container?: "podman" | "docker" | "manual"; user?: string; password?: string; port?: string; reuseExisting?: boolean; }
 
-const ADAPTER_RENDERERS: Record<string, (config: any, targetDir: string, dryRun: boolean) => Map<string, string>> = {
+const ADAPTER_RENDERERS: Record<string, (config: AddCoderConfig, targetDir: string, dryRun: boolean) => Map<string, string>> = {
     claude: renderClaude, qoder: renderQoder, vscode: renderVSCode,
 };
 const MAGIC_DIR_MAP: Record<string, string> = { claude: ".claude", qoder: ".qoder", vscode: ".vscode" };
 
 // ════════════════════ helpers ════════════════════
 
+/**
+ * @description: 解析目标 IDE 适配器，支持手动指定或自动检测
+ * @param {string} projectRoot - 项目根目录路径
+ * @param {string} [specified] - 手动指定的 adapter 名称
+ * @return {Promise<Adapter>} 解析后的 IDE 适配器
+ */
 async function resolveAdapter(projectRoot: string, specified?: string): Promise<Adapter> {
     if (specified) {
         if (!MAGIC_DIR_MAP[specified]) throw new Error(`未知 adapter: ${specified}`);
@@ -39,6 +53,11 @@ async function resolveAdapter(projectRoot: string, specified?: string): Promise<
     console.log("输入无法识别，默认 qoder"); return "qoder";
 }
 
+/**
+ * @description: 交互式选择数据库引擎
+ * @param {boolean} force - 强制模式，跳过交互直接使用 PostgreSQL
+ * @return {Promise<DbChoice>} 数据库引擎选择结果
+ */
 async function resolveDbEngine(force: boolean): Promise<DbChoice> {
     if (force) { console.log("数据库引擎: PostgreSQL (--force 默认)"); return { engine: "postgresql", container: "podman" }; }
     console.log(["", "数据库引擎:", "  [1] PostgreSQL (推荐)", "  [2] SQLite — 零依赖", "  [3] 自行管理"].join("\n"));
@@ -49,6 +68,11 @@ async function resolveDbEngine(force: boolean): Promise<DbChoice> {
     return { engine: "postgresql" };
 }
 
+/**
+ * @description: 交互式选择容器运行时
+ * @param {boolean} force - 强制模式，默认 podman
+ * @return {Promise<"podman" | "docker" | "manual">} 容器运行时
+ */
 async function resolveContainer(force: boolean): Promise<"podman" | "docker" | "manual"> {
     if (force) return "podman";
     console.log(["", "容器运行时:", "  [1] podman (推荐)", "  [2] docker", "  [3] 自行管理"].join("\n"));
@@ -59,6 +83,11 @@ async function resolveContainer(force: boolean): Promise<"podman" | "docker" | "
     return "podman";
 }
 
+/**
+ * @description: 检测本地端口是否被占用
+ * @param {number} port - 待检测端口号
+ * @return {Promise<boolean>} true 表示端口已占用
+ */
 function portInUse(port: number): Promise<boolean> {
     return new Promise((r) => {
         const s = createConnection({ port, host: "127.0.0.1" }, () => { s.destroy(); r(true); });
@@ -66,6 +95,10 @@ function portInUse(port: number): Promise<boolean> {
     });
 }
 
+/**
+ * @description: 检测系统是否安装了 pg_isready 工具
+ * @return {boolean} true 表示可用
+ */
 function hasPgIsready(): boolean {
     // 优先用容器内置的 pg_isready
     try {
@@ -76,6 +109,14 @@ function hasPgIsready(): boolean {
     return spawnSync("which", ["pg_isready"], { timeout: 2000 }).status === 0;
 }
 
+/**
+ * @description: 使用 pg_isready 验证 PostgreSQL 连接凭据
+ * @param {string} port - 数据库端口
+ * @param {string} user - 数据库用户名
+ * @param {string} password - 数据库密码
+ * @param {string} dbName - 数据库名称
+ * @return {boolean} true 表示连接成功
+ */
 function testPostgresConnection(port: string, user: string, password: string, dbName: string): boolean {
     if (!hasPgIsready()) {
         console.log("  ⚠️  无法验证凭据（容器未运行且 pg_isready 未安装），信任输入");
@@ -95,6 +136,11 @@ function testPostgresConnection(port: string, user: string, password: string, db
     return r.status === 0;
 }
 
+/**
+ * @description: 交互式收集数据库凭据（用户/密码/端口），支持端口冲突处理和已有实例复用
+ * @param {boolean} force - 强制模式，使用默认凭据
+ * @return {Promise<{ user: string; password: string; port: string; reuseExisting?: boolean }>} 数据库凭据
+ */
 async function resolveDbCredentials(force: boolean) {
     const d = { user: "admin", password: "change-me-in-production", port: "5433" };
     if (force) return d;
@@ -128,11 +174,16 @@ async function resolveDbCredentials(force: boolean) {
     return { user: (await ask(`DATABASE_USER [${d.user}]: `)).trim() || d.user, password: (await ask(`DATABASE_PASSWORD [${d.password}]: `)).trim() || d.password, port };
 }
 
+/**
+ * @description: 生成 podman/docker compose 配置文件内容
+ * @param {string} projectName - 项目名称
+ * @return {string} YAML 格式的 compose 内容
+ */
 function composeContent(projectName: string): string {
     return `services:\n  postgres:\n    image: docker.io/postgres:16-alpine\n    container_name: \${PROJECT_NAME:-${projectName}}-postgres\n    restart: unless-stopped\n    ports:\n      - "127.0.0.1:\${DATABASE_PORT:-5433}:5432"\n    volumes:\n      - ./data/postgres/\${PROJECT_NAME:-${projectName}}:/var/lib/postgresql/data\n    env_file:\n      - .env.development\n    environment:\n      POSTGRES_USER: \${DATABASE_USER:-admin}\n      POSTGRES_PASSWORD: \${DATABASE_PASSWORD:-change-me-in-production}\n      POSTGRES_DB: \${PROJECT_NAME:-${projectName}}\n      TZ: "Asia/Shanghai"\n    networks:\n      - \${PROJECT_NAME:-${projectName}}-network\n    healthcheck:\n      test: ["CMD-SHELL", "pg_isready -U \${DATABASE_USER:-admin} -d \${PROJECT_NAME:-${projectName}}"]\n      interval: 10s\n      timeout: 5s\n      retries: 5\n\nnetworks:\n  \${PROJECT_NAME:-${projectName}}-network:\n    driver: bridge\n`;
 }
 
-function patchDatabaseUrl(projectRoot: string, projectName: string | undefined, dbUser: string | undefined, dbPass: string | undefined, dbPort: string | undefined, dryRun: boolean): void {
+function _patchDatabaseUrl(projectRoot: string, projectName: string | undefined, dbUser: string | undefined, dbPass: string | undefined, dbPort: string | undefined, dryRun: boolean): void {
     const devEnvPath = resolve(projectRoot, ".env.development");
     if (!existsSync(devEnvPath) || !dbUser || !dbPass || !dbPort || !projectName) return;
     if (dryRun) { console.log("[dry-run] 将更新 DATABASE_URL"); return; }
@@ -142,6 +193,12 @@ function patchDatabaseUrl(projectRoot: string, projectName: string | undefined, 
     if (updated !== content) { writeFileSync(devEnvPath, updated, "utf-8"); console.log("已更新 DATABASE_URL"); }
 }
 
+/**
+ * @description: 写入 SQLite 数据库导出脚本到 scripts 目录
+ * @param {string} projectRoot - 项目根目录
+ * @param {boolean} dryRun - 预览模式，不实际写入
+ * @return {void}
+ */
 function writeSqliteExportScript(projectRoot: string, dryRun: boolean): void {
     const scriptsDir = resolve(projectRoot, "scripts");
     const scriptPath = resolve(scriptsDir, "export-db.ts");
@@ -151,6 +208,12 @@ function writeSqliteExportScript(projectRoot: string, dryRun: boolean): void {
     writeFileSync(scriptPath, content, "utf-8"); console.log("已生成 scripts/export-db.ts");
 }
 
+/**
+ * @description: 在 package.json 中注入 db:export 脚本命令
+ * @param {string} projectRoot - 项目根目录
+ * @param {boolean} dryRun - 预览模式，不实际写入
+ * @return {void}
+ */
 function injectDbExportScript(projectRoot: string, dryRun: boolean): void {
     const pkgPath = resolve(projectRoot, "package.json");
     if (!existsSync(pkgPath)) return;
@@ -162,6 +225,15 @@ function injectDbExportScript(projectRoot: string, dryRun: boolean): void {
 
 // ════════════════════ 主流程 ════════════════════
 
+/**
+ * @description: ADD 项目初始化主命令，完成 IDE 检测 → 数据库引擎选择 → 凭据收集 → 模板渲染 → 写入 → 数据库部署 → 文档落地 → 依赖安装
+ * @param {InitOptions} options - 初始化选项
+ * @param {string} [options.adapter] - 手动指定 IDE 适配器: claude | qoder | vscode | auto
+ * @param {string} [options.config] - 指定配置文件路径
+ * @param {boolean} [options.force] - 强制模式，跳过所有交互
+ * @param {boolean} [options.dryRun] - 预览模式，不实际写入文件
+ * @return {Promise<void>}
+ */
 export async function initCommand(options: InitOptions) {
     const projectRoot = process.cwd();
 
@@ -186,7 +258,7 @@ export async function initCommand(options: InitOptions) {
     // ── 阶段 A：写 compose / env（复用已有实例只写 env）──
     if (db.engine === "postgresql" && db.container && db.container !== "manual") {
         if (!db.reuseExisting) {
-            const composeName = db.container === "podman" ? "podman-compose.yml" : "docker-compose.yml";
+            const composeName = db.container === "podman" ? "podman-compose.add.yml" : "docker-compose.add.yml";
             const composePath = resolve(projectRoot, composeName);
             if (!options.dryRun && (!existsSync(composePath) || options.force)) {
                 writeFileSync(composePath, composeContent(config.projectName || "add-project"), "utf-8");
