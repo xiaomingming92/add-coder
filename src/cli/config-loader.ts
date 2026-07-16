@@ -1,3 +1,12 @@
+/*
+ * @Author       : xiaomingming wujixmm@gmail.com
+ * @Date         : 2026-07-09 08:56:25
+ * @LastEditors  : xiaomingming wujixmm@gmail.com
+ * @LastEditTime : 2026-07-16 10:19:03
+ * @FilePath     : /farm-agent/home/xmm/ai/add-coder/src/cli/config-loader.ts
+ * @Description  : 配置加载器
+ */
+
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { AddCoderConfigSchema, type AddCoderConfig } from "../config/schema";

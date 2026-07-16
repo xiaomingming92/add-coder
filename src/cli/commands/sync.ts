@@ -1,3 +1,11 @@
+/*
+ * Author       : xiaomingming wujixmm@gmail.com
+ * Date         : 2026-07-16 10:20:00
+ * LastEditors  : xiaomingming wujixmm@gmail.com
+ * LastEditTime : 2026-07-16 10:20:00
+ * FilePath     : /add-coder/src/cli/commands/sync.ts
+ * Description  : ADD 模板增量同步命令
+ */
 import { existsSync } from "fs";
 import { resolve } from "path";
 import { renderCore } from "../../core/renderer";
@@ -5,6 +13,10 @@ import type { AddCoderConfig } from "../../config/schema";
 import { writeFiles } from "../writer";
 import { loadConfig } from "../config-loader";
 
+/**
+ * @description: 增量同步缺失的 ADD 模板文件，不覆盖已有文件
+ * @return {Promise<void>}
+ */
 export async function syncCommand() {
     const projectRoot = process.cwd();
     const config: AddCoderConfig = await loadConfig(projectRoot);

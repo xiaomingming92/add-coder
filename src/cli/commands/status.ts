@@ -1,3 +1,11 @@
+/*
+ * Author       : xiaomingming wujixmm@gmail.com
+ * Date         : 2026-07-09 08:56:59
+ * LastEditors  : xiaomingming wujixmm@gmail.com
+ * LastEditTime : 2026-07-16 09:46:41
+ * FilePath     : /add-coder/src/cli/commands/status.ts
+ * Description  : ADD 模板完整性检查命令
+ */
 import { existsSync } from "fs";
 import { resolve } from "path";
 import { renderCore } from "../../core/renderer";
