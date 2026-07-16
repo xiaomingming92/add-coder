@@ -55,10 +55,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          AUTH=$(echo -n "x-access-token:${{ secrets.GH_PAT }}" | base64)
-          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH"
           npm version ${{ inputs.bump }} -m "v%s"
-          git push --follow-tags
+          git push
+          git push --tags
         env:
           GIT_AUTHOR_NAME: github-actions[bot]
           GIT_COMMITTER_NAME: github-actions[bot]
