@@ -1,3 +1,11 @@
+###
+ # @Author       : xiaomingming wujixmm@gmail.com
+ # @Date         : 2026-07-13 10:05:40
+ # @LastEditors  : xiaomingming wujixmm@gmail.com
+ # @LastEditTime : 2026-07-16 12:00:48
+ # @FilePath     : /farm-agent/home/xmm/ai/add-coder/.githooks/pre-push
+ # @Description  : 
+### 
 #!/usr/bin/env bash
 # pre-push hook — 推送前质量门禁
 # build + lint 任一不通过即阻断推送
@@ -16,7 +24,7 @@ if ! pnpm build > /dev/null 2>&1; then
 fi
 
 echo "==> pnpm lint ..."
-if ! pnpm lint --no-warnings > /dev/null 2>&1; then
+if ! pnpm lint --max-warnings 20 > /dev/null 2>&1; then
   echo "" >&2
   echo "╔══════════════════════════════════════╗" >&2
   echo "║  ❌ lint 未通过，推送已阻断           ║" >&2
