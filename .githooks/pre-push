@@ -33,7 +33,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   if [[ "$remote_ref" == "refs/heads/main" ]]; then
     cat <<'HINT'
 📦 准备发版？
-  前往 Actions → "release" → Run workflow 选择版本号
+  Actions → Choose a workflow 选 "release" → Run workflow → 选 bump 类型
   (main 受保护，由 CI 统一完成 bump + tag + publish)
 HINT
     break
