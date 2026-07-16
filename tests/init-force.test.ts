@@ -33,7 +33,7 @@ describe("add-coder init --force", () => {
     })
 
     it("compose: env references, not hardcoded", () => {
-        const c = readFileSync(resolve(TMP, "podman-compose.yml"), "utf-8")
+        const c = readFileSync(resolve(TMP, "podman-compose.add.yml"), "utf-8")
         expect(c).toContain("${DATABASE_USER:-admin}")
         expect(c).toContain("${DATABASE_PASSWORD:-change-me-in-production}")
         expect(c).toContain("${DATABASE_PORT:-5433}")

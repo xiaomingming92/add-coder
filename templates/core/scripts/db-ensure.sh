@@ -51,13 +51,14 @@ fi
 
 # ── 容器模式 ──
 COMPOSE_CMD=""
-if [ "$CONTAINER" = "podman" ]; then COMPOSE_CMD="podman-compose"
-elif [ "$CONTAINER" = "docker" ]; then COMPOSE_CMD="docker-compose"
+COMPOSE_FILE=""
+if [ "$CONTAINER" = "podman" ]; then COMPOSE_CMD="podman-compose"; COMPOSE_FILE="podman-compose.add.yml"
+elif [ "$CONTAINER" = "docker" ]; then COMPOSE_CMD="docker-compose"; COMPOSE_FILE="docker-compose.add.yml"
 else echo "未知容器: $CONTAINER"; exit 1
 fi
 
-echo ">>> 启动 PostgreSQL ($COMPOSE_CMD up -d) ..."
-$COMPOSE_CMD up -d || {
+echo ">>> 启动 PostgreSQL ($COMPOSE_CMD -f $COMPOSE_FILE up -d) ..."
+$COMPOSE_CMD -f "$COMPOSE_FILE" up -d || {
   echo "容器启动失败，请检查 $COMPOSE_CMD 是否已安装或端口是否冲突"
   exit 1
 }
@@ -67,7 +68,7 @@ echo ">>> 等待 PostgreSQL 就绪 ..."
 MAX_RETRIES=30
 RETRY=0
 while [ $RETRY -lt $MAX_RETRIES ]; do
-  if $COMPOSE_CMD exec -T postgres pg_isready -U "$DB_USER" > /dev/null 2>&1; then
+  if $COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres pg_isready -U "$DB_USER" > /dev/null 2>&1; then
     echo "PostgreSQL 已就绪"; break
   fi
   sleep 1
