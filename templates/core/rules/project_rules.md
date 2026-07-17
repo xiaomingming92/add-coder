@@ -425,7 +425,7 @@ reason: 中文/英文说明本次改动的目的
 正确示例：
 - ✅ `src/middleware.ts`（{{projectName}} workspace 内）
 - ✅ `agrisynapse/src/api/agent/types.ts`（跨项目时带项目名前缀）
-- ✅ `{{magicDir}}/plans/{{projectName}}-agrisynapse-integration-plan-v1.md`（.qoder 内文件）
+- ✅ `{{magicDir}}/plans/{{projectName}}-agrisynapse-integration-plan-v1.md`（{{magicDir}} 内文件）
 
 原因：`query_audit_logs({ targetId })` 做精确匹配，绝对路径和相对路径是两条不同的记录，导致漏查。
 
