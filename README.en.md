@@ -67,7 +67,15 @@ Hooks are not "notification push" — they are the **IDE runtime interception la
 | PreCompact | Forces retention of critical document paths during cross-session context compression |
 | PromptSubmit | Injects ADD vocabulary triggers, ensuring zero-latency LLM response to commands like "acceptance" and "gateway" |
 
-Each IDE (Claude/Qoder/VS Code) has its own hook implementation, but the **governance logic is unified** — the architecture is consistent, only the adapter layer differs.
+Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own hook implementation, but the **governance logic is unified** — the architecture is consistent, only the adapter layer differs.
+
+| IDE | Governance Doc | Events Covered | Hook Config |
+|---|---|---|---|
+| Claude Code | [ADD-governance-claude-code.md](./ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
+| Qoder CN | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
+| Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
+| Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
 
 ---
 
@@ -116,7 +124,7 @@ npx add-coder init
 
 | Option | Description |
 |--------|-------------|
-| `--adapter <type>` | Target IDE: claude / qoder / vscode / auto (default) |
+| `--adapter <type>` | Target IDE: claude / qoder / vscode / trae / codex / auto (default) |
 | `--config <path>` | Specify config file |
 | `--yes` | Skip interactions, create new files only |
 | `--force` | Overwrite existing files |
@@ -127,9 +135,11 @@ npx add-coder init
 | Directory | Content |
 |-----------|---------|
 | `.add/` | ADD shared core (skills, agents, docs, scripts, rules, etc.) |
-| `.claude/` | Claude Code adapter (hooks, settings.json) |
+| `.claude/` | Claude Code adapter (hooks, settings.json, mcp.json) |
 | `.qoder/` | Qoder adapter (hooks, settings.json, mcp.json) |
 | `.vscode/` | VS Code adapter (settings.json, tasks.json) |
+| `.trae/` | Trae adapter (hooks.json, settings.json) |
+| `.codex/` | Codex adapter (hooks.json, settings.json) |
 
 ## MCP Audit Toolchain
 
