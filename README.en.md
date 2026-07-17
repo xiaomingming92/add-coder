@@ -1,6 +1,6 @@
 # add-coder
 
-> 🌐 [🀄中文](https://github.com/xiaomingming92/add-coder/blob/main/README.md) | 🔤[English]
+> 🌐 [🀄中文](#chinese-readme)（⬇ bottom fold for Chinese）| 🔤[English]
 
 **AI Governance, Implemented** — The complete scaffolding from [codein2027](https://github.com/xiaomingming92/codein2027) for rapidly building the ADD programming paradigm. Built on the core principle of **Audit as Infrastructure**, it shatters the black-box programming process and cross-session amnesia, evolving the programming paradigm into an auditable, traceable, and convergent new era. [NPM](https://www.npmjs.com/package/add-coder) · [GitHub](https://github.com/xiaomingming92/add-coder)
 
@@ -227,3 +227,89 @@ npx add-coder init
 | Demo Repo | A full example repository showcasing end-to-end closed-loop practice of Policy-Update-Loop and the Report system |
 | MCP Restructure | MCP toolchain architecture upgrade, improving audit and gateway tool extensibility and standalone deployment capability |
 | Memory Enhancement | Long-term project knowledge memory and plan-level sparse memory |
+
+---
+<details id="chinese-readme">
+<summary>🀄 中文 README</summary>
+
+**AI 代码治理的落地方案** — [codein2027](https://github.com/xiaomingming92/codein2027) 快速构建 ADD 编程范式的完整脚手架。以「审计即基础设施」为核心，彻底打破编程过程黑盒与跨轮失忆，让编程范式进化为可审计、可追溯、可收敛的新时代。 [NPM](https://www.npmjs.com/package/add-coder) · [GitHub](https://github.com/xiaomingming92/add-coder)
+
+> 🧭 **从零上手实操？** 请参见 [GUIDE.md](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md)
+
+```bash
+npx add-coder init
+```
+
+## 这不是模板工具，这是架构差异
+
+### ① 审计是基础设施，而非事后日志
+| 传统模式 | add-coder |
+|---|---|
+| 日志是 append-only 文本文件 | 审计是 **结构化数据表**（DevOperation + AuditLog），支持按 plan/step/agent/tool 多维查询 |
+| 审计靠开发者自觉记录 | **MCP 审计工具链** 自动记录每次操作 |
+| 无关联性 | Plan → Spec → Task → Step → Tool Call，形成完整证据链 |
+
+### ② 门禁驱动，而非自由对话
+```
+DPS (Design-Process Symmetry)  — 设计/实现/文档/审计 四维各 25%，< 85% BLOCKED
+RAHS (Runtime Architecture Health Score) — 运行时架构健康度，< 90% BLOCKED
+```
+这不是「建议」，是**架构阻断** — 不通过闸门的 Step 无法推进到下一步。
+
+### ③ 跨轮记忆，而非每轮失忆
+- **Handoff 文档** — 每轮 Session 结束时自动生成结构化交接文档
+- **Plan 索引** — 所有 Plan 通过 `index.md` 集中索引
+- **DevLog 时序记录** — 每一步操作写入 `{YYYY-MM}/{DD}/` 时间轴
+
+### ④ Policy-Update-Loop：治理自我进化
+```
+执行 → 审计 → 边界报告 → 规则调整 → 下一轮执行
+```
+运行时产生的 Report 会反过来更新 governance rules。
+
+### ⑤ 多 IDE 的 Hook 即治理层
+| IDE | 治理文档 | 覆盖事件 | Hook 配置 |
+|---|---|---|---|
+| Claude Code | [ADD-governance-claude-code.md](./ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
+| Qoder CN | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
+| Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
+| Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 (原生) / 14 (导入 Claude) | `.codex/hooks.json` |
+
+## 快速开始
+```bash
+npx add-coder init
+```
+
+| 命令 | 说明 |
+|---|---|
+| `init` | 初始化 ADD 模板，支持 `--adapter claude\|qoder\|vscode\|trae\|codex\|auto` |
+| `sync` | 增量同步缺失文件 |
+| `status` | 检查模板完整性 |
+
+| 选项 | 说明 |
+|---|---|
+| `--adapter <type>` | 目标 IDE：claude / qoder / vscode / trae / codex / auto |
+| `--force` | 覆盖已有文件 |
+| `--dry-run` | 预览模式，不写入 |
+
+## MCP 审计工具链
+| 工具 | 用途 |
+|---|---|
+| `record_dev_operation` | 记录开发操作审计 |
+| `query_audit_logs` | 按 planKeyword / targetId 查询审计记录 |
+| `check_dps` | DPS 闸门（< 85% BLOCKED） |
+| `check_rahs` | RAHS 闸门（< 90% BLOCKED） |
+
+## 前置条件
+- Node.js >= 20 · Prisma ^7.0 · PostgreSQL / SQLite
+
+## 🎬 预告
+| 计划 | 说明 |
+|---|---|
+| Demo 仓库演示 | Policy-Update-Loop 与 Report 体系端到端闭环实践 |
+| MCP 能力重构 | MCP 工具链架构升级 |
+| 对话记忆增强 | 长期项目知识记忆和 plan 级别的稀疏记忆 |
+
+> 📦 [更新日志](./CHANGELOG.md)
+</details>
