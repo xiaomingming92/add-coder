@@ -1,6 +1,6 @@
 # add-coder
 
-> 🌐 🀄中文 | 🔤[English](https://github.com/xiaomingming92/add-coder/blob/main/README.en.md)
+> 🌐 🀄中文 | 🔤[English](#english-readme)（⬇ 本页底部折叠）
 
 **AI 代码治理的落地方案** — [codein2027](https://github.com/xiaomingming92/codein2027) 快速构建 ADD 编程范式的完整脚手架。以「审计即基础设施」为核心，彻底打破编程过程黑盒与跨轮失忆，让编程范式进化为可审计、可追溯、可收敛的新时代。 [NPM](https://www.npmjs.com/package/add-coder) · [GitHub](https://github.com/xiaomingming92/add-coder)
 
@@ -218,3 +218,95 @@ npx add-coder init
 | MCP 能力重构 | MCP 工具链架构升级，提升审计与门禁工具的可扩展性和独立部署能力 |
 | 对话记忆增强 | 长期项目知识记忆和plan级别的稀疏记忆 |
 
+
+---
+<details id="english-readme">
+<summary>🔤 English README</summary>
+
+**AI Governance, Implemented** — The complete scaffolding from [codein2027](https://github.com/xiaomingming92/codein2027) for rapidly building the ADD programming paradigm. Built on the core principle of **Audit as Infrastructure**, it shatters the black-box programming process and cross-session amnesia, evolving the programming paradigm into an auditable, traceable, and convergent new era. [NPM](https://www.npmjs.com/package/add-coder) · [GitHub](https://github.com/xiaomingming92/add-coder)
+
+> 🧭 **Getting hands-on?** See [GUIDE.md](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md) — trigger word quick reference, requirements-to-Plan, and full workflow walkthrough.
+
+```bash
+npx add-coder init
+```
+
+## Not a Template Tool — An Architectural Difference
+
+### ① Audit Is Infrastructure, Not After-the-Fact Logging
+| Traditional Model | add-coder |
+|---|---|
+| Logs are append-only text files | Audit is a **structured data table** (DevOperation + AuditLog), supporting multi-dimensional queries by plan/step/agent/tool |
+| Auditing relies on developer discipline | The **MCP audit toolchain** automatically records every operation; system gateways enforce checks |
+| No traceability | Audit events are naturally linked: Plan → Spec → Task → Step → Tool Call, forming a complete evidence chain |
+
+### ② Gateway-Driven, Not Free-Form Conversation
+```
+DPS (Design-Process Symmetry)  — Design / Implementation / Docs / Audit, each weighted 25%, < 85% BLOCKED
+RAHS (Runtime Architecture Health Score) — Runtime architecture health, < 90% BLOCKED
+```
+These are not "suggestions" — they are **architectural blocks**. A Step cannot advance without passing its gateway.
+
+### ③ Cross-Session Memory, Not Per-Session Amnesia
+- **Handoff Documents** — Auto-generated structured handoff at end of each session, auto-loaded by next session
+- **Plan Index** — All Plans centrally indexed via `index.md`, fuzzy-match quick lookup
+- **DevLog Timeline** — Every operation written to `{YYYY-MM}/{DD}/` timeline, full historical traceability
+
+### ④ Policy-Update-Loop: Self-Evolving Governance
+```
+Execute → Audit → Boundary Report → Rule Adjustment → Next Execution
+```
+Runtime-generated Reports feed back into governance rules, enabling continuous evolution.
+
+### ⑤ Multi-IDE Hooks as the Governance Layer
+| IDE | Governance Doc | Events Covered | Hook Config |
+|---|---|---|---|
+| Claude Code | [ADD-governance-claude-code.md](./ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
+| Qoder CN | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
+| Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
+| Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
+
+## Quick Start
+```bash
+npx add-coder init
+```
+The first `init` auto-detects your IDE and interactively guides you through database selection, container runtime, Prisma initialization, and ADD template deployment.
+
+| Command | Description |
+|---|---|
+| `init` | Initialize ADD templates, supports `--adapter claude\|qoder\|vscode\|trae\|codex\|auto` |
+| `sync` | Incrementally sync missing files |
+| `status` | Check template integrity |
+
+| Option | Description |
+|---|---|
+| `--adapter <type>` | Target IDE: claude / qoder / vscode / trae / codex / auto |
+| `--config <path>` | Specify config file |
+| `--yes` | Skip interactions, create new files only |
+| `--force` | Overwrite existing files |
+| `--dry-run` | Preview mode, no writes |
+
+## MCP Audit Toolchain
+| Tool | Purpose |
+|---|---|
+| `record_dev_operation` | Record dev operation audits (before/after/reason) |
+| `query_audit_logs` | Query audit records by planKeyword / targetId |
+| `get_project_context` | Get ADD workflow status snapshot |
+| `check_dps` | DPS gateway (< 85% BLOCKED) |
+| `check_rahs` | RAHS gateway (< 90% BLOCKED) |
+
+## Prerequisites
+- Node.js >= 20
+- Prisma ^7.0
+- PostgreSQL / SQLite
+
+## 🎬 Coming Soon
+| Plan | Description |
+|---|---|
+| Demo Repo | Full example repo for Policy-Update-Loop and Report system |
+| MCP Restructure | MCP toolchain architecture upgrade |
+| Memory Enhancement | Long-term project knowledge memory and plan-level sparse memory |
+
+> 📦 [Changelog](./CHANGELOG.md)
+</details>
