@@ -1,0 +1,1 @@
+{"version":1,"hooks":{"Stop":[{"type":"command","bash":"bash .vscode/hooks/stop-check.sh","powershell":"powershell -Command \".vscode/hooks/stop-check.sh\"","cwd":".","timeoutSec":30}]}}

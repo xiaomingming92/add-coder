@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "bash": "bash .vscode/hooks/pre-tool-use.sh",
+        "powershell": "powershell -Command \".vscode/hooks/pre-tool-use.sh\"",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}
