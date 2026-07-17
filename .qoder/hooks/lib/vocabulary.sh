@@ -2,7 +2,7 @@
 # vocabulary.sh — 从 vocabulary markdown 表格加载触发词
 # 单一数据源: .qoder/vocabulary/add-governance-vocabulary.md §类别 A-F 表格
 
-VOCABULARY_FILE="$PWD/.qoder/vocabulary/add-governance-vocabulary.md"
+VOCABULARY_FILE="${PROJECT_DIR:-$PWD}/.qoder/vocabulary/add-governance-vocabulary.md"
 
 # 输出格式: 优先级::触发词正则::响应文本（:: 避免与触发词内的 | 冲突）
 load_triggers() {

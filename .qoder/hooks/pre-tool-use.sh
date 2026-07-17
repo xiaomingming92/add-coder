@@ -1,77 +1,79 @@
 #!/bin/bash
-# pre-tool-use.sh — PreToolUse §B：源码 Plan 关联检查（阻断模式 v3）
+# pre-tool-use.sh — Qoder CN PreToolUse：四路守卫
+# 治理卡位 #4: 危险命令拦截 / 模板路径兜底 / 写入前置守卫 / 敏感文件保护
 set -euo pipefail
 
 input=$(cat)
-file_path=$(echo "$input" | jq -r '.tool_input.file_path // empty')
-[ -z "$file_path" ] && exit 0
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
+export PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
+source "$HOOK_DIR/lib/common.sh" 2>/dev/null || true
 
-if ! echo "$file_path" | grep -qE '(src/|/src/).*\.(ts|tsx)$'; then
+tool_name=$(json_get "$input" "tool_name")
+[ -z "$tool_name" ] && tool_name=$(echo "$input" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/' || echo "")
+
+# ── ① Bash matcher: 危险命令拦截 + 终端写文件拦截 ──
+if [ "$tool_name" = "Bash" ]; then
+  cmd=$(echo "$input" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/' || echo "")
+  # 危险命令
+  if echo "$cmd" | grep -qiE 'rm[[:space:]]+-rf[[:space:]]+/|DROP[[:space:]]+TABLE|git[[:space:]]+push[[:space:]]+--force|mkfs\.|dd[[:space:]]+if='; then
+    echo "⛔ 危险命令已被阻止: $cmd" >&2
+    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"危险命令已被阻止\"}}"
+    exit 2
+  fi
+  # 终端写文件拦截（含 > / >> / << heredoc / mv / touch / python -c > file）
+  if echo "$cmd" | grep -qE '(cat|echo|tee|sed[[:space:]]+-i|awk|printf|cp|mv|dd|touch)[[:space:]]*.*([>]{1,2}|[|][[:space:]]*tee|<<)'; then
+    echo "⛔ 禁止通过终端命令直接写文件: $cmd。请使用 Write/Edit/SearchReplace 工具。" >&2
+    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过终端直接写文件，请使用 IDE 工具\"}}"
+    exit 2
+  fi
+  # mv 无重定向但仍操作文件
+  if echo "$cmd" | grep -qE '^[[:space:]]*mv[[:space:]]+/tmp/'; then
+    echo "⛔ 禁止通过 mv /tmp/ 绕过 IDE 工具: $cmd" >&2
+    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过 mv 绕过 IDE 工具\"}}"
+    exit 2
+  fi
+  # python/node 脚本写文件
+  if echo "$cmd" | grep -qE '(python3|python|node)[[:space:]].*[>]{1,2}'; then
+    echo "⛔ 禁止通过脚本语言直接写文件: $cmd。请使用 Write/Edit/SearchReplace 工具。" >&2
+    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过脚本语言直接写文件，请使用 IDE 工具\"}}"
+    exit 2
+  fi
+  mark_dev_action 2>/dev/null || true
   exit 0
 fi
 
-PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
-MOD=$(basename "$file_path" | sed 's/\.[jt]sx\?$//')
+# ── ② Write/Edit matcher: 文件写入前置守卫 ──
+if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
+  file_path=$(echo "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/' || echo "")
+  [ -z "$file_path" ] && exit 0
 
-MATCHES=$(grep -rl "$MOD" "$PROJECT_DIR/.qoder/plans" "$PROJECT_DIR/.qoder/specs" "$PROJECT_DIR/.qoder/reports" 2>/dev/null | wc -l)
+  if echo "$file_path" | grep -qE '\.(qoder|claude|add)/(plans|specs|reviews)/'; then
+    if type detect_active_add >/dev/null 2>&1; then
+      state=$(detect_active_add 2>/dev/null || true)
+      if [ -z "$state" ]; then
+        echo "[ADD PreToolUse] ⚠️ 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——请先执行 add-paradigm" >&2
+      fi
+    fi
+  fi
 
-if [ "$MATCHES" -gt 0 ]; then
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"相关 ADD Plan 已存在"}}'
+  if echo "$file_path" | grep -qE '\.env$|\.env\.production$|\.env\.local$|credentials|secrets'; then
+    echo "⛔ 敏感文件受保护，禁止写入: $file_path" >&2
+    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"敏感文件受保护\"}}"
+    exit 2
+  fi
+
+  mark_dev_action 2>/dev/null || true
   exit 0
 fi
 
-echo "⛔ 阻断: ${file_path} 无相关 ADD Plan。请先创建 Plan（plan-template / simple-plan-template）。" >&2
-echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"无相关 ADD Plan。请用 AskUserQuestion 询问用户选择 plan-template 或 simple-plan-template 创建 Plan。"}}'
-exit 2
-#!/bin/bash
-# pre-tool-use.sh — PreToolUse §B：源码 Plan 关联检查（阻断模式）
-set -euo pipefail
-
-input=$(cat)
-file_path=$(echo "$input" | jq -r '.tool_input.file_path // empty')
-[ -z "$file_path" ] && exit 0
-
-# 只处理 src/**/*.ts / src/**/*.tsx
-if ! echo "$file_path" | grep -qE '^src/.*\.(ts|tsx)$' && ! echo "$file_path" | grep -qE '^/home/.*/src/.*\.(ts|tsx)$'; then
+# ── ③ Read matcher: 模板路径兜底 ──
+if [ "$tool_name" = "Read" ]; then
+  file_path=$(echo "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/' || echo "")
+  if echo "$file_path" | grep -q 'templates/'; then
+    echo "[ADD PreToolUse] 提示: 模板文件已通过 hook 预读到上下文，可跳过重复读取" >&2
+  fi
   exit 0
 fi
 
-PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
-PLANS_DIR="$PROJECT_DIR/.qoder/plans"
-SPECS_DIR="$PROJECT_DIR/.qoder/specs"
-REPORTS_DIR="$PROJECT_DIR/.qoder/reports"
-
-MOD=$(basename "$file_path" | sed 's/\.[jt]sx\?$//')
-
-MATCHES=$(grep -rl "$MOD" "$PLANS_DIR" "$SPECS_DIR" "$REPORTS_DIR" 2>/dev/null \
-  | sed "s|$PROJECT_DIR/||" \
-  | grep -oE '[^/]*-(plan|handoff|review|report)-v[0-9]+' \
-  | sed 's/\(plan\|handoff\|review\|report\)-v[0-9]\+\.md//' \
-  | sort -u | head -10 2>/dev/null || true)
-
-if [ -n "$MATCHES" ]; then
-  cat >&2 <<EOF
-[ADD PreToolUse] 📋 相关文档:
-$(echo "$MATCHES" | sed 's/^/  - /')
-允许编辑 $file_path。
-EOF
-  exit 0
-fi
-
-cat >&2 <<EOF
-[ADD PreToolUse] ⛔ 阻断：${file_path} 无相关 ADD 文档。
-
-必须先生成 Plan 后才能修改源码。请执行：
-  ① 用 AskUserQuestion 询问用户：要创建 Plan 吗？
-     A) plan-template     — 复杂改动，含架构设计 + 独立 Spec
-     B) simple-plan-template — 单一修复，Tasks 内联于 Plan 体
-  ② 按模板创建 Plan → Plan 中引用此文件路径
-  ③ 重新执行修改操作
-
-JSON 输出格式（阻断时必须）:
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"无相关 ADD Plan，请先生成 Plan 文档"}}
-EOF
-
-# 输出阻断 JSON 到 stdout，Qoder 会读它来展示阻断原因
-echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"无相关 ADD Plan，请先生成 Plan 文档"}}'
-exit 2
+exit 0

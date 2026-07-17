@@ -7,7 +7,7 @@
 ## 目录结构
 
 ```
-.add/reports/
+.vscode/reports/
 ├── REPORT-WORKFLOW.md                ← 本文件
 ├── boundary-runtime-report.md        ← Runtime Report ↔ 静态 Report 边界划分
 ├── index.md                          ← Issue 注册表（由 gen-report-index.sh 每天自动生成，勿手动编辑）
@@ -130,7 +130,7 @@ runtime-issue-{date}-{seq}.md
    ▼
 创建 runtime-fix-plan-v1.md
    │  命名: {子系统}-runtime-fix-{关键词}-plan-v1.md
-   │  位置: .add/plans/{YYYY-MM}/{DD}/
+   │  位置: .vscode/plans/{YYYY-MM}/{DD}/
    │  模板: plan-template.md
    │
    ▼

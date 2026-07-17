@@ -1,80 +1,15 @@
 {
-  // ════════════════════ koroFileHeader 插件配置 ════════════════════
-  // 文件头部注释模板
-  "fileheader.customMade": {
-    "Author"      : "git config user.name && git config user.email",
-    "Date"        : "Do not edit",
-    "LastEditors" : "git config user.name && git config user.email",
-    "LastEditTime": "Do not edit",
-    "FilePath"    : "Do not edit",
-    "Description" : ""
-  },
-  // 函数注释模板
-  "fileheader.cursorMode": {
-    "description": "",
-    "param": "",
-    "return": ""
-  },
-  // 插件行为配置
-  "fileheader.configObj": {
-    // 自动添加头部注释
-    "autoAdd": true,
-    // 只允许插件支持的语言自动添加
-    "autoAlready": true,
-    // 文件超过 200 行不再自动添加
-    "autoAddLine": 200,
-    // 新建文件时自动添加头部注释
-    "createHeader": true,
-    // 移动光标到 Description 行
-    "moveCursor": true,
-    // 时间格式
-    "dateFormat": "YYYY-MM-DD HH:mm:ss",
-    // 禁止自动添加的文件后缀
-    "prohibitAutoAdd": [
-      "json",
-      "md",
-      "svg",
-      "lock",
-      "toml"
-    ],
-    // 禁止自动添加的目录
-    "folderBlacklist": [
-      "node_modules",
-      "dist",
-      ".next",
-      ".qoder",
-      ".claude",
-      ".vscode",
-      ".add"
-    ],
-    // 等宽对齐
-    "wideSame": true, // 设置为true开启
-    "wideNum": 16, // 字段长度 默认为13
-    // 函数注释等宽
-    "functionWideNum": 12,
-    // 函数参数外形
-    "functionParamsShape": [
-      "{",
-      "}"
-    ],
-    // 参数无类型时的默认值
-    "functionTypeSymbol": "type",
-    // 类型和参数顺序: type param
-    "typeParamOrder": "type param",
-    // 没有匹配到参数时仍显示 param 和 return
-    "NoMatchParams": "show param",
-    // 自定义艾特符号和冒号 (保留默认)
-    "atSymbol": [
-      "@",
-      "@"
-    ],
-    "colon": [
-      ": ",
-      ": "
-    ],
-    // 使用创建文件时间
-    "createFileTime": true,
-    // 错误通知
-    "showErrorMessage": true
-  }
+    "mcp": {
+        "servers": {
+            "add-coder-dev-tools": {
+                "command": "tsx",
+                "args": [
+                    ".vscode/scripts/mcp-server.ts"
+                ],
+                "env": {
+                    "NODE_ENV": "development"
+                }
+            }
+        }
+    }
 }
