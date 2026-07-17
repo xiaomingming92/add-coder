@@ -1,0 +1,1 @@
+{"version":1,"hooks":{"PreCompact":[{"type":"command","bash":"bash .vscode/hooks/pre-compact.sh","powershell":"powershell -Command \".vscode/hooks/pre-compact.sh\"","cwd":".","timeoutSec":10}]}}

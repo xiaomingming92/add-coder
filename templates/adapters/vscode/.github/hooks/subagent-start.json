@@ -1,0 +1,1 @@
+{"version":1,"hooks":{"SubagentStart":[{"type":"command","bash":"bash .vscode/hooks/subagent-guard.sh","powershell":"powershell -Command \".vscode/hooks/subagent-guard.sh\"","cwd":".","timeoutSec":10}]}}
