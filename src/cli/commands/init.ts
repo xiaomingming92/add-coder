@@ -2,8 +2,8 @@
  * @Author       : xiaomingming wujixmm@gmail.com
  * @Date         : 2026-07-15 17:09:32
  * @LastEditors  : xiaomingming wujixmm@gmail.com
- * @LastEditTime : 2026-07-16 10:18:47
- * @FilePath     : /farm-agent/home/xmm/ai/add-coder/src/cli/commands/init.ts
+ * @LastEditTime : 2026-07-17 16:02:01
+ * @FilePath     : /add-coder/src/cli/commands/init.ts
  * @Description  : init流程核心
  */
 import { detectIDE, resolveAdapters } from "../detect";
@@ -13,6 +13,8 @@ import { renderCore } from "../../core/renderer";
 import { renderAdapter as renderClaude } from "../../adapters/claude/renderer";
 import { renderAdapter as renderQoder } from "../../adapters/qoder/renderer";
 import { renderAdapter as renderVSCode } from "../../adapters/vscode/renderer";
+import { renderAdapter as renderTrae } from "../../adapters/trae/renderer";
+import { renderAdapter as renderCodex } from "../../adapters/codex/renderer";
 import { ask, detectPm } from "../../lib/utils";
 import { injectPrisma } from "../prisma-injector";
 import type { Adapter, AddCoderConfig } from "../../config/schema";
@@ -24,10 +26,10 @@ import { createConnection } from "net";
 interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; }
 interface DbChoice { engine: "postgresql" | "sqlite" | "manual"; container?: "podman" | "docker" | "manual"; user?: string; password?: string; port?: string; reuseExisting?: boolean; }
 
-const ADAPTER_RENDERERS: Record<string, (config: AddCoderConfig, targetDir: string, dryRun: boolean) => Map<string, string>> = {
-    claude: renderClaude, qoder: renderQoder, vscode: renderVSCode,
+const ADAPTER_RENDERERS: Record<string, (config: AddCoderConfig, targetDir: string, dryRun: boolean, magicDir: string) => Map<string, string>> = {
+    claude: renderClaude, qoder: renderQoder, vscode: renderVSCode, trae: renderTrae, codex: renderCodex,
 };
-const MAGIC_DIR_MAP: Record<string, string> = { claude: ".claude", qoder: ".qoder", vscode: ".vscode" };
+const MAGIC_DIR_MAP: Record<string, string> = { claude: ".claude", qoder: ".qoder", vscode: ".vscode", trae: ".trae", codex: ".codex" };
 
 // ════════════════════ helpers ════════════════════
 
@@ -288,13 +290,24 @@ export async function initCommand(options: InitOptions) {
         }
     }
 
-    for (const adapter of resolveAdapters(target)) {
+    const resolved = resolveAdapters(target);
+    for (const adapter of resolved) {
         const renderFn = ADAPTER_RENDERERS[adapter];
         if (renderFn) {
-            const adapterFiles = renderFn(config, projectRoot, !!options.dryRun);
+            const adapterFiles = renderFn(config, projectRoot, !!options.dryRun, magicDir);
             for (const [p, c] of adapterFiles) allFiles.set(p, c);
             console.log(`${adapter} adapter: ${adapterFiles.size} 文件`);
         }
+    }
+
+    // VS Code / Trae Agent Host 同步产出完整 .claude/（含 settings.json）
+    // VS Code Copilot 同时加载 .github/hooks/*.json + .claude/settings.json
+    // Trae 支持导入 Claude Code Hook 配置（.claude/settings.json）
+    // 脚本已内置幂等保护（tpl-injected 去重 / mark_dev_action 防双写），多触发无功能影响
+    if (resolved.includes("vscode") || resolved.includes("trae") || resolved.includes("codex")) {
+        const claudeFiles = renderClaude(config, projectRoot, !!options.dryRun, ".claude");
+        for (const [p, c] of claudeFiles) allFiles.set(p, c);
+        console.log(`claude adapter (via Agent Host): ${claudeFiles.size} 文件`);
     }
 
     const result = await writeFiles(projectRoot, allFiles, { force: options.force, dryRun: options.dryRun });
