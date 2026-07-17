@@ -1,6 +1,6 @@
 # add-coder
 
-> 🌐 [🀄中文](https://github.com/xiaomingming92/add-coder/blob/main/README.md) | 🔤[English] — ⚠️ 本文件暂时放弃维护，英文翻译已嵌入 README.md（页面底部 ## 🔤 English README 章节）。待社区活跃后再恢复独立维护。
+> 🌐 [🀄中文](https://github.com/xiaomingming92/add-coder/blob/main/README.md) | 🔤[English] — ⚠️ This file is temporarily unmaintained. The English translation is now embedded in README.md (scroll to ## 🔤 English README). Will resume standalone maintenance when the community grows.
 
 **AI Governance, Implemented** — The complete scaffolding from [codein2027](https://github.com/xiaomingming92/codein2027) for rapidly building the ADD programming paradigm. Built on the core principle of **Audit as Infrastructure**, it shatters the black-box programming process and cross-session amnesia, evolving the programming paradigm into an auditable, traceable, and convergent new era. [NPM](https://www.npmjs.com/package/add-coder) · [GitHub](https://github.com/xiaomingming92/add-coder)
 
