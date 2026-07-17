@@ -5,7 +5,7 @@
             "type": "pwa-node",
             "request": "launch",
             "name": "Launch MCP Server",
-            "program": "${workspaceFolder}/scripts/add-coder-mcp-server.ts",
+            "program": "${workspaceFolder}/.vscode/scripts/mcp-server.ts",
             "preLaunchTask": "TS Node: Launch MCP Server",
             "cwd": "${workspaceFolder}",
             "env": {

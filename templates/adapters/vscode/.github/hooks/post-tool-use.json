@@ -1,0 +1,1 @@
+{"version":1,"hooks":{"PostToolUse":[{"type":"command","bash":"bash .vscode/hooks/post-tool-use.sh","powershell":"powershell -Command \".vscode/hooks/post-tool-use.sh\"","cwd":".","timeoutSec":10}]}}
