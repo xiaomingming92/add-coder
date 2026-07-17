@@ -1,5 +1,5 @@
 #!/bin/bash
-# UserPromptSubmit — 触发词路由 + 模板全文注入（Claude Code 适配）
+# UserPromptSubmit — 触发词路由 + 模板全文注入（VS Code Copilot 适配）
 # 治理卡位 #3: Layer 1 精准触发 → Layer 2 阻断 → Layer 3 状态注入
 set -euo pipefail
 
@@ -9,7 +9,7 @@ export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 COMMON_LIB="$HOOK_DIR/lib/common.sh"
 [ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
 
-export PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+export PROJECT_DIR="$PWD"
 
 input=$(parse_input)
 prompt=$(echo "$input" | grep -o '"prompt"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/' || echo "")

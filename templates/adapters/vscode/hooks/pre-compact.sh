@@ -1,5 +1,5 @@
 #!/bin/bash
-# pre-compact.sh — 上下文压缩前 ADD 状态保存（Claude Code 适配）
+# pre-compact.sh — 上下文压缩前 ADD 状态保存（VS Code Copilot 适配）
 # 治理卡位 #9: ADD状态保存 + 恢复清单导出 + tpl标记清理
 set -euo pipefail
 
@@ -8,7 +8,7 @@ export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 COMMON_LIB="$HOOK_DIR/lib/common.sh"
 [ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
 
-export PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+export PROJECT_DIR="$PWD"
 
 # ── ① 获取 ADD 状态并保存到标记文件 ──
 if type detect_active_add >/dev/null 2>&1; then
@@ -18,13 +18,13 @@ if type detect_active_add >/dev/null 2>&1; then
 
     # 写入恢复标记文件（SessionStart 恢复时读取）
     RECOVERY_FILE="/tmp/add_recovery_$(echo "${PROJECT_DIR}" | md5sum 2>/dev/null | cut -c1-8 || echo "default")"
-    cat > "$RECOVERY_FILE" <<EOF
+    cat > "$RECOVERY_FILE" <<RECOVERY_EOF
 plan=${plan}
 step=${step}
 rounds=${rounds}
 handoff=${handoff}
 add_route=${add_route}
-EOF
+RECOVERY_EOF
 
     echo "[ADD PreCompact] ADD 状态已保存: Plan=${plan}, Step=${step}" >&2
   fi

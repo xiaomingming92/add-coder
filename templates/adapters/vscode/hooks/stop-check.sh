@@ -1,17 +1,22 @@
 #!/bin/bash
-# stop-check.sh — Qoder CN Stop：四象限分流 + 验收检查（保留 few-shot 上下文注入）
+###
+ # @Author       : xiaomingming wujixmm@gmail.com
+ # @Date         : 2026-07-17 17:05:03
+ # @LastEditors  : xiaomingming wujixmm@gmail.com
+ # @LastEditTime : 2026-07-17 17:05:06
+ # @FilePath     : /add-coder/templates/adapters/vscode/hooks/stop-check.sh
+ # @Description  : 
+### 
+# stop-check.sh — VS Code Copilot Stop：四象限分流 + 验收检查
 # 治理卡位 #7: 验收检查 + devlog + 阻断
 set -euo pipefail
 
-input=$(cat)
-stop_active=$(echo "$input" | jq -r '.stop_hook_active // false' 2>/dev/null || echo "false")
-[ "$stop_active" = "true" ] && exit 0
-
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
-export PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
-source "$HOOK_DIR/lib/common.sh" 2>/dev/null || true
-source "$HOOK_DIR/lib/context-inject.sh" 2>/dev/null || true
+COMMON_LIB="$HOOK_DIR/lib/common.sh"
+[ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
+
+export PROJECT_DIR="$PWD"
 
 state=$(detect_active_add 2>/dev/null || true)
 has_dev=$(has_dev_action 2>/dev/null && echo "true" || echo "false")
@@ -27,12 +32,12 @@ if [ -z "$state" ] && [ "$has_dev" = "true" ]; then
   exit $EXIT_BLOCK
 fi
 
-# 解析 state
 IFS='::' read -r plan step rounds handoff add_route <<< "$state"
 
-# ═══════ Q3: 有 ADD + 无 dev → 注入状态（stdout JSON） ═══════
+# ═══════ Q3: 有 ADD + 无 dev → 注入状态 ═══════
 if [ "$has_dev" != "true" ]; then
-  echo "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"[ADD Stop] Plan: ${plan}, 轮次: ${rounds}, Step: ${step}。本次无代码改动，下次继续时执行 session-init 恢复上下文。\"}}"
+  echo "[ADD Stop] Plan: ${plan}, 轮次: ${rounds}, Step: ${step}"
+  echo "本次无代码改动。下次继续时执行 session-init 恢复上下文。"
   exit 0
 fi
 
@@ -44,5 +49,5 @@ if [ -n "$issues" ]; then
 fi
 
 clear_dev_action 2>/dev/null || true
-echo "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"[ADD Stop] ✅ 验收通过——checklist 全部勾选，devlog 已记录。\"}}"
+echo "[ADD Stop] ✅ 验收通过——checklist 全部勾选，devlog 已记录。"
 exit 0

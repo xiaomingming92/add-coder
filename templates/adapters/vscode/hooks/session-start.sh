@@ -1,17 +1,16 @@
 #!/bin/bash
-# SessionStart — ADD 上下文恢复 + 模板索引注入（Claude Code 适配）
+# SessionStart — ADD 上下文恢复 + 模板索引注入（VS Code Copilot 适配）
 # 治理卡位 #1: ADD状态恢复 + 模板索引注入
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 
-# 加载四端通用函数（路径统一后: .claude/hooks/lib/common.sh）
 COMMON_LIB="$HOOK_DIR/lib/common.sh"
 [ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
 
-# 设置项目目录
-export PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+# VS Code Copilot 运行 hook 时 cwd=项目根
+export PROJECT_DIR="$PWD"
 
 # ── ① ADD 状态恢复 ──
 state=$(detect_active_add 2>/dev/null || true)

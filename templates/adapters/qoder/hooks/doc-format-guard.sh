@@ -84,10 +84,18 @@ if [ -z "$TEMPLATE_NAME" ]; then
       *plan*)            TEMPLATE_NAME="standard-plan-template.md" ;;
       *add-route*heavy*) TEMPLATE_NAME="add-route-template-heavyweight.md" ;;
       *add-route*)       TEMPLATE_NAME="add-route-template.md" ;;
+      *tasks*)           TEMPLATE_NAME="tasks-template.md" ;;
+      *spec*)            TEMPLATE_NAME="spec-template.md" ;;
+      *checklist*)       TEMPLATE_NAME="checklist-template.md" ;;
       *report*runtime*)  TEMPLATE_NAME="runtime-report-template.md" ;;
       *report*)          TEMPLATE_NAME="report-template.md" ;;
       *fix-verif*)       TEMPLATE_NAME="fix-verification-template.md" ;;
       *) 
+        # 增量修订识别：包含 ~~删除线~~ / → 新增标记 / [修订日期] 任意一个 → 视为增量更新，放行
+        if echo "$CONTENT" | grep -qE '~~.+~~|→|\[[0-9]{4}-[0-9]{2}-[0-9]{2}\s+修订'; then
+          echo "[doc-format-guard] 检测到增量修订格式，跳过完整章节校验" >&2
+          exit 0
+        fi
         echo "⛔ 拒绝：无法识别文档类型 (file_path: $file_path)，缺少模板匹配规则" >&2
         echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"无法识别 ADD 文档类型，请联系管理员更新 doc-format-guard.sh"}}'
         exit 2
@@ -96,7 +104,7 @@ if [ -z "$TEMPLATE_NAME" ]; then
   fi
 fi
 
-SCHEMA_FILE="$TEMPLATES_DIR/${TEMPLATE_NAME%.md}.schema.json"
+SCHEMA_FILE="$TEMPLATES_DIR/$(echo "${TEMPLATE_NAME%.md}" | sed 's/-template$//').schema.json"
 # L84: schema 文件不存在 → 无校验规则，阻断（不允许无规则放行）
 if [ ! -f "$SCHEMA_FILE" ]; then
   echo "⛔ 阻断：模板 ${TEMPLATE_NAME} 缺少对应的 .schema.json 校验规则" >&2
