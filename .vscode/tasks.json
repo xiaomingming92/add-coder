@@ -1,0 +1,38 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "ADD: Run MCP Server",
+            "type": "shell",
+            "command": "{{mcpServerCommand}} {{magicDir}}/scripts/mcp-server.ts",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "ADD: Check Plan Exists (Pre-save)",
+            "type": "shell",
+            "command": "ls {{magicDir}}/plans/ 2>/dev/null || echo '⚠ 未找到 {{magicDir}}/plans/ 目录'",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": [],
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        },
+        {
+            "label": "ADD: Checklist Audit",
+            "type": "shell",
+            "command": "echo '请手动检查 {{magicDir}}/specs/ 下的 checklist.md 勾选状态'",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

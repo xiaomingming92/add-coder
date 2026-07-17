@@ -1,12 +1,19 @@
 #!/bin/bash
 # prompt-submit.sh — UserPromptSubmit 触发词智能路由（★入口）
+# 治理卡位 #3: 触发词路由 + 模板全文注入（增量插入，保留 Layer 1/2/3）
 input=$(cat)
 prompt=$(echo "$input" | jq -r '.prompt // empty')
 [ -z "$prompt" ] && exit 0
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
+export PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
+source "$HOOK_DIR/lib/common.sh" 2>/dev/null || true
 source "$HOOK_DIR/lib/vocabulary.sh"
 source "$HOOK_DIR/lib/state-detect.sh"
+
+# ─── additionalContext 注入（Qoder CN IDE 通过 stdout JSON 注入模型上下文）───
+echo '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"ADD workflow active. Templates preloaded. Use add-paradigm SKILL."}}'
 
 # ─── Layer 1: 精准 P0 触发词 ───
 matched=$(match_trigger "$prompt")
@@ -27,6 +34,7 @@ if [ -n "$matched" ]; then
           "  ★ 同步检查: 如 checklist 有新 cuid 但 handoff 审计表缺失 → 更新 handoff ADD-7 表 + query_audit_logs 命令"
         # 执行 checklist 质量检查
         HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
         "$HOOK_DIR/review-checklist.sh" "$_handoff" "$_add_route" 2>/dev/null
         exit 0
       fi
@@ -46,7 +54,7 @@ if ! echo "$prompt" | grep -qiE "$dev_kw"; then
   exit 0
 fi
 
-# ─── Layer 2/3: 按活跃 ADD 分流 ───
+# ─── Layer 2/3: 按活跃 ADD 分流（原 Layer 2/3，不修改） ───
 state=$(detect_active_add 2>/dev/null || true)
 if [ -z "$state" ]; then
   # Layer 2: 无活跃 ADD → 强制启动
@@ -68,5 +76,7 @@ plan=$(echo "$state" | awk -F'::' '{print $1}')
 step=$(echo "$state" | awk -F'::' '{print $2}')
 rounds=$(echo "$state" | awk -F'::' '{print $3}')
 handoff=$(echo "$state" | awk -F'::' '{print $4}')
-echo "[ADD 状态] Plan: ${plan}, 轮次: ${rounds}, Step: ${step}, handoff: ${handoff}"
+add_route=$(echo "$state" | awk -F'::' '{print $5}')
+echo "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[ADD 状态] Plan: ${plan}, 轮次: ${rounds}, Step: ${step}, handoff: ${handoff}\"}}"
 exit 0
+
