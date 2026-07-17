@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "bash": "bash .vscode/hooks/lib/preload-templates.sh --full --top 5 --mark",
+        "powershell": "powershell -Command \".vscode/hooks/lib/preload-templates.sh --full --top 5 --mark\"",
+        "cwd": ".",
+        "timeoutSec": 30
+      }
+    ]
+  }
+}

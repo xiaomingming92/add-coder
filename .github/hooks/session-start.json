@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "bash": "bash .vscode/hooks/lib/preload-templates.sh --index",
+        "powershell": "powershell -Command \".vscode/hooks/lib/preload-templates.sh --index\"",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+{"version":1,"hooks":{"SessionEnd":[{"type":"command","bash":"bash .vscode/hooks/session-end.sh","powershell":"powershell -Command \".vscode/hooks/session-end.sh\"","cwd":".","timeoutSec":60}]}}
