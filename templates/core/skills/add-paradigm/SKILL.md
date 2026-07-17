@@ -197,7 +197,14 @@ find_related_docs({ query: "功能关键词" })
    - P1 问题：必须在 Plan 中显式响应（接受并修改，或接受并推迟并给出理由）
    - P2 问题：建议响应，非强制但不响应需在 Plan 中标记为 "已知不处理"
    - **不要**简单复制 Review 文字——要把修复建议转成 Plan 的具体文字（新增章节、修改表格、补充步骤）
+   - **增量修订（强制）**：回流涉及修改已有内容时（非新增），必须遵循 ADD 文档增量修订规则——旧内容用 `~~删除线~~` 包裹保留，新内容紧跟后以 `→` 引导，末尾标注 `[修订日期: 修订原因]`。**禁止直接删除或覆盖原文**。格式示例：`~~VS Code 端放在轮次 4~~ → VS Code 基础 hooks 并入轮次 1 [2026-07-17 修订: Review P1 #6 实施顺序调整]`。仅新增内容（如新增 Task、新增约束块）无需删除线，但仍需标注修订原因
    - 回流完毕后，Plan 中的内容应与 Review 修复建议一致，但表达方式适应 Plan 的叙述风格
+   - **回流标记格式（强制）**：每个回流点必须在 Plan 对应用 `[回流: Review {P0/P1} #{编号} {简述}]` 显式标注，供 DPS 扫描器计数回流完整度。回流标记与增量修订可合并——增量修订的 `修订原因` 段包含 `Review` 关键字即视为有效标记。示例：`[回流: Review P1 #6 实施顺序调整]`。格式说明：
+     - `Review` 关键字固定
+     - `{P0/P1}` 为 Review 中对应问题的严重度
+     - `#{编号}` 为 Review §4.1 P0/P1 问题清单中的编号
+     - `{简述}` 为 5-10 字中文简述
+     - 回流标记可放置在 Plan 正文任意位置（章节标题、表项说明、约束块等），DPS 通过正则 `/\[回流\s*[:：]/g` 计数
 
 4. **逐问题写入 Specs**：
    - 如果 Review 发现 Implementation Requirements 层面的缺口（如 `RetrieveBudget` 缺 `perExpertTopK`），在 Spec §Requirements 中新增对应的 WHEN-THEN Scenario
@@ -297,6 +304,23 @@ Plan 级闭包: {业务功能描述}
 - 若某轮次文件归属冲突（同一文件被多轮同时修改）→ 回退 Plan，重新划分轮次边界
 - 若某轮次"独立验证"不通过（tsc 这轮过不了）→ 检查是否漏了该轮的前置文件改动
 - 若判定为多轮但 plan 未提供轮次拆分 → 回退 Plan 阶段补充轮次拆分
+
+#### 0.7.1 Plan 活跃判定标准（裁决逻辑）
+
+> **裁决定位**："某个 Plan 是否活跃"不是文档约定问题，而是需要从 add-route 的 Step 勾选状态中做确定性判定的裁决逻辑。在 add-coder 项目的 hook 脚本中以 shell 函数实现（`detect_active_add`），暂不依赖 caijuehub 裁决层分发（`npx add-coder init` 不产出 caijuehub）。
+
+**活跃判定规则**：
+
+1. **判定输入**：指定 magicDir 下的 `plans/` 目录（按当前端优先回退——以 Claude IDE 宿主环境为例：`.claude/plans/` → `.qoder/plans/` → `.add/plans/`，其他 IDE 同理取各自的 magicDir）
+2. **索引优先**：先读 `plans/index.md` 匹配 planKeyword → 无匹配才 glob `*-plan-v*.md`
+3. **活跃定义**：读 add-route 文件 → 存在 `[ ]` 未勾选的 Step 产出项 = 活跃（进行中）；全部 `[x]` = 已收敛（不活跃）
+4. **多 Plan 冲突**：多个 Plan 均有 `[ ]` → 取 add-route 文件最近修改时间（`mtime`）最大的 Plan
+5. **无 add-route**：Plan 文件存在但无 add-route → 判定为"Plan 初始态"，视为活跃但需要先生成 add-route
+
+**应用场景**：
+- SessionStart hook：恢复上下文时定位当前活跃 Plan
+- UserPromptSubmit hook：决定注入"进行中"还是"新启动"的 ADD 状态
+- PreToolUse hook：文件写入前置守卫——写入 plans/specs 时检查是否有活跃 Plan
 
 ### 第一阶段产出检查
 
