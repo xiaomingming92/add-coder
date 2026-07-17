@@ -1,5 +1,5 @@
 #!/bin/bash
-# post-tool-use.sh — Claude Code PostToolUse：格式化 + 文档守卫 + 审计提醒
+# post-tool-use.sh — VS Code Copilot PostToolUse：格式化 + 文档守卫 + 审计提醒
 # 治理卡位 #5: 格式化 + ADD文档守卫 + 审计落库 + 结果增强
 set -euo pipefail
 
@@ -17,7 +17,7 @@ if [ "$tool_name" = "Edit" ] || [ "$tool_name" = "Write" ]; then
   [ -z "$file_path" ] && exit 0
 
   # ADD 文档结构守卫：写入 plans/specs/reviews 后提示
-  if echo "$file_path" | grep -qE '\.(qoder|claude|add)/(plans|specs|reviews)/'; then
+  if echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode)/(plans|specs|reviews)/'; then
     echo "[ADD PostToolUse] ADD 文档已写入: ${file_path}。请确保章节完整、双向链接齐全、增量修订格式正确。" >&2
   fi
 

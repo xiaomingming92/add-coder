@@ -1,13 +1,13 @@
 #!/bin/bash
 ###
  # @Author       : xiaomingming wujixmm@gmail.com
- # @Date         : 2026-07-08 18:03:52
+ # @Date         : 2026-07-17 17:05:26
  # @LastEditors  : xiaomingming wujixmm@gmail.com
- # @LastEditTime : 2026-07-17 18:04:04
- # @FilePath     : /add-coder/templates/adapters/claude/hooks/subagent-guard.sh
+ # @LastEditTime : 2026-07-17 17:05:29
+ # @FilePath     : /add-coder/templates/adapters/vscode/hooks/subagent-guard.sh
  # @Description  : 
 ### 
-# SubagentStart — 子代理 ADD 上下文注入（Claude Code 适配）
+# SubagentStart — 子代理 ADD 上下文注入（VS Code Copilot 适配）
 # 治理卡位 #10: ADD上下文注入子agent + 审计初始化
 set -euo pipefail
 
@@ -16,8 +16,9 @@ export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 COMMON_LIB="$HOOK_DIR/lib/common.sh"
 [ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
 
-export PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+export PROJECT_DIR="$PWD"
 
+# 获取当前 ADD 状态并注入子 agent
 if type detect_active_add >/dev/null 2>&1; then
   state=$(detect_active_add 2>/dev/null || true)
   if [ -n "$state" ]; then
