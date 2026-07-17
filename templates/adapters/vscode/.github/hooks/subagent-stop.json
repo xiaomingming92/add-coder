@@ -1,0 +1,1 @@
+{"version":1,"hooks":{"SubagentStop":[{"type":"command","bash":"bash .vscode/hooks/subagent-stop.sh","powershell":"powershell -Command \".vscode/hooks/subagent-stop.sh\"","cwd":".","timeoutSec":20}]}}

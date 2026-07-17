@@ -1,0 +1,1 @@
+{"version":1,"hooks":{"errorOccurred":[{"type":"command","bash":"bash .vscode/hooks/post-tool-failure.sh","powershell":"powershell -Command \".vscode/hooks/post-tool-failure.sh\"","cwd":".","timeoutSec":10}]}}

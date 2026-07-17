@@ -4,7 +4,7 @@
         {
             "label": "ADD: Run MCP Server",
             "type": "shell",
-            "command": "{{mcpServerCommand}} .qoder/scripts/mcp-server.ts",
+            "command": "{{mcpServerCommand}} {{magicDir}}/scripts/mcp-server.ts",
             "presentation": {
                 "reveal": "always",
                 "panel": "new"
@@ -14,7 +14,7 @@
         {
             "label": "ADD: Check Plan Exists (Pre-save)",
             "type": "shell",
-            "command": "echo 'VS Code 无原生 hook，请在保存源码前手动确认 Plan 已创建。' && ls .qoder/plans/ 2>/dev/null || echo '⚠ 未找到 .qoder/plans/ 目录'",
+            "command": "ls {{magicDir}}/plans/ 2>/dev/null || echo '⚠ 未找到 {{magicDir}}/plans/ 目录'",
             "presentation": {
                 "reveal": "silent",
                 "panel": "shared"
@@ -27,7 +27,7 @@
         {
             "label": "ADD: Checklist Audit",
             "type": "shell",
-            "command": "echo '请手动检查 .qoder/specs/ 下的 checklist.md 勾选状态'",
+            "command": "echo '请手动检查 {{magicDir}}/specs/ 下的 checklist.md 勾选状态'",
             "presentation": {
                 "reveal": "silent",
                 "panel": "shared"
