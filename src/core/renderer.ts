@@ -48,6 +48,10 @@ export function renderCore(
                 const rendered = render(content, config);
                 const targetRel = join(CORE_TARGET, relative(CORE_DIR, full));
                 files.set(targetRel, rendered);
+                // 治理文档同时输出到项目根，方便用户查阅
+                if (relative(CORE_DIR, full).startsWith("docs/")) {
+                    files.set(name, rendered);
+                }
             }
         }
     }
@@ -56,6 +60,48 @@ export function renderCore(
 
     if (dryRun) {
         console.log(`[dry-run] Core templates: ${files.size} files`);
+    }
+
+    return files;
+}
+
+// 统一适配器渲染：所有 IDE adapter 共用此函数
+export function renderAdapterBase(
+    config: AddCoderConfig,
+    magicPath: string,          // e.g. ".claude" ".qoder" ".vscode"
+    githubHooksToRoot: boolean, // VS Code 需将 .github/hooks/ 输出到项目根
+    dryRun: boolean,
+): Map<string, string> {
+    const files = new Map<string, string>();
+    const adapterDir = join(TEMPLATES_ROOT, "adapters", magicPath.replace(".", ""));
+    const coreHooksLib = join(TEMPLATES_ROOT, "core", "hooks", "lib");
+
+    function walk(dir: string, base: string, targetPrefix?: string) {
+        for (const name of readdirSync(dir)) {
+            const full = join(dir, name);
+            if (statSync(full).isDirectory()) {
+                walk(full, join(base, name), targetPrefix);
+            } else {
+                const content = readFileSync(full, "utf-8");
+                const rendered = render(content, config);
+                let targetRel: string;
+                if (targetPrefix) {
+                    targetRel = join(targetPrefix, relative(dir, full));
+                } else if (githubHooksToRoot && relative(adapterDir, full).startsWith(".github/")) {
+                    targetRel = relative(adapterDir, full); // .github/hooks/ → 项目根
+                } else {
+                    targetRel = join(magicPath, relative(adapterDir, full));
+                }
+                files.set(targetRel, rendered);
+            }
+        }
+    }
+
+    walk(adapterDir, "");
+    walk(coreHooksLib, "", join(magicPath, "hooks", "lib"));
+
+    if (dryRun) {
+        console.log(`[dry-run] ${magicPath} adapter: ${files.size} files`);
     }
 
     return files;

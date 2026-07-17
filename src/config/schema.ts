@@ -1,6 +1,14 @@
+/*
+ * @Author       : xiaomingming wujixmm@gmail.com
+ * @Date         : 2026-07-09 08:55:52
+ * @LastEditors  : xiaomingming wujixmm@gmail.com
+ * @LastEditTime : 2026-07-17 18:20:01
+ * @FilePath     : /add-coder/src/config/schema.ts
+ * @Description  : 
+ */
 import { z } from "zod";
 
-export const AdapterEnum = z.enum(["claude", "qoder", "vscode"]);
+export const AdapterEnum = z.enum(["claude", "qoder", "vscode", "trae", "codex"]);
 export type Adapter = z.infer<typeof AdapterEnum>;
 
 export const AddCoderConfigSchema = z.object({
