@@ -1,8 +1,10 @@
 #!/bin/bash
-# post-tool-failure.sh — PostToolUseFailure 错误定位
+# PostToolUseFailure — 工具失败后处理（Claude Code 适配）
 set -euo pipefail
-input=$(cat)
-tool_name=$(echo "$input" | jq -r '.tool_name // "unknown"')
-error=$(echo "$input" | jq -r '.error // "unknown"')
-echo "[ADD PostToolUseFailure] 工具 ${tool_name} 失败: ${error}。检查是否需要回退到上一 ADD Step 重新执行。" >&2
+
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+SHARED_LIB="$HOOK_DIR/../../shared/hooks-lib/common.sh"
+[ -f "$SHARED_LIB" ] && source "$SHARED_LIB"
+
+echo "[ADD PostToolFailure] 工具调用失败，请检查错误信息并修复。"
 exit 0

@@ -7,12 +7,12 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 
 本 Skill 引导你按照 ADD 范式完成功能开发。每次开始新功能、修复 Bug、或修改系统行为时，必须按此工作流执行。
 
-**范式边界**（定义在 `.claude/rules/project_rules.md` ADD-0）：
+**范式边界**（定义在 `{{magicDir}}/rules/project_rules.md` ADD-0）：
 - ADD 是开发阶段编程范式，不是运行时范式
 - 反馈闭环消费者：IDE 中的 AI 助手 + 编程人员
 - 运行时范式（裁决层/能力模型）是独立的下一步演化
 
-**核心原则**（始终生效，定义在 `.claude/rules/project_rules.md`）：
+**核心原则**（始终生效，定义在 `{{magicDir}}/rules/project_rules.md`）：
 - ADD-0：范式边界与消费者定义
 - ADD-0.1：广义文档先行（Documentation First）— Plan → Review → Spec → Code → Checklist → runtime-review → 回归校准。详细流程约束见 ADD-9~ADD-12
 - ADD-1：可观测性优先于功能实现
@@ -33,8 +33,8 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 
 | 文档 | 路径 | 用途 |
 |------|------|------|
-| ADD 工作路径与协同规范 | `docs/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md` | 目录结构、命名规范、五大阶段全貌 |
-| ADD 范式案例参考 | `docs/knowledge/02-规范/《ADD可审计开发范式案例参考》.md` | RAG/持久化/ChainTracer 实战案例 |
+| ADD 工作路径与协同规范 | `{{docsDir}}/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md` | 目录结构、命名规范、五大阶段全貌 |
+| ADD 范式案例参考 | `{{docsDir}}/knowledge/02-规范/《ADD可审计开发范式案例参考》.md` | RAG/持久化/ChainTracer 实战案例 |
 
 ---
 
@@ -47,7 +47,7 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 > **Plan 是后续 ADD 工作流的输入。** 生成 plan 后如需执行，才启动下方 Step 0。
 
 1. **读取模板**：读 `plan-template.md`，禁止凭记忆
-2. **命名规范**：`{项目名}-{功能名}-plan-v1.md` → `.claude/plans/{YYYY-MM}/{DD}/`（按当天日期创建子目录）
+2. **命名规范**：`{项目名}-{功能名}-plan-v1.md` → `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（按当天日期创建子目录）
 3. **必含章节**：
    - 元信息（名称/时间/关联文档/ADD-7审计策略表）
    - 一、背景与目标
@@ -84,7 +84,7 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 | 规范文档 | `docs/*/knowledge/02-规范/` 或 `03-规范/` | 开发规范、状态机规范、核心规范 |
 | AI 核心文档 | `docs/*/knowledge/03-规范/` | AI 智能体核心规范 |
 
-**此外，ADD 工作流的核心产物由 `.claude/templates/` 下的 13 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
+**此外，ADD 工作流的核心产物由 `{{magicDir}}/templates/` 下的 13 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
 
 | 模板 | 用途 | 对应阶段 |
 |------|------|---------|
@@ -149,7 +149,7 @@ find_related_docs({ query: "功能关键词" })
 4. **ADD-7 审计策略**：从 Plan 元信息 ADD-7 策略表复制，逐文件填写 targetType/action/beforeState/afterState
 5. **文件清单**：汇总所有涉及文件的 targetType 和操作类型
 
-**命名**：`{需求域名}-{核心内容}-add-route-v1.md` → `.claude/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录）
+**命名**：`{需求域名}-{核心内容}-add-route-v1.md` → `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录）
 
 **关键约束**：
 - [ ] add-route 必须先于任何代码变更生成（Step 1 依赖 add-route 中的审计阶段清单）
@@ -175,7 +175,7 @@ find_related_docs({ query: "功能关键词" })
 > **核心原则**：Review 是诊断报告，Plan 是治疗方案。诊断报告的结论必须写进治疗方案，病人才能按修正后的方案治疗。
 
 **什么时候触发**：
-- Plan Review 已生成（`.claude/reviews/{需求域名}-*review-v{n}.md` 存在）
+- Plan Review 已生成（`{{magicDir}}/reviews/{需求域名}-*review-v{n}.md` 存在）
 - Review 中有 P0/P1/P2 问题清单
 - 人类已确认 Review 结论（通过评审）
 
@@ -197,7 +197,14 @@ find_related_docs({ query: "功能关键词" })
    - P1 问题：必须在 Plan 中显式响应（接受并修改，或接受并推迟并给出理由）
    - P2 问题：建议响应，非强制但不响应需在 Plan 中标记为 "已知不处理"
    - **不要**简单复制 Review 文字——要把修复建议转成 Plan 的具体文字（新增章节、修改表格、补充步骤）
+   - **增量修订（强制）**：回流涉及修改已有内容时（非新增），必须遵循 ADD 文档增量修订规则——旧内容用 `~~删除线~~` 包裹保留，新内容紧跟后以 `→` 引导，末尾标注 `[修订日期: 修订原因]`。**禁止直接删除或覆盖原文**。格式示例：`~~VS Code 端放在轮次 4~~ → VS Code 基础 hooks 并入轮次 1 [2026-07-17 修订: Review P1 #6 实施顺序调整]`。仅新增内容（如新增 Task、新增约束块）无需删除线，但仍需标注修订原因
    - 回流完毕后，Plan 中的内容应与 Review 修复建议一致，但表达方式适应 Plan 的叙述风格
+   - **回流标记格式（强制）**：每个回流点必须在 Plan 对应用 `[回流: Review {P0/P1} #{编号} {简述}]` 显式标注，供 DPS 扫描器计数回流完整度。回流标记与增量修订可合并——增量修订的 `修订原因` 段包含 `Review` 关键字即视为有效标记。示例：`[回流: Review P1 #6 实施顺序调整]`。格式说明：
+     - `Review` 关键字固定
+     - `{P0/P1}` 为 Review 中对应问题的严重度
+     - `#{编号}` 为 Review §4.1 P0/P1 问题清单中的编号
+     - `{简述}` 为 5-10 字中文简述
+     - 回流标记可放置在 Plan 正文任意位置（章节标题、表项说明、约束块等），DPS 通过正则 `/\[回流\s*[:：]/g` 计数
 
 4. **逐问题写入 Specs**：
    - 如果 Review 发现 Implementation Requirements 层面的缺口（如 `RetrieveBudget` 缺 `perExpertTopK`），在 Spec §Requirements 中新增对应的 WHEN-THEN Scenario
@@ -298,6 +305,23 @@ Plan 级闭包: {业务功能描述}
 - 若某轮次"独立验证"不通过（tsc 这轮过不了）→ 检查是否漏了该轮的前置文件改动
 - 若判定为多轮但 plan 未提供轮次拆分 → 回退 Plan 阶段补充轮次拆分
 
+#### 0.7.1 Plan 活跃判定标准（裁决逻辑）
+
+> **裁决定位**："某个 Plan 是否活跃"不是文档约定问题，而是需要从 add-route 的 Step 勾选状态中做确定性判定的裁决逻辑。在 add-coder 项目的 hook 脚本中以 shell 函数实现（`detect_active_add`），暂不依赖 caijuehub 裁决层分发（`npx add-coder init` 不产出 caijuehub）。
+
+**活跃判定规则**：
+
+1. **判定输入**：指定 magicDir 下的 `plans/` 目录（按当前端优先回退——以 Claude IDE 宿主环境为例：`.claude/plans/` → `.qoder/plans/` → `.add/plans/`，其他 IDE 同理取各自的 magicDir）
+2. **索引优先**：先读 `plans/index.md` 匹配 planKeyword → 无匹配才 glob `*-plan-v*.md`
+3. **活跃定义**：读 add-route 文件 → 存在 `[ ]` 未勾选的 Step 产出项 = 活跃（进行中）；全部 `[x]` = 已收敛（不活跃）
+4. **多 Plan 冲突**：多个 Plan 均有 `[ ]` → 取 add-route 文件最近修改时间（`mtime`）最大的 Plan
+5. **无 add-route**：Plan 文件存在但无 add-route → 判定为"Plan 初始态"，视为活跃但需要先生成 add-route
+
+**应用场景**：
+- SessionStart hook：恢复上下文时定位当前活跃 Plan
+- UserPromptSubmit hook：决定注入"进行中"还是"新启动"的 ADD 状态
+- PreToolUse hook：文件写入前置守卫——写入 plans/specs 时检查是否有活跃 Plan
+
 ### 第一阶段产出检查
 
 - [ ] 已调用 `find_related_docs` 搜索相关文档
@@ -307,7 +331,7 @@ Plan 级闭包: {业务功能描述}
 - [ ] 文档合约一致性已确认
 - [ ] **[0.6.5] Review 结论已回流至 Plan 与 Specs**——Review 中每个 P0/P1 问题在 Plan/Specs 中有对应的修正后文字
 - [ ] 原子闭包判定已执行（Plan 级：确认单一业务功能；轮次级：确认文件边界独立、无跨轮修改、每轮可独立验证），轮次拆分方案已写入 add-route
-- [ ] **DPS 上游文档质量闸门已通过**——调用 `check_dps({ planKeyword: "<Plan 核心关键词>" })`，DPS ≥ 85 方可进入 Step 1。未通过时回退补齐短板（Plan 粒度不足 / Review 覆盖维度缺失 / Specs Requirements 遗漏）。详见 [ADD 协同规范 §八](/home/xmm/ai/add-coder/docs/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md#八双质量闸门dps-与-rahs)
+- [ ] **DPS 上游文档质量闸门已通过**——调用 `check_dps({ planKeyword: "<Plan 核心关键词>" })`，DPS ≥ 85 方可进入 Step 1。未通过时回退补齐短板（Plan 粒度不足 / Review 覆盖维度缺失 / Specs Requirements 遗漏）。详见 [ADD 协同规范 §八]({{projectRoot}}/{{docsDir}}/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md#八双质量闸门dps-与-rahs)
 
 ---
 
@@ -334,7 +358,7 @@ Plan 级闭包: {业务功能描述}
 
 ## 附录 A：协作文档规范（命名、格式与交互规则）
 
-> **目标**：确保 `.claude/specs/`、`.claude/reviews/` 下的 spec/review/handoff 文件遵循统一的命名和格式约定，使后续 AI Session 能快速定位和恢复上下文。
+> **目标**：确保 `{{magicDir}}/specs/`、`{{magicDir}}/reviews/` 下的 spec/review/handoff 文件遵循统一的命名和格式约定，使后续 AI Session 能快速定位和恢复上下文。
 
 **在编写任何代码之前，必须先确认本附录中的文件结构已就位。**
 
@@ -342,13 +366,13 @@ Plan 级闭包: {业务功能描述}
 
 | 文档类型 | 命名规则 | 示例 | 存放位置 |
 |---------|---------|------|---------|
-| 开发任务（specs 三元组） | `项目名-任务名/` | `add-coder-response-strategy/` | `.claude/specs/` |
-| review 文件 | `项目名-任务名-round{N}-review.md` | `add-coder-response-strategy-round2-review.md` | `.claude/reviews/` |
-| handoff 文件 | `项目名-需求名-handoff.md` | `add-coder-co-agent-handoff.md` | `.claude/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录） |
+| 开发任务（specs 三元组） | `项目名-任务名/` | `{{projectName}}-response-strategy/` | `{{magicDir}}/specs/` |
+| review 文件 | `项目名-任务名-round{N}-review.md` | `{{projectName}}-response-strategy-round2-review.md` | `{{magicDir}}/reviews/` |
+| handoff 文件 | `项目名-需求名-handoff.md` | `{{projectName}}-co-agent-handoff.md` | `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录） |
 
 **命名规则说明**：
 
-- **项目名**：当前仓库的项目标识，本项目为 `add-coder`
+- **项目名**：当前仓库的项目标识，本项目为 `{{projectName}}`
 - **任务名**：用小写中划线描述该原子事务的核心功能，如 `response-strategy`、`expert-registry`、`semantic-cache`
 - **需求名**：如果某个需求需要拆分成多个任务（多轮），handoff 文件用需求名命名（如 `co-agent`），每个任务作为 handoff 中的独立章节（如 `<第2轮>`）
 - **如果需求与任务是一对一**：handoff 可以省略轮次编号，直接描述任务内容
@@ -359,7 +383,7 @@ Plan 级闭包: {业务功能描述}
 每个 spec 目录 MUST 包含三个文件，形成"需求→执行→验收"闭环：
 
 ```
-.claude/specs/{任务名}/
+{{magicDir}}/specs/{任务名}/
   ├── spec.md       # 需求定义：Why / What Changes / Impact / Boundaries / Requirements
   ├── tasks.md      # 执行拆分：Preconditions / Forbidden / Tasks / Dependencies / Verification
   └── checklist.md  # 验收清单：编号验证项，每条可追溯到 tasks.md 的 Task
@@ -749,7 +773,7 @@ check_add_route_completeness({ planKeyword: "<Plan 核心关键词>" })
 
 ### 3.5.1 运行 spec checklist
 
-检查 `.claude/specs/{task}/checklist.md` 中的所有检查项：
+检查 `{{magicDir}}/specs/{task}/checklist.md` 中的所有检查项：
 
 - `[T]` 编译期验证项：逐项执行并勾选
 - `[R]` 运行时验证项：保持 `[ ]`，将自动流转到 review-runtime.md
@@ -776,7 +800,7 @@ check_add_route_completeness({ planKeyword: "<Plan 核心关键词>" })
 当所有 `[T]` 项均通过后：
 
 1. 读取 `review-runtime-template.md`
-2. 复制为 `.claude/reviews/{project}-review-runtime.md`
+2. 复制为 `{{magicDir}}/reviews/{project}-review-runtime.md`
 3. 替换占位符（标题、关联文档路径）
 4. §1 发现列表初始化为"尚无运行时发现"
 5. §1 末尾自动插入所有 `[R]` 项的"待运行时验证"清单
@@ -836,7 +860,7 @@ grep "RETRIEVAL_DECISION" logs/agent/agent-audit.log | head -5
 - [ ] 三通道输出正常
 - [ ] 失败路径审计等价
 - [ ] 数据库审计字段有数据
-- [ ] **RAHS 下游执行健康度已检查**——调用 `check_rahs({ planKeyword: "<Plan 核心关键词>" })`，RAHS ≥ 90 方可进入 Step 5。若 < 70 注意力漂移严重，强制返工 Step 3。详见 [ADD 协同规范 §八](/home/xmm/ai/add-coder/docs/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md#八双质量闸门dps-与-rahs)
+- [ ] **RAHS 下游执行健康度已检查**——调用 `check_rahs({ planKeyword: "<Plan 核心关键词>" })`，RAHS ≥ 90 方可进入 Step 5。若 < 70 注意力漂移严重，强制返工 Step 3。详见 [ADD 协同规范 §八]({{projectRoot}}/{{docsDir}}/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md#八双质量闸门dps-与-rahs)
 
 ---
 
@@ -1021,7 +1045,7 @@ LIMIT 10;
    - **§9 后置确认**：逐项确认 tsc/ADD 合规/审计落库
 3. **审计查询语句必须可执行**：`query_audit_logs({ targetId: "..." })` 调用参数来自 `record_dev_operation` 落库的 targetId
 4. **双向链接**：handoff 文件内必须包含指向对应 plan + review 的链接；review 文件内必须包含指向 handoff 的链接
-5. **写入位置**：`{项目名}-{需求名}-handoff.md` → `.claude/plans/`
+5. **写入位置**：`{项目名}-{需求名}-handoff.md` → `{{magicDir}}/plans/`
 
 ### 未收敛
 
@@ -1040,7 +1064,7 @@ LIMIT 10;
 
 ### 9.1 读取 report-handoff 模板
 
-读取 `.claude/templates/report-handoff-template.md`，按模板格式在 handoff 中追加 Report Closure 章节。
+读取 `{{magicDir}}/templates/report-handoff-template.md`，按模板格式在 handoff 中追加 Report Closure 章节。
 
 ### 9.2 在 handoff 中追加 Report Closure 章节
 

@@ -130,7 +130,7 @@ ORDER BY "createdAt" DESC;
 - grep 验证命令：
 
 ```bash
-grep -R "{关键字}" .add/
+grep -R "{关键字}" .vscode/
 ```
 
 ### 4.9 后置确认
@@ -163,4 +163,4 @@ Handoff 文档中 **禁止出现** 以下硬编码值：
 | 类型 | 路径 |
 |------|------|
 | Handoff | 见本文第四部分 |
-| Review | `.add/reviews/{name}-review-v{版本}.md` |
+| Review | `.vscode/reviews/{name}-review-v{版本}.md` |

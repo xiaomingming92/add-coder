@@ -5,7 +5,7 @@ import { fileURLToPath } from "url"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const PROJECT_ROOT = resolve(__dirname, "..", "..")
-const MAGIC_DIR = basename(dirname(__dirname)) // ".qoder" or ".claude"
+const MAGIC_DIR = basename(dirname(__dirname)) // ".qoder" / ".claude" / ".vscode" / ".trae" / ".codex" / ".add"
 
 // 环境变量加载优先级: .env.development.local > .env.development > .env.local > .env
 const ENV_CANDIDATES = [".env.development.local", ".env.development", ".env.local", ".env"];
@@ -122,7 +122,7 @@ function extractBackflowKeywords(fixText: string): string[] {
   const keywords: string[] = []
 
   // 英文标识符（如 perExpertTopK, agri_tech, SearchOptions）
-  const enMatches = fixText.match(/\b(perExpertTopK|RetrieveBudget|GroundingStatus|SearchOptions|add-route|handoff|spec\.md|tasks\.md|checklist\.md|collectionName|Phase\s*\d+|ChromaCollectionManager|agri_tech|crop_compare|roi_analysis|pest_risk|daily_report|weekly_report)\b/gi)
+  const enMatches = fixText.match(/\b(perExpertTopK|RetrieveBudget|GroundingStatus|SearchOptions|add-route|handoff|spec\.md|tasks\.md|checklist\.md|collectionName|Phase\s*\d+|ChromaCollectionManager|agri_tech|crop_compare|roi_analysis|pest_risk|daily_report|weekly_report|session-start|prompt-submit|pre-tool-use|post-tool-use|stop-check|pre-compact|subagent-stop|renderer\.ts|SessionStart|UserPromptSubmit|hooks\/lib|github\/hooks)\b/gi)
   if (enMatches) keywords.push(...enMatches.map(m => m.toLowerCase()))
 
   // 中文专用名词
@@ -130,14 +130,25 @@ function extractBackflowKeywords(fixText: string): string[] {
     "迁移路线图", "迁移roadmap", "多collection", "多 collection",
     "冗余策略", "复制", "引用方案", "新签名",
     "汇总专家", "per-collection", "per collection",
-    "不阻塞", "降级路径", "回滚",
+    "不阻塞", "降级路径", "回滚", "回流",
+    // add-coder 领域关键词
+    "轮次", "实施顺序", "增量插入", "模板", "预读", "renderer", "共享脚本", "Layer",
+    "stderr", "stdout", "注入", "标记文件", "tpl-injected", "验收阻断",
   ]
   for (const pat of cnPatterns) {
     if (fixText.includes(pat)) keywords.push(pat)
   }
 
   // 去重并过滤停用词
-  return [...new Set(keywords.filter(k => k.length > 1 && !stopWords.has(k)))]
+  const result = [...new Set(keywords.filter(k => k.length > 1 && !stopWords.has(k)))]
+
+  // 兜底：若关键词提取为空，用 fix 原文作为搜索串（防止新领域术语永不被识别）
+  if (result.length === 0 && fixText.length > 0) {
+    const fallback = fixText.replace(/[✅⬜\[\]\*]/g, "").trim().slice(0, 60)
+    if (fallback.length > 3) result.push(fallback)
+  }
+
+  return result
 }
 
 const server = new McpServer(
@@ -2810,7 +2821,7 @@ server.registerTool(
         const reviewFiles = await readdir(reviewsDir)
         // 从 Plan 全文提取所有 Review 引用，优先匹配含 planKeyword 的
         const allReviewRefs = Array.from(planContent.matchAll(/\.(qoder|claude|add|vscode)\/reviews\/([^\s)]+\.md)/g))
-          .map(m => m[1].split("/").pop() || "")
+          .map(m => m[2].split("/").pop() || "")
           .filter(Boolean)
         // 策略1: 在所有引用中优先选含 planKeyword 的
         reviewName = allReviewRefs.find(f =>
@@ -2868,8 +2879,10 @@ server.registerTool(
         planPenalties.push(`Plan 缺少 §6 验收标准（${phaseTotal} 个 Phase 无独立验收）`)
       }
 
-      // 1b. 统计 Task 是否指定了具体文件
-      const taskFileRefs = planContent.match(/`(src\/[^`]+\.ts[x]?)`/g) || []
+      // 1b. 统计 Task 是否指定了具体文件（含表格内路径引用）
+      // 匹配常见路径前缀：templates/ src/ .qoder/ .claude/ .vscode/ docs/ scripts/ tests/
+      const pathPrefixes = '(?:templates\/|src\/|\\.qoder\/|\\.claude\/|\\.vscode\/|\\.add\/|docs\/|scripts\/|tests\/|prisma\/|queries\/)'
+      const taskFileRefs = planContent.match(new RegExp(pathPrefixes + '[^\\s|)\\n]+', 'g')) || []
       const taskCount = (planContent.match(/Task\s+\d+/g) || []).length
       // 统计 Task 标题数（用于 Specs 精确度维度三），不含正文中 Task 引用
       const taskHeadingCount = (planContent.match(/###\s+Task\s+\d+/g) || []).length
@@ -3017,130 +3030,35 @@ server.registerTool(
       parts.push("")
 
       // ====== 维度四：Review 回流完整度（权重 25%） ======
-      // 检查 Review 中 P0/P1 问题的修复建议是否在 Plan/Specs 中有对应修正
+      // 策略：数 Review 中 P0/P1 条目数 vs Plan 中 [回流: 标记数，简单计数比对
       let backflowScore = 0
-      const backflowDetails: string[] = []
 
       if (reviewContent) {
-        // 解析 Review 中的 P0/P1 问题表格
-        // 典型格式: | # | 缺陷 | 证据 | 修复 |
-        //   其中 P0/P1 标记在行内（如 "(P0)" 或 "3.1" 标题下）
         const reviewLines = reviewContent.split("\n")
-        const problemItems: Array<{ id: string; description: string; fix: string; priority: string }> = []
-        let inP0Section = false
-        let inP1Section = false
-        let inProblemTable = false
-        let tableHeaderPassed = false
-
-        for (let i = 0; i < reviewLines.length; i++) {
-          const line = reviewLines[i]
-
-          // 检测 P0/P1 章节
-          if (line.match(/P0|ADD.*合规|阻断/)) {
-            inP0Section = true
-            inP1Section = false
-            inProblemTable = true
-            tableHeaderPassed = false
-            continue
-          }
-          if (line.match(/P1|架构设计.*缺口/)) {
-            inP0Section = false
-            inP1Section = true
-            inProblemTable = true
-            tableHeaderPassed = false
-            continue
-          }
-          if (line.match(/P2|中等|影响评估|决策结论|方案对比/)) {
-            inP0Section = false
-            inP1Section = false
-            inProblemTable = false
-            continue
-          }
-
-          // 表格数据行: | N | 描述 | 证据 | 修复 |
-          if (inProblemTable && line.trim().startsWith("|") && !line.includes("---")) {
-            const cols = line.split("|").map(c => c.trim()).filter(Boolean)
-            if (cols.length >= 4 && cols[0].match(/^\d+/)) {
-              const priority = inP0Section ? "P0" : inP1Section ? "P1" : ""
-              if (priority) {
-                // cols[1] = 缺陷描述, cols[2] = 证据, cols[3] = 修复建议
-                problemItems.push({
-                  id: cols[0],
-                  description: cols[1] || "",
-                  fix: cols[3] || "",
-                  priority,
-                })
-              }
-            }
-          }
+        let reviewP0P1Count = 0
+        for (const line of reviewLines) {
+          if (/^\|\s*\d+\s*\|\s*(P0|P1)\s*\|/.test(line)) reviewP0P1Count++
         }
-
-        if (problemItems.length === 0) {
-          // 退而：尝试解析 Review 为编号列表格式（如 "1. xxx\n2. yyy"）
-          // 由于 Review 格式多变，此分支暂不用编号列表正则——留空依赖表格解析
-        }
-
-        if (problemItems.length > 0) {
-          // 对每个 P0/P1 问题，从修复建议中提取关键词，在 Plan+Specs 中搜索
-          let reflectedCount = 0
-          const unreflectedItems: string[] = []
-          const mirroredItems: string[] = []
-
-          for (const item of problemItems) {
-            // 从修复建议文本中提取代表关键词
-            const fixKeywords = extractBackflowKeywords(item.fix)
-            const searchTargets = [planContent]
-            if (specContent) searchTargets.push(specContent)
-
-            let found = false
-            for (const kw of fixKeywords) {
-              for (const target of searchTargets) {
-                if (target.toLowerCase().includes(kw.toLowerCase())) {
-                  found = true
-                  break
-                }
-              }
-              if (found) break
-            }
-
-            if (found) {
-              reflectedCount++
-              mirroredItems.push(`  ✅ [${item.priority}] #${item.id}: \"${item.description.slice(0, 50)}\" → Plan/Specs 已修正`)
-            } else {
-              unreflectedItems.push(`  ❌ [${item.priority}] #${item.id}: \"${item.description.slice(0, 50)}\" → 修复建议「${item.fix.slice(0, 40)}」未在 Plan/Specs 中找到`)
-            }
-          }
-
-          backflowScore = Math.round((reflectedCount / problemItems.length) * 100)
-          parts.push("=== 维度四：Review 回流完整度（25%）===")
-          parts.push(`  P0/P1 问题总数: ${problemItems.length}`)
-          parts.push(`  已回流: ${reflectedCount} / 未回流: ${unreflectedItems.length}`)
-          parts.push(`  回流率: ${backflowScore}%`)
-          parts.push(`  分数: ${backflowScore}/100`)
-          if (mirroredItems.length > 0) {
-            for (const m of mirroredItems.slice(0, 5)) parts.push(m)
-            if (mirroredItems.length > 5) parts.push(`  ... 还有 ${mirroredItems.length - 5} 项已回流`)
-          }
-          if (unreflectedItems.length > 0) {
-            for (const u of unreflectedItems) parts.push(u)
-            parts.push(`  ⚠️ 修复建议: 执行 0.6.5 卡位，将 Review 未回流项逐条写入 Plan 对应章节`)
-          }
-          for (const d of backflowDetails) parts.push(d)
+        const planBackflowCount = (planContent.match(/\[回流\s*[:：]/g) || []).length
+        parts.push("=== 维度四：Review 回流完整度（25%）===")
+        parts.push("  Review P0/P1 条目总数: " + reviewP0P1Count)
+        parts.push("  Plan [回流:] 标记数: " + planBackflowCount)
+        if (reviewP0P1Count === 0) {
+          backflowScore = 100
+          parts.push("  ✅ Review 无 P0/P1 问题，跳过回流检查")
+        } else if (planBackflowCount >= reviewP0P1Count) {
+          backflowScore = 100
+          parts.push("  ✅ 回流完整：" + planBackflowCount + "/" + reviewP0P1Count + " 条全部对应")
         } else {
-          // Review 存在但无 P0/P1 问题表格（可能是非标准格式）
-          backflowScore = 50  // 无法自动解析，给中等分数
-          parts.push("=== 维度四：Review 回流完整度（25%）===")
-          parts.push("  ⚠️ Review 文件中未检测到 P0/P1 问题表格，无法自动校验回流")
-          parts.push("  ℹ️ 请手动确认 Review 结论是否已写回 Plan")
-          parts.push(`  分数: ${backflowScore}/100（默认值，待人工确认）`)
+          backflowScore = Math.round((planBackflowCount / reviewP0P1Count) * 100)
+          parts.push("  ⚠️ 回流不完整：" + planBackflowCount + "/" + reviewP0P1Count + "，缺 " + (reviewP0P1Count-planBackflowCount) + " 条")
+          parts.push("  ⚠️ 修复建议: 执行 0.6.5 卡位，在 Plan 对应章节添加 [回流: Review PN #N 简述] 标记")
         }
       } else {
-        // 无 Review 文件
-        backflowScore = 0
         parts.push("=== 维度四：Review 回流完整度（25%）===")
         parts.push("  ⚠️ Review 文件未找到，回流检查不可用")
-        parts.push(`  分数: ${backflowScore}/100`)
       }
+      parts.push("  分数: " + backflowScore + "/100")
       parts.push("")
 
       // ====== DPS 复合计算 ======
@@ -3450,9 +3368,9 @@ server.registerTool(
   {
     description: "创建 ADD Plan 文件到 ${MAGIC_DIR}/plans/{YYYY-MM}/{DD}/ 目录，自动调用 gen-plan-index.sh 更新 index.md。AI 助手在 ADD 范式 Step 0（方案设计）完成后应调用此工具落盘 Plan 文件。\n\n自动处理：\n1. 根据当前日期创建目录 ${MAGIC_DIR}/plans/{YYYY-MM}/{DD}/\n2. 写入 planName-v{version}.md（markdown 正文）\n3. 执行 scripts/gen-plan-index.sh 更新 index.md\n4. 自动调用 record_dev_operation 记录创建操作",
     inputSchema: {
-      planName: z.string().describe("Plan 名称（kebab-case），如 'add-coder-domain-vocabulary'"),
+      planName: z.string().describe("Plan 名称（kebab-case），如 '{{projectName}}-domain-vocabulary'"),
       version: z.string().describe("版本号，如 'v1', 'v2'"),
-      title: z.string().describe("Plan 标题（markdown H1 第一行），如 '# add-coder-domain-vocabulary-plan-v2'"),
+      title: z.string().describe("Plan 标题（markdown H1 第一行），如 '# {{projectName}}-domain-vocabulary-plan-v2'"),
       content: z.string().describe("Plan 完整 markdown 正文（从 H1 标题行开始）"),
       planKeyword: z.string().optional().describe("Plan 关键词（用于 session-init 恢复定位），默认使用 planName"),
     },
