@@ -226,3 +226,4 @@ npx add-coder init
 |------|-------------|
 | Demo Repo | A full example repository showcasing end-to-end closed-loop practice of Policy-Update-Loop and the Report system |
 | MCP Restructure | MCP toolchain architecture upgrade, improving audit and gateway tool extensibility and standalone deployment capability |
+| Memory Enhancement | Long-term project knowledge memory and plan-level sparse memory |
