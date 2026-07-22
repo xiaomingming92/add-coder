@@ -100,10 +100,10 @@
         "{ACTION_2}",
         "{ACTION_3}"
     ],
-    "forbidden_terms": [ "Phase", 
+    "forbidden_terms": [
+        "Phase", 
         "Round",
-        "轮次",
-        "阶段",
-        "步骤"
-    ]
+        "阶段"
+    ],
+    "forbidden_terms_note": "禁止使用 Phase/Round/阶段 作为 Task 分组词，必须使用模板规定的「轮次」。'步骤'和'轮次'不禁——它们是模板自身的结构关键词。"
 }
