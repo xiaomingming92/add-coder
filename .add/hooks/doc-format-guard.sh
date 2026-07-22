@@ -104,7 +104,7 @@ if [ -z "$TEMPLATE_NAME" ]; then
   fi
 fi
 
-SCHEMA_FILE="$TEMPLATES_DIR/$(echo "${TEMPLATE_NAME%.md}" | sed 's/-template$//').schema.json"
+SCHEMA_FILE="$TEMPLATES_DIR/${TEMPLATE_NAME%.md}.schema.json"
 # L84: schema 文件不存在 → 无校验规则，阻断（不允许无规则放行）
 if [ ! -f "$SCHEMA_FILE" ]; then
   echo "⛔ 阻断：模板 ${TEMPLATE_NAME} 缺少对应的 .schema.json 校验规则" >&2
