@@ -1,6 +1,6 @@
 # {需求域名}-{核心内容}-plan-v{版本号}
 
-> **Plan/Spec 边界提醒**：Plan 回答"改什么、为什么改、改哪里"——写到让 Review 能判断方向对不对、有没有遗漏维度的程度（文件路径 + Task 验收标准 + 架构维度全覆盖）。**不要**在 Plan 中写完整 TS 类型定义、WHEN-THEN 场景、精确函数签名——那是 Spec 的职责。详见 [《ADD开发工作路径与文档协同规范》§8.1.1](/home/xmm/ai/add-coder/docs/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md)。
+> **Plan/Spec 边界提醒**：Plan 回答"改什么、为什么改、改哪里"——写到让 Review 能判断方向对不对、有没有遗漏维度的程度（文件路径 + Task 验收标准 + 架构维度全覆盖）。**不要**在 Plan 中写完整 TS 类型定义、WHEN-THEN 场景、精确函数签名——那是 Spec 的职责。详见 [《ADD开发工作路径与文档协同规范》§8.1.1]({{projectRoot}}/{{docsDir}}/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md)。
 
 ## PLAN 元信息
 
@@ -8,9 +8,9 @@
 - **启动时间**: {ISO 时间戳}
 - **主导 AI**: {AI 助手标识}
 - **关联文档**:
-  - ADD Route: `.qoder/plans/{YYYY-MM}/{DD}/{需求域名}-{核心内容}-add-route-v{版本}.md`
-  - Handoff: `.qoder/plans/{YYYY-MM}/{DD}/{需求域名}-{核心内容}-handoff-v{版本}.md`
-  - Review: `.qoder/reviews/{需求域名}-review-v{版本}.md`
+  - ADD Route: `{{magicDir}}/plans/{YYYY-MM}/{DD}/{需求域名}-{核心内容}-add-route-v{版本}.md`
+  - Handoff: `{{magicDir}}/plans/{YYYY-MM}/{DD}/{需求域名}-{核心内容}-handoff-v{版本}.md`
+  - Review: `{{magicDir}}/reviews/{需求域名}-review-v{版本}.md`
 - **ADD-7 审计策略**:
 
 | 文件 | targetType | action | beforeState | afterState | 状态 |
@@ -114,9 +114,9 @@
 
 | 文档 | 路径 |
 |------|------|
-| ADD Route | `.qoder/plans/...` |
-| Handoff | `.qoder/plans/...` |
-| Review | `.qoder/reviews/...` |
-| Spec | `.qoder/specs/{name}/spec.md` |
-| Tasks | `.qoder/specs/{name}/tasks.md` |
-| Checklist | `.qoder/specs/{name}/checklist.md` |
+| ADD Route | `{{magicDir}}/plans/...` |
+| Handoff | `{{magicDir}}/plans/...` |
+| Review | `{{magicDir}}/reviews/...` |
+| Spec | `{{magicDir}}/specs/{name}/spec.md` |
+| Tasks | `{{magicDir}}/specs/{name}/tasks.md` |
+| Checklist | `{{magicDir}}/specs/{name}/checklist.md` |

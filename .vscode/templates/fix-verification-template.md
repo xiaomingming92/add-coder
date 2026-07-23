@@ -128,5 +128,5 @@
 
 | Issue | 运行时来源 | 验证结果 |
 |-------|-----------|:--------:|
-| {RPT-{id}} | `add-coder-runtime-report/{subsystem}.md` | ✅ 未复现 |
-| {RPT-{id}} | `add-coder-runtime-report/{subsystem}.md` | ❌ 仍断裂 |
+| {RPT-{id}} | `{{projectName}}-runtime-report/{subsystem}.md` | ✅ 未复现 |
+| {RPT-{id}} | `{{projectName}}-runtime-report/{subsystem}.md` | ❌ 仍断裂 |

@@ -8,7 +8,7 @@ export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 COMMON_LIB="$HOOK_DIR/lib/common.sh"
 [ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
 
-export PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+export PROJECT_DIR="$PWD"
 
 # ── ① 获取 ADD 状态并保存到标记文件 ──
 if type detect_active_add >/dev/null 2>&1; then

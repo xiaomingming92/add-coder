@@ -65,7 +65,7 @@
 > 当所有 `[T]` 编译期检查项均为 `[x]` 时（`[R]` 项可保持 `[ ]`），AI 必须执行：
 >
 > 1. **读取** `review-implementation-template.md`，逐项填写实现审查内容
-> 2. **读取** `review-runtime-template.md`，复制为 `.claude/reviews/{project}-review-runtime.md`
+> 2. **读取** `review-runtime-template.md`，复制为 `{{magicDir}}/reviews/{project}-review-runtime.md`
 >    - 替换占位符（标题、关联文档路径）
 >    - §1 发现列表初始化为 "尚无运行时发现"
 >    - §1 末尾自动插入本 checklist 中所有 `[R]` 项的清单，标记为 "待运行时验证"

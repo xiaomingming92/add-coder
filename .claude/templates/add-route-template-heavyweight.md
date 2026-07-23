@@ -248,7 +248,7 @@ Task N ──→ Task M（说明依赖原因）
 3. **验证并更新项目状态**：`tasks.md` 全部 Task 已完成 + 全部子项已勾选，`checklist.md` 全部可验证项已勾选
 4. **验证并更新项目状态**：调用 `check_spec_sync` 做最终交叉校验——Plan 预期、spec 勾选状态、git diff 实际变更、ADD-7 审计记录四者一致
 5. **Handoff 更新**：更新 Handoff 的 §7（实际产出与偏离）、§8（验证结果）、§9（后置确认）
-6. **Step 0 第二部分**：回架构文档做最终校准——验证 `docs/knowledge/01-架构/` 下相关文档已反映变更
+6. **Step 0 第二部分**：回架构文档做最终校准——验证 `{{docsDir}}/knowledge/01-架构/` 下相关文档已反映变更
 7. **ADD-7 回查**：`query_audit_logs` 确认全部 `record_dev_operation` 记录已落库，按 action/targetId 交叉验证
 
 **产出**：

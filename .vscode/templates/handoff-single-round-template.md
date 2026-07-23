@@ -120,7 +120,7 @@ ORDER BY "createdAt" DESC;
 - grep 验证命令：
 
 ```bash
-grep -R "{关键字}" .vscode/specs/
+grep -R "{关键字}" {{magicDir}}/specs/
 ```
 
 ---

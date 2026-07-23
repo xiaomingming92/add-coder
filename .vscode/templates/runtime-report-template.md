@@ -1,7 +1,7 @@
 # {项目名} 运行时报告 — {subsystem}
 
 > `{subsystem}` 子系统运行时异常报告。由对应子系统自动追加。
-> 属于 `add-coder-runtime-report/` 体系，与静态 Reports 双向联动。
+> 属于 `{{projectName}}-runtime-report/` 体系，与静态 Reports 双向联动。
 
 ## 报告元信息
 

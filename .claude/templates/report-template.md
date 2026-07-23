@@ -39,7 +39,7 @@
 - **严重度**: {P0/P1/P2/P3}
 - **分类**: 安全风险
 - **状态**: ❌ 仍存在
-- **运行时网关关联**: `add-coder-runtime-report/gateway.md#L{line}` (Gateway 运行时发现 {n} 次)
+- **运行时网关关联**: `{{projectName}}-runtime-report/gateway.md#L{line}` (Gateway 运行时发现 {n} 次)
 
 **现象**:
 
@@ -122,5 +122,5 @@
 
 | Issue | 运行时来源 | 首次发生 | 次数 | Triage 结果 |
 |-------|-----------|---------|:----:|------------|
-| {ID} | `add-coder-runtime-report/gateway.md` | {ts} | {n} | 确认为 Bug → P1 |
-| {ID} | `add-coder-runtime-report/gateway.md` | {ts} | {n} | 环境问题 → 关闭 |
+| {ID} | `{{projectName}}-runtime-report/gateway.md` | {ts} | {n} | 确认为 Bug → P1 |
+| {ID} | `{{projectName}}-runtime-report/gateway.md` | {ts} | {n} | 环境问题 → 关闭 |

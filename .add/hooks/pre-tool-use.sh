@@ -11,7 +11,7 @@ input=$(cat)
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 PARENT="$(dirname "$HOOK_DIR")"
 MAGIC_DIR="$(basename "$PARENT")"
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$(dirname "$PARENT")}}}"
+PROJECT_DIR="$PWD"
 
 # ── §A 辅助函数: 阻断日志 ──
 _log_block() {

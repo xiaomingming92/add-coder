@@ -4,7 +4,7 @@ set -euo pipefail
 
 input=$(cat)
 
-MAGIC_DIR=".vscode"
+MAGIC_DIR=".codex"
 
 # DEBUG: dump stdin for investigation
 mkdir -p "$MAGIC_DIR/debug-dump"
@@ -25,7 +25,7 @@ file_path=$(echo "$input" | jq -r '.tool_input.file_path // empty')
 # L17: 非文件工具事件（空 stdin）→ 不拦截（由 matcher 层过滤）
 [ -z "$file_path" ] && exit 0
 
-if ! echo "$file_path" | grep -qE '\.vscode/(plans|specs)/'; then
+if ! echo "$file_path" | grep -qE '\.codex/(plans|specs)/'; then
   exit 0
 fi
 
@@ -171,7 +171,7 @@ $ISSUES" >&2
 fi
 
 # ── 自动更新 index.md ──
-if echo "$file_path" | grep -q '\.vscode/plans/'; then
+if echo "$file_path" | grep -q '\.codex/plans/'; then
   if [ -x "$PROJECT_DIR/scripts/gen-plan-index.sh" ]; then
     "$PROJECT_DIR/scripts/gen-plan-index.sh" 2>/dev/null || true
   fi
