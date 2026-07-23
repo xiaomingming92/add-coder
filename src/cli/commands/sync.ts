@@ -33,7 +33,7 @@ function resolveAdapter(projectRoot: string, specified?: string): Adapter {
         return specified as Adapter;
     }
     const detected = detectIDE(projectRoot);
-    if (detected !== "auto") { console.log(`检测到 IDE: ${detected} (自动)`); return detected as Adapter; }
+    if (detected !== "auto") { console.log(`检测到 IDE: ${detected} (自动)`); return detected; }
     console.log("未检测到 IDE 环境，默认 qoder");
     return "qoder";
 }
