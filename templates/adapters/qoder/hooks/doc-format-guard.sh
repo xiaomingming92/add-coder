@@ -60,10 +60,12 @@ done
 
 # 退一步：根据文件内容特征猜测模板类型
 if [ -z "$TEMPLATE_NAME" ]; then
-  if echo "$CONTENT" | grep -q "## 四、Handoff"; then
-    TEMPLATE_NAME="simple-standard-plan-template.md"
-  elif echo "$CONTENT" | grep -q "## PLAN 元信息"; then
+  if echo "$CONTENT" | grep -q "## PLAN 元信息"; then
     TEMPLATE_NAME="standard-plan-template.md"
+  elif echo "$CONTENT" | grep -q "## 一、Plan 概述"; then
+    TEMPLATE_NAME="simple-plan-template.md"
+  elif echo "$CONTENT" | grep -q "## 四、Handoff"; then
+    TEMPLATE_NAME="simple-plan-template.md"
   elif echo "$CONTENT" | grep -q "## Review 元信息"; then
     if echo "$CONTENT" | grep -q "运行时验证"; then
       TEMPLATE_NAME="review-runtime-template.md"
@@ -162,6 +164,62 @@ jq -r '.forbidden_terms[]?' "$SCHEMA_FILE" 2>/dev/null | while IFS= read -r term
     echo "  禁止词: $term"
   fi
 done >> "$TMPFILE"
+
+ISSUES=$(cat "$TMPFILE" 2>/dev/null)
+
+# ── 算法化规则校验（ADD 范式约束下沉为代码）──
+ALGO_ISSUES=""
+
+# 规则1: 精简版 Plan 反作弊
+if echo "$TEMPLATE_NAME" | grep -q 'simple-plan'; then
+  # 1a. 文件数 ≤ 3
+  file_count=$(echo "$CONTENT" | grep -cP '^\|\s*`[^`]+`' 2>/dev/null || echo "0")
+  if [ "$file_count" -gt 3 ] 2>/dev/null; then
+    ALGO_ISSUES="${ALGO_ISSUES}  ❌ 精简版反作弊: 涉及 ${file_count} 个文件（超过 3 个限制），应改用 standard-plan-template.md\n"
+  fi
+  # 1b. HITL 表不能写 "等 N 个文件"
+  if echo "$CONTENT" | grep -qP '等\s*\d*\s*个文件|等\s*若干'; then
+    ALGO_ISSUES="${ALGO_ISSUES}  ❌ 精简版反作弊: HITL 表文件清单使用模糊描述（'等 N 个文件'），必须列出实际完整路径\n"
+  fi
+  # 1c. HITL 方案/设计决策不能写 "等若干决策"
+  if echo "$CONTENT" | grep -qP '等\s*若干\s*(决策|方案|设计)'; then
+    ALGO_ISSUES="${ALGO_ISSUES}  ❌ 精简版反作弊: HITL 表方案/设计决策使用模糊描述（'等若干决策'），必须逐条列出\n"
+  fi
+  # 1d. 不能包含架构设计章节（精简版无架构设计）
+  if echo "$CONTENT" | grep -q '## 三、架构设计'; then
+    ALGO_ISSUES="${ALGO_ISSUES}  ❌ 精简版反作弊: 包含 '## 三、架构设计' 章节，精简版不应有架构设计——应改用 standard-plan-template.md\n"
+  fi
+fi
+
+# 规则2: HITL 表非空校验（所有 Plan + Review 模板）
+if echo "$TEMPLATE_NAME" | grep -qE 'plan|review'; then
+  if echo "$CONTENT" | grep -q '## HITL'; then
+    # HITL 表至少要有 1 行非占位符内容（不包含 { } 占位符）
+    hitl_rows=$(echo "$CONTENT" | sed -n '/## HITL/,/^## /p' | grep -cP '^\|\s*[^|{]*\s*\|' 2>/dev/null || echo "0")
+    # rows 包含表头行和分隔行，实际数据行 = rows - 2
+    hitl_data=$((hitl_rows - 2))
+    if [ "$hitl_data" -lt 1 ] 2>/dev/null; then
+      ALGO_ISSUES="${ALGO_ISSUES}  ⚠️  HITL 表为空——必须填写至少 1 行实际内容后再提交审核\n"
+    fi
+  fi
+fi
+
+# 规则3: 精简版 Plan 禁止同时存在独立 handoff 文件
+if echo "$TEMPLATE_NAME" | grep -q 'simple-plan'; then
+  plan_base=$(basename "$file_path" | sed 's/-plan-v.*//')
+  plan_dir=$(dirname "$file_path")
+  handoff_pattern="${plan_dir}/${plan_base}-handoff"
+  if find "$plan_dir" -name "${plan_base}-handoff*.md" 2>/dev/null | grep -q .; then
+    ALGO_ISSUES="${ALGO_ISSUES}  ❌ 精简版 Handoff 冲突: 检测到独立 handoff 文件（${plan_base}-handoff*.md）。精简版 Plan 的 Handoff 已融合在 §四，不应生成独立文件。请删除独立 handoff 文件或改用 standard-plan-template.md\n"
+  fi
+fi
+
+if [ -n "$ALGO_ISSUES" ]; then
+  echo "⛔ 算法化规则校验不通过:" >&2
+  echo -e "$ALGO_ISSUES" >&2
+  # 合并到 ISSUES 中一起阻断
+  echo -e "$ALGO_ISSUES" >> "$TMPFILE"
+fi
 
 ISSUES=$(cat "$TMPFILE" 2>/dev/null)
 

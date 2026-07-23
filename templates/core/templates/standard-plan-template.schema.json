@@ -7,6 +7,12 @@
             "required": true
         },
         {
+            "id": "hitl",
+            "heading": "## HITL 计划总览",
+            "required": true,
+            "note": "AI 必须先在此表中列出全部关键决策，等待人类拍板后再展开详细设计。"
+        },
+        {
             "id": "background",
             "heading": "## 一、背景与目标",
             "required": true
