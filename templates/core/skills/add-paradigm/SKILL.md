@@ -51,7 +51,7 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
    - **标准版** `standard-plan-template.md`：多模块、跨系统集成、含架构选型或数据模型设计。
 2. **读取模板**：读选定的模板文件，禁止凭记忆
 3. **命名规范**：`{项目名}-{功能名}-plan-v1.md` → `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（按当天日期创建子目录）
-4. **HITL 总览（先写）**：先填写 `## HITL 计划总览` 表——列出影响模块、预估文件数、架构变更、风险等级、预计轮次。等待人类一次性拍板。
+4. **HITL 总览（先写 temporary.md）**：doc-format-guard 要求写入 `.qoder/plans/` 的文件必须包含完整章节，但 HITL 第一步只写总览表不写正文。因此先在项目根目录写 `{plan-name}.temporary.md`（只含 HITL 表，不受 guard 检查），人类拍板后再写正式 Plan 文件并删除 temporary.md。
 5. **HITL 确认后展开**：人类拍板后，再填写以下正文章节。
 6. **必含章节（标准版）**：
    - PLAN 元信息（名称/时间/关联文档/ADD-7审计策略表）
@@ -120,6 +120,8 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 > **AI 首次学习 ADD 范式时，必须读取上述全部 13 个模板文件。遗漏模板 = 遗漏范式全貌。**
 >
 > **每次根据模板生成文档时（plan/spec/review/handoff），MUST 先重新读取对应的模板文件，再填充内容。禁止凭记忆生成——模板可能已在迭代中更新，记忆中的版本可能不完整。**
+
+> **Review 的 HITL 磋商（temporary.md 机制）**：生成方案 Review（`review-template.md`）或实现 Review（`review-implementation-template.md`）时，和 Plan 一样——doc-format-guard 要求完整章节才放行，HITL 第一步只写总览表会被阻断。因此 Review 也走 temporary.md 流程：先写 `{review-name}.temporary.md`（只含 HITL 发现总览表）→ 人类拍板 → 生成完整 Review 写入 `.qoder/reviews/` → 删除 temporary。具体步骤见下方 Step 3.5.3（实现 Review）和 Step 0 方案 Review 产出。
 
 #### 0.2 搜索相关项目文档
 
@@ -808,7 +810,7 @@ check_add_route_completeness({ planKeyword: "<Plan 核心关键词>" })
 
 ### 3.5.3 生成实现审查文档
 
-读取 `review-implementation-template.md`，逐项填写审查结果。
+按 HITL temporary.md 流程执行：读取 `review-implementation-template.md` → 先写 `{name}-review-implementation.temporary.md`（只含 HITL 发现总览表）→ 人类一次性拍板 → 逐条展开详细分析 → 写入 `.qoder/reviews/`（guard 放行）→ 删除 temporary。详见上方模板生成规则处的 Review HITL 磋商说明。
 
 ### 3.5.4 生成运行时审查文档（所有 [T] 项通过后）
 
