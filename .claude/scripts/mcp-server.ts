@@ -2849,10 +2849,10 @@ server.registerTool(
       let tasksContent = ""
       // 从 Plan 绑定或 §7 提取
       const specRef = planContent.match(/Spec:\s*\.(qoder|claude|add|vscode)\/specs\/([^/\s]+)/)
-      if (specRef) specDirName = specRef[1]
+      if (specRef) specDirName = specRef[2]
       if (!specDirName) {
         const taskRef = planContent.match(/Tasks:\s*\.(qoder|claude|add|vscode)\/specs\/([^/\s]+)/)
-        if (taskRef) specDirName = taskRef[1]
+        if (taskRef) specDirName = taskRef[2]
       }
       if (!specDirName) {
         specDirName = basename(planMatch).replace(/-plan-v\d+\.md$/, "")
