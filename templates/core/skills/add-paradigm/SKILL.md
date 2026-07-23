@@ -46,18 +46,32 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 >
 > **Plan 是后续 ADD 工作流的输入。** 生成 plan 后如需执行，才启动下方 Step 0。
 
-1. **读取模板**：读 `plan-template.md`，禁止凭记忆
-2. **命名规范**：`{项目名}-{功能名}-plan-v1.md` → `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（按当天日期创建子目录）
-3. **必含章节**：
-   - 元信息（名称/时间/关联文档/ADD-7审计策略表）
+1. **模板选择**：根据任务复杂度选模板
+   - **精简版** `simple-plan-template.md`：≤3 文件、无新模块/架构、无外部 API 契约变更。Tasks 合并在 Plan 体内，无需独立 spec 文件。
+   - **标准版** `standard-plan-template.md`：多模块、跨系统集成、含架构选型或数据模型设计。
+2. **读取模板**：读选定的模板文件，禁止凭记忆
+3. **命名规范**：`{项目名}-{功能名}-plan-v1.md` → `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（按当天日期创建子目录）
+4. **HITL 总览（先写）**：先填写 `## HITL 计划总览` 表——列出影响模块、预估文件数、架构变更、风险等级、预计轮次。等待人类一次性拍板。
+5. **HITL 确认后展开**：人类拍板后，再填写以下正文章节。
+6. **必含章节（标准版）**：
+   - PLAN 元信息（名称/时间/关联文档/ADD-7审计策略表）
+   - HITL 计划总览（人类拍板入口）
    - 一、背景与目标
    - 二、方案选型
    - 三、架构设计
-   - 四、实施步骤 + 依赖图
+   - 四、实施 Task + 依赖图
    - 五、验收标准
-   - 六、关联文档（指向 review/handoff/spec 的占位链接）
-4. **文档链路**：plan 作为枢纽节点，必须包含与后续 review/handoff 的双向链接占位
-5. **记录审计**：plan 生成后调用 `record_dev_operation`（targetType: "PLAN"）
+   - 六、关联文档
+6. **必含章节（精简版）**：
+   - HITL 计划总览（人类拍板入口）
+   - 一、Plan 概述
+   - 二、变更范围
+   - 三、Tasks（合并在 Plan 中）
+   - 四、Handoff
+   - 五、验收标准
+   - 六、关联
+7. **文档链路**：plan 作为枢纽节点，必须包含与后续 review/handoff 的双向链接占位
+8. **记录审计**：plan 生成后调用 `record_dev_operation`（targetType: "PLAN"）
 
 ---
 
@@ -90,15 +104,16 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 |------|------|---------|
 | `prd-standard-template.md` | 产品/系统需求文档（新建）：背景目标 + 用户场景 + 功能需求 + 非功能需求 + 验收标准 | 需求定义 |
 | `prd-incremental-template.md` | 产品/系统需求文档（增量）：在已有 PRD 基础上追加/修改/删除 | 需求变更 |
-| `plan-template.md` | 需求方案：元信息 + 背景目标 + 方案选型 + 架构设计 + 实施步骤 + 验收标准 + ADD-7审计策略 | 需求理解 |
+| `simple-plan-template.md` | 精简版 Plan：≤3 文件单一改动，Tasks+Handoff 融合在 Plan 体内，无需独立 spec/handoff 文件 | 简单任务 |
+| `standard-plan-template.md` | 标准版 Plan：多模块/跨系统/含架构设计，需独立 spec/tasks/checklist | 复杂任务 |
 | `add-route-template.md` | Plan→ADD 十阶段执行映射：Step 0-9 具体动作 + Task 映射表 + 审计阶段清单 + 依赖拓扑 | Step 0 |
 | `spec-template.md` | 功能规格：Why / What Changes / Impact / WHEN-THEN Requirements | Step 0~1 |
 | `tasks-template.md` | 任务拆分：Phase → Task → SubTask 层级 | Step 1 |
 | `checklist-template.md` | 验收清单：业务检查项 + ADD 规则合规检查 | Step 5 / Step 8 |
-| `review-template.md` | ADD-9 方向验证：元信息 + 问题复现 + 方案对比 + 决策结论 + 影响评估 | Review 关卡 |
-| `review-implementation-template.md` | ADD-10 语义对齐：格式契约 + 框架版本 + 数据模型 + 环境变量 + API 选择 + E2E curl | Code 后 |
+| `review-template.md` | ADD-9 方向验证：元信息 + **HITL 发现总览**（一次性人类审核表） + 问题复现 + 方案对比 + 决策结论 + 影响评估 | Review 关卡 |
+| `review-implementation-template.md` | ADD-10 语义对齐：元信息 + **HITL 发现总览** + 格式契约 + 框架版本 + 数据模型 + 环境变量 + API 选择 + E2E curl | Code 后 |
 | `review-runtime-template.md` | ADD-11 证据持久化：发现列表 + 根因分析 + 流程改进项 + 回流确认 | Deploy 后 |
-| `handoff-template.md` | 交接总览索引（指向单轮/多轮） | Step 8 后 |
+| `handoff-template.md` | 交接总览索引（指向单轮/多轮）。**注意**：精简版 Plan 不需要生成此文件——Handoff 已融合在 Plan §四 | Step 8 后 |
 | `handoff-single-round-template.md` | 单轮交接：9 章节（含恢复上下文审计查询） | 单轮变更完成后 |
 | `handoff-multi-round-template.md` | 多轮交接：全局拓扑 + 每轮 13 子章节 + 收敛规则 + 启动模板 | 多轮原子事务完成后 |
 
@@ -1038,8 +1053,11 @@ LIMIT 10;
 ### 收敛后：生成交接手册（handoff）
 
 > **MUST NOT 跳过此步骤。** 收敛条件全部满足后，必须按模板生成交接手册，使后续 AI Session 能恢复上下文。
+>
+> **例外**：如果本 Plan 使用的是 `simple-plan-template.md`，**跳过本步骤**——Handoff 已融合在 Plan §四，无需独立文件。
 
-1. **读取对应模板**：单轮变更读 `handoff-single-round-template.md`（9 章节），多轮变更读 `handoff-multi-round-template.md`（13 子章节/轮）
+1. **判断是否精简版**：检查 Plan 文件是否基于 `simple-plan-template.md` → 是则跳过，Handoff 信息已在 Plan §四 中
+2. **读取对应模板**：单轮变更读 `handoff-single-round-template.md`（9 章节），多轮变更读 `handoff-multi-round-template.md`（13 子章节/轮）
 2. **填满所有章节**：模板中每个 `{占位符}` 都必须替换为实际内容，不得留空。特别注意：
    - **§8 恢复上下文审计查询**：MUST 包含基于真实 `query_audit_logs` 结果的逐文件审计查询语句，不得编造
    - **§9 后置确认**：逐项确认 tsc/ADD 合规/审计落库

@@ -148,22 +148,28 @@ ADD 是**开发阶段**的编程范式，不是运行时范式。
 | 架构文档 | `docs/*/knowledge/01-架构/` 或 `02-架构/` | 架构说明书、系统设计、模块定义 |
 | 规范文档 | `docs/*/knowledge/02-规范/` 或 `03-规范/` | 开发规范、AI 核心规范、状态机规范 |
 
-**此外，ADD 工作流的核心产物由 `{{magicDir}}/templates/` 下的 11 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
+**此外，ADD 工作流的核心产物由 `{{magicDir}}/templates/` 下的 13 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
 
 | 模板 | 用途 | 对应阶段 |
-|------|------|---------|
-| `plan-template.md` | 需求方案：元信息 + 背景目标 + 方案选型 + 架构设计 + 实施步骤 + 验收标准 + ADD-7审计策略 | 需求理解 |
+|------|------|------|
+| `simple-plan-template.md` | 精简版 Plan：≤3 文件单一改动，Tasks+Handoff 融合在 Plan 体内，无需独立 spec/handoff | 简单任务 |
+| `standard-plan-template.md` | 标准版 Plan：多模块/跨系统/含架构设计，需独立 spec/tasks/checklist/handoff | 复杂任务 |
 | `spec-template.md` | 功能规格：Why / What Changes / Impact / WHEN-THEN Requirements | Step 0~1 |
 | `tasks-template.md` | 任务拆分：Phase → Task → SubTask 层级 | Step 1 |
 | `checklist-template.md` | 验收清单：业务检查项 + ADD 规则合规检查 + 跨项目联调检查 [T]/[R] | Step 3.5 / Step 8 |
-| `review-template.md` | 方案审查（ADD-9）：元信息 + 问题复现 + 方案对比 + 决策结论 + 影响评估 | Plan 后 |
-| `review-implementation-template.md` | 实现审查（ADD-10）：格式契约 + 框架版本 + 数据模型 + 环境变量 + API 选择 + E2E curl | Code 后 |
+| `review-template.md` | 方案审查（ADD-9）：元信息 + **HITL 发现总览** + 问题复现 + 方案对比 + 决策结论 + 影响评估 | Plan 后 |
+| `review-implementation-template.md` | 实现审查（ADD-10）：元信息 + **HITL 发现总览** + 格式契约 + 框架版本 + 数据模型 + 环境变量 + API 选择 + E2E curl | Code 后 |
 | `review-runtime-template.md` | 运行时纠偏（ADD-11）：发现列表 + 根因分析 + 流程改进项 + 回流确认 | Deploy 后 |
 | `handoff-template.md` | 交接总览索引（指向单轮/多轮） | Step 8 后 |
 | `handoff-single-round-template.md` | 单轮交接：9 章节（含恢复上下文审计查询） | 单轮变更完成后 |
 | `handoff-multi-round-template.md` | 多轮交接：全局拓扑 + 每轮 13 子章节 + 收敛规则 + 启动模板 | 多轮原子事务完成后 |
 
-> **AI 首次学习 ADD 范式时，必须读取上述全部 11 个模板文件。遗漏模板 = 遗漏范式全貌。**
+> **AI 首次学习 ADD 范式时，必须读取上述全部 13 个模板文件。遗漏模板 = 遗漏范式全貌。**
+>
+> **精简版 Plan 特殊规则**：
+> - **Handoff 融合**：使用 `simple-plan-template.md` 时，Handoff 信息直接嵌入 Plan 的 §四，**不产生**独立的 `-handoff-v1.md` 文件
+> - **反作弊**：以下三条不满足任一条，必须改用 `standard-plan-template.md`：① 涉及文件 ≤ 3 个且全部在本模块内；② 无新增模块/子系统/外部依赖；③ 无需独立 spec 文档
+> - **HITL 强制**：精简版 Plan 的 HITL 表必须列出实际完整文件路径（禁止"等 N 个文件"）和所有设计决策（禁止"等若干决策"）
 ### 审计要求
 
 每次文档变更必须记录到 AuditLog（通过 `record_dev_operation` 工具），`targetType` 为 `"DOC"`，`action` 为 `"DOC_UPDATED"` 或 `"DOC_CREATED"`，`targetId` 为文档文件路径。
