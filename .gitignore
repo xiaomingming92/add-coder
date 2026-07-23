@@ -6,3 +6,8 @@ docker-compose.yml
 .env.development
 .env
 .prisma
+.backup
+# IDE runtime configs with credentials
+.claude/mcp.json
+.qoder/mcp.json
+.vscode/mcp.json
