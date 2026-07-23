@@ -11,3 +11,9 @@ docker-compose.yml
 .claude/mcp.json
 .qoder/mcp.json
 .vscode/mcp.json
+
+# Runtime artifacts
+debug-dump/
+*/debug-dump/
+*/plans/
+*/specs/
