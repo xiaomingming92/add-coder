@@ -2,12 +2,25 @@
 # state-detect.sh — ADD 活跃流程检测 + dev action 追踪
 # 共享库
 
-PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
-QODER_DIR="$PROJECT_DIR/.qoder"
-PLANS_DIR="$QODER_DIR/plans"
+PROJECT_DIR="$PWD"
+
+# 动态探测 MAGIC_DIR（兼容多 adapter，source 自 hook 脚本时继承调用者的 HOOK_DIR）
+if [ -z "${MAGIC_DIR:-}" ]; then
+  if [ -n "${HOOK_DIR:-}" ]; then
+    MAGIC_DIR="$(basename "$(dirname "$HOOK_DIR")")"
+  else
+    for m in ".claude" ".qoder" ".vscode" ".add"; do
+      [ -d "$PROJECT_DIR/$m" ] && { MAGIC_DIR="$m"; break; }
+    done
+    MAGIC_DIR="${MAGIC_DIR:-.add}"
+  fi
+fi
+
+MAGIC_PATH="$PROJECT_DIR/$MAGIC_DIR"
+PLANS_DIR="$MAGIC_PATH/plans"
 
 # dev action 标记文件（项目级，PreToolUse 写入，Stop 读取）
-DEV_FLAG="/tmp/qoder_dev_$(echo "$PROJECT_DIR" | md5sum 2>/dev/null | cut -c1-8 || echo "default")"
+DEV_FLAG="/tmp/add_dev_$(echo "$PROJECT_DIR" | md5sum 2>/dev/null | cut -c1-8 || echo "default")"
 
 # 检测活跃 ADD 流程
 # 返回: "plan_keyword::step_x/total::round_n/total_r::handoff_path::add_route_path" 或 ""

@@ -4,20 +4,31 @@ set -euo pipefail
 
 input=$(cat)
 
+# 动态探测 MAGIC_DIR（兼容多 adapter）
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+PARENT_DIR="$(dirname "$HOOK_DIR")"
+MAGIC_DIR="$(basename "$PARENT_DIR")"
+
 # DEBUG: dump stdin for investigation
-mkdir -p .qoder/debug-dump
-echo "=== $(date) ===" >> .qoder/debug-dump/stdin.log
-echo "file_path: $(echo "$input" | jq -r '.tool_input.file_path // "EMPTY"')" >> .qoder/debug-dump/stdin.log
-echo "has_file_content: $(echo "$input" | jq 'has("tool_input") and (.tool_input | has("file_content"))')" >> .qoder/debug-dump/stdin.log
-echo "has_replacements: $(echo "$input" | jq 'has("tool_input") and (.tool_input | has("replacements"))')" >> .qoder/debug-dump/stdin.log
-echo "top_keys: $(echo "$input" | jq -r 'keys | join(", ")')" >> .qoder/debug-dump/stdin.log
-echo "tool_input_keys: $(echo "$input" | jq -r '.tool_input | keys | join(", ") // "NO_TOOL_INPUT"')" >> .qoder/debug-dump/stdin.log
-echo "=== DONE ===" >> .qoder/debug-dump/stdin.log
+mkdir -p "$MAGIC_DIR/debug-dump"
+echo "=== $(date) ===" >> "$MAGIC_DIR/debug-dump/stdin.log"
+echo "file_path: $(echo "$input" | jq -r '.tool_input.file_path // "EMPTY"')" >> "$MAGIC_DIR/debug-dump/stdin.log"
+echo "has_file_content: $(echo "$input" | jq 'has("tool_input") and (.tool_input | has("file_content"))')" >> "$MAGIC_DIR/debug-dump/stdin.log"
+echo "has_replacements: $(echo "$input" | jq 'has("tool_input") and (.tool_input | has("replacements"))')" >> "$MAGIC_DIR/debug-dump/stdin.log"
+if echo "$input" | jq -e 'has("tool_input") and (.tool_input | has("file_content"))' > /dev/null 2>&1; then
+  echo "[file_content[500]]: $(echo "$input" | jq -r '.tool_input.file_content' | head -c 500)" >> "$MAGIC_DIR/debug-dump/stdin.log"
+fi
+if echo "$input" | jq -e 'has("tool_input") and (.tool_input | has("replacements"))' > /dev/null 2>&1; then
+  echo "[replacement_new_text[500]]: $(echo "$input" | jq -r '.tool_input.replacements[0].new_text' | head -c 500)" >> "$MAGIC_DIR/debug-dump/stdin.log"
+fi
+echo "top_keys: $(echo "$input" | jq -r 'keys | join(", ")')" >> "$MAGIC_DIR/debug-dump/stdin.log"
+echo "tool_input_keys: $(echo "$input" | jq -r '.tool_input | keys | join(", ") // "NO_TOOL_INPUT"')" >> "$MAGIC_DIR/debug-dump/stdin.log"
+echo "=== DONE ===" >> "$MAGIC_DIR/debug-dump/stdin.log"
 file_path=$(echo "$input" | jq -r '.tool_input.file_path // empty')
 # L17: 非文件工具事件（空 stdin）→ 不拦截（由 matcher 层过滤）
 [ -z "$file_path" ] && exit 0
 
-if ! echo "$file_path" | grep -qE '\.qoder/(plans|specs)/'; then
+if ! echo "$file_path" | grep -qE '$MAGIC_DIR/(plans|specs)/'; then
   exit 0
 fi
 
@@ -34,8 +45,8 @@ if [ -z "$CONTENT" ]; then
   exit 2
 fi
 
-PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
-TEMPLATES_DIR="$PROJECT_DIR/.qoder/templates"
+PROJECT_DIR="$PWD"
+TEMPLATES_DIR="$PROJECT_DIR/$MAGIC_DIR/templates"
 
 # 通过 filename 匹配模板名
 TEMPLATE_NAME=""
@@ -119,7 +130,7 @@ ISSUES=""
 
 # ── 章节校验 ──
 # 使用项目目录下的临时文件，避免 /tmp 在沙箱中不可写导致静默跳过
-TMPFILE="$PROJECT_DIR/.qoder/.doc-guard-issues.tmp"
+TMPFILE="$PROJECT_DIR/$MAGIC_DIR/.doc-guard-issues.tmp"
 : > "$TMPFILE"
 trap "rm -f $TMPFILE" EXIT
 # SearchReplace 只传 patch → 跳过章节/子章节校验（无法从 patch 推断完整文档结构）
@@ -163,7 +174,7 @@ $ISSUES" >&2
 fi
 
 # ── 自动更新 index.md ──
-if echo "$file_path" | grep -q '\.qoder/plans/'; then
+if echo "$file_path" | grep -q '$MAGIC_DIR/plans/'; then
   if [ -x "$PROJECT_DIR/scripts/gen-plan-index.sh" ]; then
     "$PROJECT_DIR/scripts/gen-plan-index.sh" 2>/dev/null || true
   fi
