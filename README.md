@@ -27,50 +27,7 @@ npx add-coder init
 | 审计靠开发者自觉记录 | **MCP 审计工具链** 自动记录每次操作，系统闸门强制检查 |
 | 无关联性 | 审计事件天然关联 Plan → Spec → Task → Step → Tool Call，形成完整证据链 |
 
-### ② 门禁驱动，而非自由对话
-
-传统 AI coding 是「你说我做」，质量完全依赖 LLM 当天状态。add-coder 在架构中嵌入了 **双质量闸门**：
-
-```
-DPS (Design-Process Symmetry)  — 设计/实现/文档/审计 四维各 25%，< 85% BLOCKED
-RAHS (Runtime Architecture Health Score) — 运行时架构健康度，< 90% BLOCKED
-```
-
-这不是「建议」，是**架构阻断** — 不通过闸门的 Step 无法推进到下一步。
-
-### ③ 跨轮记忆，而非每轮失忆
-
-AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达成的约定，下轮对话全部遗忘。add-coder 在架构层面解决：
-
-- **Handoff 文档** — 每轮 Session 结束时自动生成结构化交接文档，下轮会话自动加载
-- **Plan 索引** — 所有 Plan 通过 `index.md` 集中索引，支持模糊匹配快速定位
-- **DevLog 时序记录** — 每一步操作写入 `{YYYY-MM}/{DD}/` 时间轴，可回溯任意历史状态
-
-### ④ Policy-Update-Loop：治理自我进化(脚手架不包含此架构能力,接下来会给到DEMO仓库让大家更好理解Policy-Update-Loop和Report体系)
-
-不是静态模板，而是**闭环自适应系统**：
-
-```
-执行 → 审计 → 边界报告 → 规则调整 → 下一轮执行
-```
-
-运行时产生的 Report 会反过来更新 governance rules，实现治理策略的持续进化。
-
-### ⑤ 多 IDE 的 Hook 即治理层
-
-hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中的 17 个确定性治理卡位**。每个 IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）有各自的 hook 机制，但治理逻辑统一——架构一致，适配层不同。
-
-| IDE | 治理文档 | 覆盖事件 | Hook 配置 |
-|---|---|---|---|
-| Claude Code | [ADD-governance-claude-code.md](./ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
-| Qoder CN | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
-| VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
-| Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
-| Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 (原生) / 14 (导入 Claude) | `.codex/hooks.json` |
-
-> 实施 Plan: [add-coder-hook-full-alignment-plan-v1](./.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | 触发源: [GitHub Issue #6](https://github.com/xiaomingming92/add-coder/issues/6)
-
-### ⑥ Prompt Cache 原生友好 — 月费 ¥218，节省 98%
+### ② Prompt Cache 原生友好 — 月费 ¥218，节省 98%
 
 ADD 范式不仅是方法论——它的结构化 Step 流程天然适配 DeepSeek Prompt Cache 的前缀匹配机制，带来极致的 Token 成本效率。**实测数据验证**：
 
@@ -88,6 +45,49 @@ ADD 范式 + Qoder:     cache 命中率 99.31%, 每次请求 MISS 仅 2,426 toke
 ```
 
 > 📊 [完整分析报告](./docs/ADD范式缓存命中分析报告.md) — 含 4 张 Mermaid 图表、17 天逐日数据、跨 IDE 对比与成本建模。
+
+### ③ 门禁驱动，而非自由对话
+
+传统 AI coding 是「你说我做」，质量完全依赖 LLM 当天状态。add-coder 在架构中嵌入了 **双质量闸门**：
+
+```
+DPS (Design-Process Symmetry)  — 设计/实现/文档/审计 四维各 25%，< 85% BLOCKED
+RAHS (Runtime Architecture Health Score) — 运行时架构健康度，< 90% BLOCKED
+```
+
+这不是「建议」，是**架构阻断** — 不通过闸门的 Step 无法推进到下一步。
+
+### ④ 跨轮记忆，而非每轮失忆
+
+AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达成的约定，下轮对话全部遗忘。add-coder 在架构层面解决：
+
+- **Handoff 文档** — 每轮 Session 结束时自动生成结构化交接文档，下轮会话自动加载
+- **Plan 索引** — 所有 Plan 通过 `index.md` 集中索引，支持模糊匹配快速定位
+- **DevLog 时序记录** — 每一步操作写入 `{YYYY-MM}/{DD}/` 时间轴，可回溯任意历史状态
+
+### ⑤ Policy-Update-Loop：治理自我进化(脚手架不包含此架构能力,接下来会给到DEMO仓库让大家更好理解Policy-Update-Loop和Report体系)
+
+不是静态模板，而是**闭环自适应系统**：
+
+```
+执行 → 审计 → 边界报告 → 规则调整 → 下一轮执行
+```
+
+运行时产生的 Report 会反过来更新 governance rules，实现治理策略的持续进化。
+
+### ⑥ 多 IDE 的 Hook 即治理层
+
+hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中的 17 个确定性治理卡位**。每个 IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）有各自的 hook 机制，但治理逻辑统一——架构一致，适配层不同。
+
+| IDE | 治理文档 | 覆盖事件 | Hook 配置 |
+|---|---|---|---|
+| Claude Code | [ADD-governance-claude-code.md](./ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
+| Qoder CN | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
+| Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
+| Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 (原生) / 14 (导入 Claude) | `.codex/hooks.json` |
+
+> 实施 Plan: [add-coder-hook-full-alignment-plan-v1](./.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | 触发源: [GitHub Issue #6](https://github.com/xiaomingming92/add-coder/issues/6)
 
 ---
 
@@ -282,7 +282,26 @@ Traditional AI development: Chat → Generate code → Dig through chat history 
 | Auditing relies on developer discipline | The **MCP audit toolchain** automatically records every operation; system gateways enforce checks |
 | No traceability | Audit events are naturally linked: Plan → Spec → Task → Step → Tool Call, forming a complete evidence chain |
 
-### ② Gateway-Driven, Not Free-Form Conversation
+### ② Prompt Cache Native — ¥218/mo, 98% Savings
+
+The ADD paradigm isn't just methodology — its structured Step workflow naturally aligns with DeepSeek's Prompt Cache prefix-matching mechanism, delivering extreme token cost efficiency. **Real-world billing validation**:
+
+| Metric | Value |
+|--------|-------|
+| July actual DeepSeek bill | **¥218.35** |
+| Theoretical cost without cache | ¥11,100 |
+| Cache hit rate | **99.31%** |
+| Cache hit vs miss price gap | **120x** (¥0.025/M vs ¥3/M) |
+| Total cost savings | **98.1%** |
+
+```
+Traditional IDE free chat:  cache hit rate 85–91%, ~5,000 MISS tokens/req
+ADD paradigm + Qoder:       cache hit rate 99.31%, only 2,426 MISS tokens/req
+```
+
+> 📊 [Full analysis report](./docs/ADD范式缓存命中分析报告.md) — 4 Mermaid diagrams, 17-day daily data, cross-IDE comparison, and cost modeling.
+
+### ③ Gateway-Driven, Not Free-Form Conversation
 
 Traditional AI coding is "you say, I do" — quality depends entirely on the LLM's state that day. add-coder embeds **dual quality gateways** into the architecture:
 
@@ -293,7 +312,7 @@ RAHS (Runtime Architecture Health Score) — Runtime architecture health, < 90% 
 
 These are not "suggestions" — they are **architectural blocks**. A Step cannot advance without passing its gateway.
 
-### ③ Cross-Session Memory, Not Per-Session Amnesia
+### ④ Cross-Session Memory, Not Per-Session Amnesia
 
 The fatal flaw of AI conversations: architectural decisions from last session, bugs fixed, agreements reached — all forgotten in the next conversation. add-coder solves this at the architecture level:
 
@@ -301,7 +320,7 @@ The fatal flaw of AI conversations: architectural decisions from last session, b
 - **Plan Index** — All Plans are centrally indexed via `index.md`, supporting fuzzy-match quick lookup
 - **DevLog Timeline** — Every operation is written to the `{YYYY-MM}/{DD}/` timeline, enabling full historical state traceability
 
-### ④ Policy-Update-Loop: Self-Evolving Governance (the scaffold itself does not include this architectural capability; a DEMO repo will be provided next to better illustrate the Policy-Update-Loop and Report system)
+### ⑤ Policy-Update-Loop: Self-Evolving Governance (the scaffold itself does not include this architectural capability; a DEMO repo will be provided next to better illustrate the Policy-Update-Loop and Report system)
 
 Not a static template, but a **closed-loop adaptive system**:
 
@@ -311,7 +330,7 @@ Execute → Audit → Boundary Report → Rule Adjustment → Next Execution
 
 Runtime-generated Reports feed back into governance rules, enabling continuous evolution of governance strategies.
 
-### ⑤ Multi-IDE Hooks as the Governance Layer
+### ⑥ Multi-IDE Hooks as the Governance Layer
 
 Hooks are not "notification push" — they are the **IDE runtime interception layer**:
 
@@ -331,25 +350,6 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 | VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
 | Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
 | Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
-
-### ⑥ Prompt Cache Native — ¥218/mo, 98% Savings
-
-The ADD paradigm isn't just methodology — its structured Step workflow naturally aligns with DeepSeek's Prompt Cache prefix-matching mechanism, delivering extreme token cost efficiency. **Real-world billing validation**:
-
-| Metric | Value |
-|--------|-------|
-| July actual DeepSeek bill | **¥218.35** |
-| Theoretical cost without cache | ¥11,100 |
-| Cache hit rate | **99.31%** |
-| Cache hit vs miss price gap | **120x** (¥0.025/M vs ¥3/M) |
-| Total cost savings | **98.1%** |
-
-```
-Traditional IDE free chat:  cache hit rate 85–91%, ~5,000 MISS tokens/req
-ADD paradigm + Qoder:       cache hit rate 99.31%, only 2,426 MISS tokens/req
-```
-
-> 📊 [Full analysis report](./docs/ADD范式缓存命中分析报告.md) — 4 Mermaid diagrams, 17-day daily data, cross-IDE comparison, and cost modeling.
 
 ---
 
