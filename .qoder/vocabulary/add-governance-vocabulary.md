@@ -17,7 +17,7 @@
 | 触发词 | LLM 默认操作 | 优先级 |
 |--------|-------------|--------|
 | `PRD` / `prd` / `需求文档` / `产品需求` | ①新建：读 `prd-standard-template.md` → 写 `docs/*/knowledge/00-需求/`；②增量：读 `prd-incremental-template.md` → 在已有PRD基础上追加/修改 | 🟡 P1 |
-| `Plan` / `plan` | **二段式**: ①先读 `.qoder/plans/index.md` 按 planName 匹配路径（P0 优先）；②无匹配才全局 glob 搜索 `*-plan-v*.md`。**禁止跳过 index.md 直接 glob** | 🔴 P0 |
+| `Plan` / `plan` | **二段式**: ①先读 `.qoder/plans/index.md` 按 planName 匹配路径（P0 优先）；②无匹配才全局 glob 搜索 `*-plan-v*.md`。**禁止跳过 index.md 直接 glob**。**模板选择**：≤3 文件、无新模块/架构 → `simple-plan-template.md`（Tasks+Handoff 融合在 Plan 体内，无需独立 spec/handoff 文件）；多模块/跨系统/含架构 → `standard-plan-template.md` | 🔴 P0 |
 | `Spec` / `spec` | 查 `.qoder/specs/{name}/spec.md` | 🔴 P0 |
 | `Tasks` / `tasks` | 查 `.qoder/specs/{name}/tasks.md` | 🟡 P1 |
 | `Checklist` / `checklist` | 查 `.qoder/specs/{name}/checklist.md` | 🟡 P1 |
