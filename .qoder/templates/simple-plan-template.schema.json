@@ -7,6 +7,12 @@
             "required": true
         },
         {
+            "id": "hitl",
+            "heading": "## HITL 计划总览",
+            "required": true,
+            "note": "AI 必须先在此表中列出实际完整文件路径和方案决策，等待人类拍板后再执行。禁止偷懒写'等 N 个文件'。"
+        },
+        {
             "id": "changes",
             "heading": "## 二、变更范围",
             "required": true
