@@ -28,6 +28,8 @@ program
 program
     .command("sync")
     .description("增量同步缺失文件")
+    .option("--adapter <type>", "目标 IDE: claude | qoder | vscode")
+    .option("-i, --interactive", "交互式选择要同步的文件")
     .action(syncCommand);
 
 program
