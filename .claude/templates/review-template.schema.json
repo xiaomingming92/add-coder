@@ -7,6 +7,12 @@
             "required": true
         },
         {
+            "id": "hitl",
+            "heading": "## HITL 发现总览",
+            "required": true,
+            "note": "AI 必须在此表中列出所有发现，提交人类一次性审核。禁止边发现边修改。"
+        },
+        {
             "id": "problem",
             "heading": "## 1. 问题复现",
             "required": true

@@ -7,6 +7,12 @@
             "required": true
         },
         {
+            "id": "hitl",
+            "heading": "## HITL 发现总览",
+            "required": true,
+            "note": "AI 必须在此表中列出所有检查维度的发现，提交人类一次性审核。禁止逐条边查边改。"
+        },
+        {
             "id": "contract",
             "heading": "## 1. 跨仓库格式契约",
             "required": true
