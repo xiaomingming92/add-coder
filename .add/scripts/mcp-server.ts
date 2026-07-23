@@ -2847,11 +2847,11 @@ server.registerTool(
       let specDirName = ""
       let specContent = ""
       let tasksContent = ""
-      // 从 Plan 绑定或 §7 提取
-      const specRef = planContent.match(/Spec:\s*\.(qoder|claude|add|vscode)\/specs\/([^/\s]+)/)
+      // 从 Plan 绑定或 §7 提取（兼容 Spec: / Spec | / `path` 三种格式）
+      const specRef = planContent.match(/Spec[:|\s`]+\.?(qoder|claude|add|vscode)\/specs\/([^/`\s]+)/)
       if (specRef) specDirName = specRef[2]
       if (!specDirName) {
-        const taskRef = planContent.match(/Tasks:\s*\.(qoder|claude|add|vscode)\/specs\/([^/\s]+)/)
+        const taskRef = planContent.match(/Tasks[:|\s`]+\.?(qoder|claude|add|vscode)\/specs\/([^/`\s]+)/)
         if (taskRef) specDirName = taskRef[2]
       }
       if (!specDirName) {
