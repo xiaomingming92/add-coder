@@ -204,7 +204,7 @@ Task N ──→ Task M（说明依赖原因）
 **动作**：
 1. **收敛判断**：全部 `[T]` 项通过 + `[R]` 清单已生成 → 功能收敛
 2. **Handoff 更新**：更新 Handoff 的 §7（实际产出与偏离）、§8（验证结果）、§9（后置确认）
-3. **Step 0 第二部分**：回架构文档做最终校准——验证 `docs/knowledge/01-架构/` 下相关文档已反映变更
+3. **Step 0 第二部分**：回架构文档做最终校准——验证 `{{docsDir}}/knowledge/01-架构/` 下相关文档已反映变更
 4. **ADD-7 回查**：`query_audit_logs` 确认全部 `record_dev_operation` 记录已落库，按 action/targetId 交叉验证
 
 **产出**：

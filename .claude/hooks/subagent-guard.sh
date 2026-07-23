@@ -1,4 +1,12 @@
 #!/bin/bash
+###
+ # @Author       : xiaomingming wujixmm@gmail.com
+ # @Date         : 2026-07-08 18:03:52
+ # @LastEditors  : xiaomingming wujixmm@gmail.com
+ # @LastEditTime : 2026-07-17 18:04:04
+ # @FilePath     : /add-coder/templates/adapters/claude/hooks/subagent-guard.sh
+ # @Description  : 
+### 
 # SubagentStart — 子代理 ADD 上下文注入（Claude Code 适配）
 # 治理卡位 #10: ADD上下文注入子agent + 审计初始化
 set -euo pipefail
@@ -25,19 +33,4 @@ EOF
   fi
 fi
 
-exit 0
-#!/bin/bash
-# SubagentStart/SubagentStop — 子代理门禁（Claude Code 适配）
-set -euo pipefail
-
-HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-SHARED_LIB="$HOOK_DIR/../../shared/hooks-lib/common.sh"
-[ -f "$SHARED_LIB" ] && source "$SHARED_LIB"
-
-input=$(parse_input)
-event=$(echo "$input" | jq -r '.hook_event_name // empty')
-
-if [ "$event" = "SubagentStart" ]; then
-  echo "[ADD SubagentGuard] 子代理启动，请确认其遵循 ADD 规范。"
-fi
 exit 0
