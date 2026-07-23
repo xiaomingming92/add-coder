@@ -23,7 +23,7 @@ export async function loadConfig(
     const pkgPath = join(projectRoot, "package.json");
     if (existsSync(pkgPath)) {
         try {
-            const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+            const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { name?: string };
             if (pkg.name && !config.projectName) {
                 config.projectName = pkg.name;
             }
@@ -33,8 +33,10 @@ export async function loadConfig(
     // 2. 配置文件（add-coder.config.ts）
     if (configPath && existsSync(configPath)) {
         try {
-            const userConfig = await import(configPath);
-            config = { ...config, ...userConfig.default };
+            const userConfig = (await import(configPath)) as { default?: Partial<AddCoderConfig> };
+            if (userConfig.default) {
+                config = { ...config, ...userConfig.default };
+            }
         } catch { /* ignore */ }
     }
 

@@ -3,7 +3,15 @@ import tseslint from "typescript-eslint";
 
 export default [
     eslint.configs.recommended,
-    ...tseslint.configs.recommended,
+    ...tseslint.configs.recommendedTypeChecked,
+    {
+        languageOptions: {
+            parserOptions: {
+                project: "./tsconfig.json",
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+    },
     {
         ignores: [
             "dist/**",

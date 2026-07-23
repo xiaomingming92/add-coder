@@ -4,7 +4,7 @@
  * FilePath     : /add-coder/src/lib/select-files.ts
  * Description  : 交互式文件选择器 — 清单勾选 + git-diff 风格改动计数
  */
-import { createInterface } from "readline";
+import { createInterface, emitKeypressEvents } from "readline";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
@@ -75,7 +75,9 @@ export async function selectFiles(
     // 隐藏光标
     process.stdout.write("\x1b[?25l");
 
+    emitKeypressEvents(process.stdin);
     const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const input = process.stdin;
 
     function draw() {
         // 清屏并移到顶部
@@ -86,7 +88,7 @@ export async function selectFiles(
     draw();
 
     return new Promise((resolve) => {
-        rl.input?.on("keypress", (_char: string | undefined, key: { name: string }) => {
+        input.on("keypress", (_char: string | undefined, key: { name: string }) => {
             if (!key) return;
 
             if (key.name === "up") {

@@ -22,7 +22,8 @@ const PLACEHOLDERS: Record<string, keyof AddCoderConfig> = {
 export function render(content: string, config: AddCoderConfig): string {
     let result = content;
     for (const [placeholder, key] of Object.entries(PLACEHOLDERS)) {
-        result = result.replaceAll(placeholder, String(config[key]));
+        const value = config[key] as string;
+        result = result.replaceAll(placeholder, value);
     }
     return result;
 }

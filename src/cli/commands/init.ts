@@ -25,11 +25,38 @@ import { createConnection } from "net";
 
 interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; }
 interface DbChoice { engine: "postgresql" | "sqlite" | "manual"; container?: "podman" | "docker" | "manual"; user?: string; password?: string; port?: string; reuseExisting?: boolean; }
+interface PackageJsonShape { scripts?: Record<string, string> }
 
 const ADAPTER_RENDERERS: Record<string, (config: AddCoderConfig, targetDir: string, dryRun: boolean, magicDir: string) => Map<string, string>> = {
     claude: renderClaude, qoder: renderQoder, vscode: renderVSCode, trae: renderTrae, codex: renderCodex,
 };
 const MAGIC_DIR_MAP: Record<string, string> = { claude: ".claude", qoder: ".qoder", vscode: ".vscode", trae: ".trae", codex: ".codex" };
+
+// ════════════════════ 上下文 — 全流程共享状态 ════════════════════
+
+interface InitContext {
+    projectRoot: string;
+    options: InitOptions;
+    target: Adapter;
+    magicDir: string;
+    config: AddCoderConfig;
+    db: DbChoice;
+}
+
+// ════════════════════ 主流程 ════════════════════
+
+/**
+ * @description: ADD 项目初始化主命令
+ *   prepare → writeComposeEnv → renderAndWrite → deployDatabase → deployDocs → finalize
+ */
+export async function initCommand(options: InitOptions) {
+    const ctx = await prepare(options);
+    writeComposeEnv(ctx);
+    const result = await renderAndWrite(ctx);
+    await deployDatabase(ctx);
+    deployDocs(ctx);
+    finalize(ctx, result);
+}
 
 // ════════════════════ helpers ════════════════════
 
@@ -46,7 +73,7 @@ async function resolveAdapter(projectRoot: string, specified?: string): Promise<
         return specified as Adapter;
     }
     const detected = detectIDE(projectRoot);
-    if (detected !== "auto") { console.log(`检测到 IDE: ${detected} (自动)`); return detected as Adapter; }
+    if (detected !== "auto") { console.log(`检测到 IDE: ${detected} (自动)`); return detected; }
     console.log("未检测到 IDE 环境");
     const a = (await ask("请选择目标 IDE: [1] Qoder  [2] Claude  [3] VS Code → ")).trim();
     if (a === "1" || a === "qoder") return "qoder";
@@ -220,35 +247,22 @@ function injectDbExportScript(projectRoot: string, dryRun: boolean): void {
     const pkgPath = resolve(projectRoot, "package.json");
     if (!existsSync(pkgPath)) return;
     if (dryRun) { console.log("[dry-run] 将注入 db:export"); return; }
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as PackageJsonShape;
     if (!pkg.scripts) pkg.scripts = {};
     if (!pkg.scripts["db:export"]) { pkg.scripts["db:export"] = "npx tsx scripts/export-db.ts"; writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf-8"); console.log("已在 package.json 注入 db:export"); }
 }
 
-// ════════════════════ 主流程 ════════════════════
+// ════════════════════ 阶段: prepare ════════════════════
 
-/**
- * @description: ADD 项目初始化主命令，完成 IDE 检测 → 数据库引擎选择 → 凭据收集 → 模板渲染 → 写入 → 数据库部署 → 文档落地 → 依赖安装
- * @param {InitOptions} options - 初始化选项
- * @param {string} [options.adapter] - 手动指定 IDE 适配器: claude | qoder | vscode | auto
- * @param {string} [options.config] - 指定配置文件路径
- * @param {boolean} [options.force] - 强制模式，跳过所有交互
- * @param {boolean} [options.dryRun] - 预览模式，不实际写入文件
- * @return {Promise<void>}
- */
-export async function initCommand(options: InitOptions) {
+async function prepare(options: InitOptions): Promise<InitContext> {
     const projectRoot = process.cwd();
-
-    // ① IDE 检测
     const target = await resolveAdapter(projectRoot, options.adapter);
     const magicDir = MAGIC_DIR_MAP[target];
 
-    // ② 加载配置
     const config = await loadConfig(projectRoot, options.config, { force: options.force });
     config.projectRoot = projectRoot;
     config.magicDir = magicDir;
 
-    // ③ 数据库引擎 + 容器 + 凭据
     const db = await resolveDbEngine(!!options.force);
     if (db.engine === "postgresql") {
         db.container = await resolveContainer(!!options.force);
@@ -257,34 +271,50 @@ export async function initCommand(options: InitOptions) {
         }
     }
 
-    // ── 阶段 A：写 compose / env（复用已有实例只写 env）──
-    if (db.engine === "postgresql" && db.container && db.container !== "manual") {
-        if (!db.reuseExisting) {
-            const composeName = db.container === "podman" ? "podman-compose.add.yml" : "docker-compose.add.yml";
-            const composePath = resolve(projectRoot, composeName);
-            if (!options.dryRun && (!existsSync(composePath) || options.force)) {
-                writeFileSync(composePath, composeContent(config.projectName || "add-project"), "utf-8");
-                console.log(`已创建 ${composeName}`);
-            }
-        }
-        const devEnvPath = resolve(projectRoot, ".env.development");
-        if (!options.dryRun && existsSync(devEnvPath)) {
-            const existing = readFileSync(devEnvPath, "utf-8");
-            if (!/^DATABASE_USER=/m.test(existing)) {
-                writeFileSync(devEnvPath, existing + `\nDATABASE_USER=${db.user || "admin"}\nDATABASE_PASSWORD=${db.password || "change-me-in-production"}\nDATABASE_PORT=${db.port || "5433"}\nPROJECT_NAME=${config.projectName || "add-project"}\n`, "utf-8");
-                console.log("已将凭据追加到 .env.development");
-            }
+    return { projectRoot, options, target, magicDir, config, db };
+}
+
+// ════════════════════ 阶段 A: compose / env ════════════════════
+
+function writeComposeEnv(ctx: InitContext): void {
+    const { projectRoot, options, config, db } = ctx;
+    if (db.engine !== "postgresql" || !db.container || db.container === "manual") return;
+
+    if (!db.reuseExisting) {
+        const composeName = db.container === "podman" ? "podman-compose.add.yml" : "docker-compose.add.yml";
+        const composePath = resolve(projectRoot, composeName);
+        if (!options.dryRun && (!existsSync(composePath) || options.force)) {
+            writeFileSync(composePath, composeContent(config.projectName || "add-project"), "utf-8");
+            console.log(`已创建 ${composeName}`);
         }
     }
 
-    // ── 阶段 B：模板渲染 + 写入（db-ensure.sh 此时落盘）──
-    const coreFiles = renderCore(config, !!options.dryRun);
+    const devEnvPath = resolve(projectRoot, ".env.development");
+    if (!options.dryRun && existsSync(devEnvPath)) {
+        const existing = readFileSync(devEnvPath, "utf-8");
+        if (!/^DATABASE_USER=/m.test(existing)) {
+            writeFileSync(devEnvPath, existing +
+                `\nDATABASE_USER=${db.user || "admin"}\n` +
+                `DATABASE_PASSWORD=${db.password || "change-me-in-production"}\n` +
+                `DATABASE_PORT=${db.port || "5433"}\n` +
+                `PROJECT_NAME=${config.projectName || "add-project"}\n`, "utf-8");
+            console.log("已将凭据追加到 .env.development");
+        }
+    }
+}
+
+// ════════════════════ 阶段 B: 模板渲染 + 写入 ════════════════════
+
+async function renderAndWrite(ctx: InitContext) {
+    const { projectRoot, options, magicDir, config, target } = ctx;
+    const dry = !!options.dryRun;
+
+    const coreFiles = renderCore(config, dry);
     console.log(`Core 模板: ${coreFiles.size} 文件`);
 
-    const CORE_TARGETS = [".add", magicDir];
     const allFiles = new Map<string, string>();
     for (const [relPath, content] of coreFiles) {
-        for (const t of CORE_TARGETS) {
+        for (const t of [".add", magicDir]) {
             const targetPath = relPath.replace(/^\.add/, t);
             if (!allFiles.has(targetPath)) allFiles.set(targetPath, content);
         }
@@ -294,96 +324,103 @@ export async function initCommand(options: InitOptions) {
     for (const adapter of resolved) {
         const renderFn = ADAPTER_RENDERERS[adapter];
         if (renderFn) {
-            const adapterFiles = renderFn(config, projectRoot, !!options.dryRun, magicDir);
+            const adapterFiles = renderFn(config, projectRoot, dry, magicDir);
             for (const [p, c] of adapterFiles) allFiles.set(p, c);
             console.log(`${adapter} adapter: ${adapterFiles.size} 文件`);
         }
     }
 
-    // VS Code / Trae Agent Host 同步产出完整 .claude/（含 settings.json）
-    // VS Code Copilot 同时加载 .github/hooks/*.json + .claude/settings.json
-    // Trae 支持导入 Claude Code Hook 配置（.claude/settings.json）
-    // 脚本已内置幂等保护（tpl-injected 去重 / mark_dev_action 防双写），多触发无功能影响
     if (resolved.includes("vscode") || resolved.includes("trae") || resolved.includes("codex")) {
-        const claudeFiles = renderClaude(config, projectRoot, !!options.dryRun, ".claude");
+        const claudeFiles = renderClaude(config, projectRoot, dry, ".claude");
         for (const [p, c] of claudeFiles) allFiles.set(p, c);
         console.log(`claude adapter (via Agent Host): ${claudeFiles.size} 文件`);
     }
 
-    const result = await writeFiles(projectRoot, allFiles, { force: options.force, dryRun: options.dryRun });
+    return await writeFiles(projectRoot, allFiles, { force: options.force, dryRun: options.dryRun });
+}
 
-    // ── 阶段 C：数据库部署 ──
+// ════════════════════ 阶段 C: 数据库部署 ════════════════════
+
+async function deployDatabase(ctx: InitContext): Promise<void> {
+    const { projectRoot, options, magicDir, config, db } = ctx;
+    if (options.dryRun) return;
+
     if (db.engine === "postgresql" && db.container && db.container !== "manual") {
-        if (!options.dryRun) {
-            const dbScript = resolve(projectRoot, magicDir, "scripts", "db-ensure.sh");
-            const dbEnv = { ...process.env, DATABASE_USER: db.user, DATABASE_PASSWORD: db.password, DATABASE_PORT: db.port, PROJECT_NAME: config.projectName };
-            const mode = db.reuseExisting ? "manual" : db.container;
-            console.log(db.reuseExisting ? "复用已有 PostgreSQL ..." : `部署数据库 (${db.container}) ...`);
-            spawnSync("bash", [dbScript, "postgresql", mode, "--migrate"], { cwd: projectRoot, stdio: "inherit", env: dbEnv });
-            try {
-                await injectPrisma(projectRoot, { force: !!options.force });
-            } catch (e) { console.log(`Prisma 同步失败: ${e instanceof Error ? e.message : String(e)}`); }
-        }
+        const dbScript = resolve(projectRoot, magicDir, "scripts", "db-ensure.sh");
+        const dbEnv = { ...process.env, DATABASE_USER: db.user, DATABASE_PASSWORD: db.password, DATABASE_PORT: db.port, PROJECT_NAME: config.projectName };
+        const mode = db.reuseExisting ? "manual" : db.container;
+        console.log(db.reuseExisting ? "复用已有 PostgreSQL ..." : `部署数据库 (${db.container}) ...`);
+        spawnSync("bash", [dbScript, "postgresql", mode, "--migrate"], { cwd: projectRoot, stdio: "inherit", env: dbEnv });
+        try {
+            await injectPrisma(projectRoot, { force: !!options.force });
+        } catch (e) { console.log(`Prisma 同步失败: ${e instanceof Error ? e.message : String(e)}`); }
     }
 
     if (db.engine === "postgresql" && db.container === "manual") {
-        if (!options.dryRun) {
-            const dbScript = resolve(projectRoot, magicDir, "scripts", "db-ensure.sh");
-            if (existsSync(dbScript)) spawnSync("bash", [dbScript, "postgresql", "manual"], { cwd: projectRoot, stdio: "inherit" });
-            console.log(["", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "ADD 模板已就位。在完成以下操作前 MCP 不可用：", "", "1. 编辑 .env.development，配置 DATABASE_URL", "2. 重新运行 add-coder init 完成迁移", "", `⚠️  非 PG 数据库需编辑 ${magicDir}/scripts/mcp-server.ts 手动配 Prisma 7 adapter`, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"].join("\n"));
-        }
+        const dbScript = resolve(projectRoot, magicDir, "scripts", "db-ensure.sh");
+        if (existsSync(dbScript)) spawnSync("bash", [dbScript, "postgresql", "manual"], { cwd: projectRoot, stdio: "inherit" });
+        console.log(["", "━".repeat(30), "ADD 模板已就位。在完成以下操作前 MCP 不可用：", "",
+            "1. 编辑 .env.development，配置 DATABASE_URL", "2. 重新运行 add-coder init 完成迁移", "",
+            `⚠️  非 PG 数据库需编辑 ${magicDir}/scripts/mcp-server.ts 手动配 Prisma 7 adapter`, "━".repeat(30)].join("\n"));
     }
 
     if (db.engine === "manual") {
-        if (!options.dryRun) {
-            console.log(["", "Prisma 支持的 datasource: postgresql / mysql / sqlite / sqlserver / cockroachdb", "自行 prisma init + 编辑 .env.development，重新 run init 完成迁移。", "", `⚠️ Prisma 7 adapter 需手动配 → ${magicDir}/scripts/mcp-server.ts`].join("\n"));
-        }
+        console.log(["", "Prisma 支持的 datasource: postgresql / mysql / sqlite / sqlserver / cockroachdb",
+            "自行 prisma init + 编辑 .env.development，重新 run init 完成迁移。", "",
+            `⚠️ Prisma 7 adapter 需手动配 → ${magicDir}/scripts/mcp-server.ts`].join("\n"));
     }
 
     if (db.engine === "sqlite") {
-        writeSqliteExportScript(projectRoot, !!options.dryRun);
-        injectDbExportScript(projectRoot, !!options.dryRun);
-        if (!options.dryRun) {
-            try {
-                await injectPrisma(projectRoot, { force: !!options.force, datasource: "sqlite" });
-            } catch (e) { console.log(`SQLite 同步失败: ${e instanceof Error ? e.message : String(e)}`); }
+        writeSqliteExportScript(projectRoot, false);
+        injectDbExportScript(projectRoot, false);
+        try {
+            await injectPrisma(projectRoot, { force: !!options.force, datasource: "sqlite" });
+        } catch (e) { console.log(`SQLite 同步失败: ${e instanceof Error ? e.message : String(e)}`); }
+    }
+}
+
+// ════════════════════ 阶段 D: 文档落地 ════════════════════
+
+function deployDocs(ctx: InitContext): void {
+    const { projectRoot, options, config } = ctx;
+    if (options.dryRun) return;
+
+    const pn = config.projectName || "add-project";
+    const docsBase = resolve(projectRoot, "docs", pn, "knowledge");
+    const groundingSrc = resolve(import.meta.dirname, "../templates/core/templates");
+    for (const d of ["00-需求", "01-架构", "02-规范"]) {
+        const srcDir = resolve(groundingSrc, d);
+        const destDir = resolve(docsBase, d);
+        if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true });
+        if (!existsSync(srcDir)) continue;
+        for (const f of readdirSync(srcDir)) {
+            const src = resolve(srcDir, f);
+            const dest = resolve(destDir, f);
+            if (existsSync(dest)) continue;
+            try { copyFileSync(src, dest); } catch { /* skip */ }
         }
     }
+}
 
-    // ── 阶段 D：部署 docs 项目文档（模板 grounding 文档）──
-    if (!options.dryRun) {
-        const pn = config.projectName || "add-project";
-        const docsBase = resolve(projectRoot, "docs", pn, "knowledge");
-        const groundingSrc = resolve(import.meta.dirname!, "../templates/core/templates");
-        for (const d of ["00-需求", "01-架构", "02-规范"]) {
-            const srcDir = resolve(groundingSrc, d);
-            const destDir = resolve(docsBase, d);
-            if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true });
-            if (!existsSync(srcDir)) continue;
-            for (const f of readdirSync(srcDir)) {
-                const src = resolve(srcDir, f);
-                const dest = resolve(destDir, f);
-                if (existsSync(dest)) continue; // 不覆盖已有文件
-                try { copyFileSync(src, dest); } catch { /* skip */ }
-            }
-        }
-    }
+// ════════════════════ 阶段 E: 摘要 + 依赖安装 ════════════════════
 
-    // ── 阶段 E：摘要 ──
+function finalize(ctx: InitContext, result: { created: number; skipped: number; overwritten: number }): void {
+    const { projectRoot, options, db } = ctx;
+
     console.log(`\n完成: 新建 ${result.created}, 跳过 ${result.skipped}, 覆盖 ${result.overwritten}`);
 
-    if (!options.dryRun) {
-        if (db.engine === "sqlite") console.log("数据备份: npm run db:export → data/exports/");
+    if (options.dryRun) return;
 
-        const pkg = JSON.parse(readFileSync(resolve(import.meta.dirname!, "../package.json"), "utf-8"));
-        const peerNames = Object.keys(pkg.peerDependencies || {});
-        if (peerNames.length > 0) {
-            console.log(`\n安装 peer 依赖 (${peerNames.join(" ")}) ...`);
-            const pm = detectPm(projectRoot);
-            spawnSync(pm, pm === "pnpm" ? ["add", ...peerNames] : ["install", ...peerNames], { cwd: projectRoot, stdio: "inherit" });
-        }
-        if (db.engine !== "manual" && (db.engine !== "postgresql" || db.container !== "manual")) {
-            console.log("提示: 重启 IDE 以加载 hook 配置");
-        }
+    if (db.engine === "sqlite") console.log("数据备份: npm run db:export → data/exports/");
+
+    const pkg = JSON.parse(readFileSync(resolve(import.meta.dirname, "../package.json"), "utf-8")) as { peerDependencies?: Record<string, string> };
+    const peerNames = Object.keys(pkg.peerDependencies || {});
+    if (peerNames.length > 0) {
+        console.log(`\n安装 peer 依赖 (${peerNames.join(" ")}) ...`);
+        const pm = detectPm(projectRoot);
+        spawnSync(pm, pm === "pnpm" ? ["add", ...peerNames] : ["install", ...peerNames], { cwd: projectRoot, stdio: "inherit" });
+    }
+    if (db.engine !== "manual" && (db.engine !== "postgresql" || db.container !== "manual")) {
+        console.log("提示: 重启 IDE 以加载 hook 配置");
     }
 }
