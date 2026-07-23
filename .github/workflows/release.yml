@@ -13,9 +13,8 @@ on:
     tags: ["v*"]
 
 jobs:
-  # ---- workflow_dispatch 路径：在 CI 内完成 bump + commit + tag + publish ----
+  # workflow_dispatch 一站式：bump version → commit → tag → publish → release
   bump-and-publish:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: npm-publish
     permissions:
@@ -71,7 +70,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-  # ---- push tags 路径：tag 已存在，直接 publish ----
+  # push tags 路径：本地手动打 tag 推送 / 同 tag 重新发布
+  # bump-and-publish 已创建 release 时会自动跳过
   publish-only:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -83,21 +83,40 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check if release already exists
+        id: check
+        run: |
+          if gh release view "${{ github.ref_name }}" > /dev/null 2>&1; then
+            echo "skipped=true" >> $GITHUB_OUTPUT
+            echo "⏭️  Release ${{ github.ref_name }} 已存在，跳过（由 bump-and-publish 创建）"
+          else
+            echo "skipped=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - uses: pnpm/action-setup@v4
+        if: steps.check.outputs.skipped != 'true'
 
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.skipped != 'true'
         with:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
           cache: pnpm
 
       - run: pnpm install
+        if: steps.check.outputs.skipped != 'true'
       - run: pnpm build
+        if: steps.check.outputs.skipped != 'true'
       - run: pnpm lint --max-warnings 0
+        if: steps.check.outputs.skipped != 'true'
 
       - run: pnpm publish --no-git-checks --tag latest
+        if: steps.check.outputs.skipped != 'true'
 
       - name: Collect changes since last tag
+        if: steps.check.outputs.skipped != 'true'
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 "${{ github.ref_name }}"~1 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
@@ -109,6 +128,7 @@ jobs:
           echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...${{ github.ref_name }}" >> /tmp/release-notes.txt
 
       - name: Create GitHub Release
+        if: steps.check.outputs.skipped != 'true'
         run: |
           gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --notes-file /tmp/release-notes.txt
         env:
