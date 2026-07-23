@@ -22,7 +22,14 @@ state=$(detect_active_add 2>/dev/null || true)
 
 IFS='::' read -r plan _ _ _ _ <<< "$state"
 
-reviews_dir="${PROJECT_DIR}/.qoder/reviews"
+# 动态探测
+if [ -z "${MAGIC_DIR:-}" ]; then
+  for m in ".claude" ".qoder" ".vscode" ".add"; do
+    [ -d "${PROJECT_DIR:-$PWD}/$m" ] && { MAGIC_DIR="$m"; break; }
+  done
+  MAGIC_DIR="${MAGIC_DIR:-.add}"
+fi
+reviews_dir="${PROJECT_DIR}/$MAGIC_DIR/reviews"
 if ls "$reviews_dir"/*.md >/dev/null 2>&1; then
   echo "[ADD Notification] Plan: ${plan} — 请检查 Review 文档: ${reviews_dir}"
 fi
