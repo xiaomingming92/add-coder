@@ -35,6 +35,8 @@ fi
 CONTENT=$(echo "$input" | jq -r '
   if .tool_input.file_content then .tool_input.file_content
   elif .tool_input.content then .tool_input.content
+  elif .tool_input.new_string then .tool_input.new_string
+  elif .tool_input.new_string then .tool_input.new_string
   elif .tool_input.replacements then .tool_input.replacements[0].new_text
   else "" end')
 # L24: PostToolUse 不可阻断（仅反馈），PreToolUse exit 2 + ask 可拦截
@@ -124,7 +126,7 @@ if [ ! -f "$SCHEMA_FILE" ]; then
 fi
 
 # SearchReplace 只传 patch（replacements[].new_text），不传全文件 → 跳过章节校验
-IS_SEARCH_REPLACE=$(echo "$input" | jq -r '.tool_input.replacements | length > 0 // false')
+IS_SEARCH_REPLACE=$(echo "$input" | jq -r '(.tool_input.replacements | length > 0) or (.tool_input.new_string != null) // false')
 
 ISSUES=""
 
