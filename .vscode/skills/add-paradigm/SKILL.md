@@ -7,12 +7,12 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 
 本 Skill 引导你按照 ADD 范式完成功能开发。每次开始新功能、修复 Bug、或修改系统行为时，必须按此工作流执行。
 
-**范式边界**（定义在 `{{magicDir}}/rules/project_rules.md` ADD-0）：
+**范式边界**（定义在 `.vscode/rules/project_rules.md` ADD-0）：
 - ADD 是开发阶段编程范式，不是运行时范式
 - 反馈闭环消费者：IDE 中的 AI 助手 + 编程人员
 - 运行时范式（裁决层/能力模型）是独立的下一步演化
 
-**核心原则**（始终生效，定义在 `{{magicDir}}/rules/project_rules.md`）：
+**核心原则**（始终生效，定义在 `.vscode/rules/project_rules.md`）：
 - ADD-0：范式边界与消费者定义
 - ADD-0.1：广义文档先行（Documentation First）— Plan → Review → Spec → Code → Checklist → runtime-review → 回归校准。详细流程约束见 ADD-9~ADD-12
 - ADD-1：可观测性优先于功能实现
@@ -46,18 +46,32 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 >
 > **Plan 是后续 ADD 工作流的输入。** 生成 plan 后如需执行，才启动下方 Step 0。
 
-1. **读取模板**：读 `plan-template.md`，禁止凭记忆
-2. **命名规范**：`{项目名}-{功能名}-plan-v1.md` → `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（按当天日期创建子目录）
-3. **必含章节**：
-   - 元信息（名称/时间/关联文档/ADD-7审计策略表）
+1. **模板选择**：根据任务复杂度选模板
+   - **精简版** `simple-plan-template.md`：≤3 文件、无新模块/架构、无外部 API 契约变更。Tasks 合并在 Plan 体内，无需独立 spec 文件。
+   - **标准版** `standard-plan-template.md`：多模块、跨系统集成、含架构选型或数据模型设计。
+2. **读取模板**：读选定的模板文件，禁止凭记忆
+3. **命名规范**：`{项目名}-{功能名}-plan-v1.md` → `.vscode/plans/{YYYY-MM}/{DD}/`（按当天日期创建子目录）
+4. **HITL 总览（先写 temporary.md）**：doc-format-guard 要求写入 `.qoder/plans/` 的文件必须包含完整章节，但 HITL 第一步只写总览表不写正文。因此先在项目根目录写 `{plan-name}.temporary.md`（只含 HITL 表，不受 guard 检查），人类拍板后再写正式 Plan 文件并删除 temporary.md。
+5. **HITL 确认后展开**：人类拍板后，再填写以下正文章节。
+6. **必含章节（标准版）**：
+   - PLAN 元信息（名称/时间/关联文档/ADD-7审计策略表）
+   - HITL 计划总览（人类拍板入口）
    - 一、背景与目标
    - 二、方案选型
    - 三、架构设计
-   - 四、实施步骤 + 依赖图
+   - 四、实施 Task + 依赖图
    - 五、验收标准
-   - 六、关联文档（指向 review/handoff/spec 的占位链接）
-4. **文档链路**：plan 作为枢纽节点，必须包含与后续 review/handoff 的双向链接占位
-5. **记录审计**：plan 生成后调用 `record_dev_operation`（targetType: "PLAN"）
+   - 六、关联文档
+6. **必含章节（精简版）**：
+   - HITL 计划总览（人类拍板入口）
+   - 一、Plan 概述
+   - 二、变更范围
+   - 三、Tasks（合并在 Plan 中）
+   - 四、Handoff
+   - 五、验收标准
+   - 六、关联
+7. **文档链路**：plan 作为枢纽节点，必须包含与后续 review/handoff 的双向链接占位
+8. **记录审计**：plan 生成后调用 `record_dev_operation`（targetType: "PLAN"）
 
 ---
 
@@ -84,27 +98,30 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 | 规范文档 | `docs/*/knowledge/02-规范/` 或 `03-规范/` | 开发规范、状态机规范、核心规范 |
 | AI 核心文档 | `docs/*/knowledge/03-规范/` | AI 智能体核心规范 |
 
-**此外，ADD 工作流的核心产物由 `{{magicDir}}/templates/` 下的 13 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
+**此外，ADD 工作流的核心产物由 `.vscode/templates/` 下的 13 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
 
 | 模板 | 用途 | 对应阶段 |
 |------|------|---------|
 | `prd-standard-template.md` | 产品/系统需求文档（新建）：背景目标 + 用户场景 + 功能需求 + 非功能需求 + 验收标准 | 需求定义 |
 | `prd-incremental-template.md` | 产品/系统需求文档（增量）：在已有 PRD 基础上追加/修改/删除 | 需求变更 |
-| `plan-template.md` | 需求方案：元信息 + 背景目标 + 方案选型 + 架构设计 + 实施步骤 + 验收标准 + ADD-7审计策略 | 需求理解 |
+| `simple-plan-template.md` | 精简版 Plan：≤3 文件单一改动，Tasks+Handoff 融合在 Plan 体内，无需独立 spec/handoff 文件 | 简单任务 |
+| `standard-plan-template.md` | 标准版 Plan：多模块/跨系统/含架构设计，需独立 spec/tasks/checklist | 复杂任务 |
 | `add-route-template.md` | Plan→ADD 十阶段执行映射：Step 0-9 具体动作 + Task 映射表 + 审计阶段清单 + 依赖拓扑 | Step 0 |
 | `spec-template.md` | 功能规格：Why / What Changes / Impact / WHEN-THEN Requirements | Step 0~1 |
 | `tasks-template.md` | 任务拆分：Phase → Task → SubTask 层级 | Step 1 |
 | `checklist-template.md` | 验收清单：业务检查项 + ADD 规则合规检查 | Step 5 / Step 8 |
-| `review-template.md` | ADD-9 方向验证：元信息 + 问题复现 + 方案对比 + 决策结论 + 影响评估 | Review 关卡 |
-| `review-implementation-template.md` | ADD-10 语义对齐：格式契约 + 框架版本 + 数据模型 + 环境变量 + API 选择 + E2E curl | Code 后 |
+| `review-template.md` | ADD-9 方向验证：元信息 + **HITL 发现总览**（一次性人类审核表） + 问题复现 + 方案对比 + 决策结论 + 影响评估 | Review 关卡 |
+| `review-implementation-template.md` | ADD-10 语义对齐：元信息 + **HITL 发现总览** + 格式契约 + 框架版本 + 数据模型 + 环境变量 + API 选择 + E2E curl | Code 后 |
 | `review-runtime-template.md` | ADD-11 证据持久化：发现列表 + 根因分析 + 流程改进项 + 回流确认 | Deploy 后 |
-| `handoff-template.md` | 交接总览索引（指向单轮/多轮） | Step 8 后 |
+| `handoff-template.md` | 交接总览索引（指向单轮/多轮）。**注意**：精简版 Plan 不需要生成此文件——Handoff 已融合在 Plan §四 | Step 8 后 |
 | `handoff-single-round-template.md` | 单轮交接：9 章节（含恢复上下文审计查询） | 单轮变更完成后 |
 | `handoff-multi-round-template.md` | 多轮交接：全局拓扑 + 每轮 13 子章节 + 收敛规则 + 启动模板 | 多轮原子事务完成后 |
 
 > **AI 首次学习 ADD 范式时，必须读取上述全部 13 个模板文件。遗漏模板 = 遗漏范式全貌。**
 >
 > **每次根据模板生成文档时（plan/spec/review/handoff），MUST 先重新读取对应的模板文件，再填充内容。禁止凭记忆生成——模板可能已在迭代中更新，记忆中的版本可能不完整。**
+
+> **Review 的 HITL 磋商（temporary.md 机制）**：生成方案 Review（`review-template.md`）或实现 Review（`review-implementation-template.md`）时，和 Plan 一样——doc-format-guard 要求完整章节才放行，HITL 第一步只写总览表会被阻断。因此 Review 也走 temporary.md 流程：先写 `{review-name}.temporary.md`（只含 HITL 发现总览表）→ 人类拍板 → 生成完整 Review 写入 `.qoder/reviews/` → 删除 temporary。具体步骤见下方 Step 3.5.3（实现 Review）和 Step 0 方案 Review 产出。
 
 #### 0.2 搜索相关项目文档
 
@@ -149,7 +166,7 @@ find_related_docs({ query: "功能关键词" })
 4. **ADD-7 审计策略**：从 Plan 元信息 ADD-7 策略表复制，逐文件填写 targetType/action/beforeState/afterState
 5. **文件清单**：汇总所有涉及文件的 targetType 和操作类型
 
-**命名**：`{需求域名}-{核心内容}-add-route-v1.md` → `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录）
+**命名**：`{需求域名}-{核心内容}-add-route-v1.md` → `.vscode/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录）
 
 **关键约束**：
 - [ ] add-route 必须先于任何代码变更生成（Step 1 依赖 add-route 中的审计阶段清单）
@@ -175,7 +192,7 @@ find_related_docs({ query: "功能关键词" })
 > **核心原则**：Review 是诊断报告，Plan 是治疗方案。诊断报告的结论必须写进治疗方案，病人才能按修正后的方案治疗。
 
 **什么时候触发**：
-- Plan Review 已生成（`{{magicDir}}/reviews/{需求域名}-*review-v{n}.md` 存在）
+- Plan Review 已生成（`.vscode/reviews/{需求域名}-*review-v{n}.md` 存在）
 - Review 中有 P0/P1/P2 问题清单
 - 人类已确认 Review 结论（通过评审）
 
@@ -358,7 +375,7 @@ Plan 级闭包: {业务功能描述}
 
 ## 附录 A：协作文档规范（命名、格式与交互规则）
 
-> **目标**：确保 `{{magicDir}}/specs/`、`{{magicDir}}/reviews/` 下的 spec/review/handoff 文件遵循统一的命名和格式约定，使后续 AI Session 能快速定位和恢复上下文。
+> **目标**：确保 `.vscode/specs/`、`.vscode/reviews/` 下的 spec/review/handoff 文件遵循统一的命名和格式约定，使后续 AI Session 能快速定位和恢复上下文。
 
 **在编写任何代码之前，必须先确认本附录中的文件结构已就位。**
 
@@ -366,13 +383,13 @@ Plan 级闭包: {业务功能描述}
 
 | 文档类型 | 命名规则 | 示例 | 存放位置 |
 |---------|---------|------|---------|
-| 开发任务（specs 三元组） | `项目名-任务名/` | `{{projectName}}-response-strategy/` | `{{magicDir}}/specs/` |
-| review 文件 | `项目名-任务名-round{N}-review.md` | `{{projectName}}-response-strategy-round2-review.md` | `{{magicDir}}/reviews/` |
-| handoff 文件 | `项目名-需求名-handoff.md` | `{{projectName}}-co-agent-handoff.md` | `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录） |
+| 开发任务（specs 三元组） | `项目名-任务名/` | `add-coder-response-strategy/` | `.vscode/specs/` |
+| review 文件 | `项目名-任务名-round{N}-review.md` | `add-coder-response-strategy-round2-review.md` | `.vscode/reviews/` |
+| handoff 文件 | `项目名-需求名-handoff.md` | `add-coder-co-agent-handoff.md` | `.vscode/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录） |
 
 **命名规则说明**：
 
-- **项目名**：当前仓库的项目标识，本项目为 `{{projectName}}`
+- **项目名**：当前仓库的项目标识，本项目为 `add-coder`
 - **任务名**：用小写中划线描述该原子事务的核心功能，如 `response-strategy`、`expert-registry`、`semantic-cache`
 - **需求名**：如果某个需求需要拆分成多个任务（多轮），handoff 文件用需求名命名（如 `co-agent`），每个任务作为 handoff 中的独立章节（如 `<第2轮>`）
 - **如果需求与任务是一对一**：handoff 可以省略轮次编号，直接描述任务内容
@@ -383,7 +400,7 @@ Plan 级闭包: {业务功能描述}
 每个 spec 目录 MUST 包含三个文件，形成"需求→执行→验收"闭环：
 
 ```
-{{magicDir}}/specs/{任务名}/
+.vscode/specs/{任务名}/
   ├── spec.md       # 需求定义：Why / What Changes / Impact / Boundaries / Requirements
   ├── tasks.md      # 执行拆分：Preconditions / Forbidden / Tasks / Dependencies / Verification
   └── checklist.md  # 验收清单：编号验证项，每条可追溯到 tasks.md 的 Task
@@ -773,7 +790,7 @@ check_add_route_completeness({ planKeyword: "<Plan 核心关键词>" })
 
 ### 3.5.1 运行 spec checklist
 
-检查 `{{magicDir}}/specs/{task}/checklist.md` 中的所有检查项：
+检查 `.vscode/specs/{task}/checklist.md` 中的所有检查项：
 
 - `[T]` 编译期验证项：逐项执行并勾选
 - `[R]` 运行时验证项：保持 `[ ]`，将自动流转到 review-runtime.md
@@ -793,14 +810,14 @@ check_add_route_completeness({ planKeyword: "<Plan 核心关键词>" })
 
 ### 3.5.3 生成实现审查文档
 
-读取 `review-implementation-template.md`，逐项填写审查结果。
+按 HITL temporary.md 流程执行：读取 `review-implementation-template.md` → 先写 `{name}-review-implementation.temporary.md`（只含 HITL 发现总览表）→ 人类一次性拍板 → 逐条展开详细分析 → 写入 `.qoder/reviews/`（guard 放行）→ 删除 temporary。详见上方模板生成规则处的 Review HITL 磋商说明。
 
 ### 3.5.4 生成运行时审查文档（所有 [T] 项通过后）
 
 当所有 `[T]` 项均通过后：
 
 1. 读取 `review-runtime-template.md`
-2. 复制为 `{{magicDir}}/reviews/{project}-review-runtime.md`
+2. 复制为 `.vscode/reviews/{project}-review-runtime.md`
 3. 替换占位符（标题、关联文档路径）
 4. §1 发现列表初始化为"尚无运行时发现"
 5. §1 末尾自动插入所有 `[R]` 项的"待运行时验证"清单
@@ -1038,14 +1055,17 @@ LIMIT 10;
 ### 收敛后：生成交接手册（handoff）
 
 > **MUST NOT 跳过此步骤。** 收敛条件全部满足后，必须按模板生成交接手册，使后续 AI Session 能恢复上下文。
+>
+> **例外**：如果本 Plan 使用的是 `simple-plan-template.md`，**跳过本步骤**——Handoff 已融合在 Plan §四，无需独立文件。
 
-1. **读取对应模板**：单轮变更读 `handoff-single-round-template.md`（9 章节），多轮变更读 `handoff-multi-round-template.md`（13 子章节/轮）
+1. **判断是否精简版**：检查 Plan 文件是否基于 `simple-plan-template.md` → 是则跳过，Handoff 信息已在 Plan §四 中
+2. **读取对应模板**：单轮变更读 `handoff-single-round-template.md`（9 章节），多轮变更读 `handoff-multi-round-template.md`（13 子章节/轮）
 2. **填满所有章节**：模板中每个 `{占位符}` 都必须替换为实际内容，不得留空。特别注意：
    - **§8 恢复上下文审计查询**：MUST 包含基于真实 `query_audit_logs` 结果的逐文件审计查询语句，不得编造
    - **§9 后置确认**：逐项确认 tsc/ADD 合规/审计落库
 3. **审计查询语句必须可执行**：`query_audit_logs({ targetId: "..." })` 调用参数来自 `record_dev_operation` 落库的 targetId
 4. **双向链接**：handoff 文件内必须包含指向对应 plan + review 的链接；review 文件内必须包含指向 handoff 的链接
-5. **写入位置**：`{项目名}-{需求名}-handoff.md` → `{{magicDir}}/plans/`
+5. **写入位置**：`{项目名}-{需求名}-handoff.md` → `.vscode/plans/`
 
 ### 未收敛
 
@@ -1064,7 +1084,7 @@ LIMIT 10;
 
 ### 9.1 读取 report-handoff 模板
 
-读取 `{{magicDir}}/templates/report-handoff-template.md`，按模板格式在 handoff 中追加 Report Closure 章节。
+读取 `.vscode/templates/report-handoff-template.md`，按模板格式在 handoff 中追加 Report Closure 章节。
 
 ### 9.2 在 handoff 中追加 Report Closure 章节
 

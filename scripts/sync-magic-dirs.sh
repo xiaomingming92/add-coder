@@ -37,6 +37,21 @@ SEDEOF
     done
 }
 
+# 烘焙 .md 文件中的 {{magicDir}} 和 {{projectName}} 占位符
+bake_md_placeholders() {
+    local target_dir="$1"
+    local magic_dir="$2"
+
+    find "$target_dir" -name "*.md" -type f | while read -r file; do
+        if grep -q '{{magicDir}}\|{{projectName}}' "$file" 2>/dev/null; then
+            sed -i \
+                -e "s|{{magicDir}}|${magic_dir}|g" \
+                -e "s|{{projectName}}|add-coder|g" \
+                "$file"
+        fi
+    done
+}
+
 # 同步函数
 sync_dir() {
     local src="$1"
@@ -70,12 +85,33 @@ sync_dir() {
         if [ -n "$magic_dir" ]; then
             echo "   🔧 烘焙 MAGIC_DIR → $magic_dir"
             bake_magic_refs "$dest" "$magic_dir"
+            echo "   📝 烘焙 .md 占位符（{{magicDir}} → $magic_dir, {{projectName}} → add-coder）"
+            bake_md_placeholders "$dest" "$magic_dir"
         fi
         
         echo "   ✅ $name 同步完成"
     else
         echo "⚠️  源目录不存在: $src"
     fi
+}
+
+# 批量同步到所有 4 个 magic 目录
+sync_to_all_magic_dirs() {
+    local category="$1"    # 如 "skills" / "rules" / "agents" 等
+    local icon="$2"        # emoji 图标
+    local bake="${3:-1}"   # 是否烘焙占位符（1=是, 0=否，如 templates 不需要烘焙）
+
+    local magic_dirs=(".add" ".qoder" ".claude" ".vscode")
+    
+    echo ""
+    echo "$icon 同步 $category..."
+    for md in "${magic_dirs[@]}"; do
+        if [ "$bake" = "1" ]; then
+            sync_dir "$PROJECT_DIR/templates/core/$category" "$PROJECT_DIR/$md/$category" "$md $category" "$md"
+        else
+            sync_dir "$PROJECT_DIR/templates/core/$category" "$PROJECT_DIR/$md/$category" "$md $category"
+        fi
+    done
 }
 
 # 执行同步（按计划中的映射关系）
@@ -94,13 +130,16 @@ sync_dir "$PROJECT_DIR/templates/adapters/vscode/hooks" "$PROJECT_DIR/.vscode/ho
 # core/hooks → .add/hooks (因为 .add 无自有 hooks)
 sync_dir "$PROJECT_DIR/templates/core/hooks" "$PROJECT_DIR/.add/hooks" ".add hooks" ".add"
 
-# core/templates → .add/.claude/.qoder/.vscode/templates/
-echo ""
-echo "📚 同步 templates..."
-sync_dir "$PROJECT_DIR/templates/core/templates" "$PROJECT_DIR/.add/templates" ".add templates"
-sync_dir "$PROJECT_DIR/templates/core/templates" "$PROJECT_DIR/.claude/templates" ".claude templates"
-sync_dir "$PROJECT_DIR/templates/core/templates" "$PROJECT_DIR/.qoder/templates" ".qoder templates"
-sync_dir "$PROJECT_DIR/templates/core/templates" "$PROJECT_DIR/.vscode/templates" ".vscode templates"
+# templates（不烘焙，保留 {{magicDir}} 给 init 渲染）
+sync_to_all_magic_dirs "templates" "📚" 0
+
+sync_to_all_magic_dirs "skills" "🎯"
+sync_to_all_magic_dirs "rules" "📋"
+sync_to_all_magic_dirs "agents" "🤖"
+sync_to_all_magic_dirs "scripts" "📜"
+sync_to_all_magic_dirs "docs" "📖"
+sync_to_all_magic_dirs "vocabulary" "📕"
+sync_to_all_magic_dirs "tools" "🔧"
 
 # core/hooks → adapters/codex/hooks/ （从 core 派生）
 sync_dir "$PROJECT_DIR/templates/core/hooks" "$PROJECT_DIR/templates/adapters/codex/hooks" "codex hooks" ".codex"

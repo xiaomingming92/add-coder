@@ -1,6 +1,6 @@
 # Plans 总览
 
-> 自动生成: 2026-07-17 17:47:00 | 文档总数: 10 | 下次更新: 每天 2:00 AM
+> 自动生成: 2026-07-23 12:22:45 | 文档总数: 10 | 下次更新: 每天 2:00 AM
 
 
 ## 2026-07
@@ -19,4 +19,4 @@
 | 17 | plan | [add-coder-hook-full-alignment-plan-v1.md](2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | add-coder-hook-full-alignment-plan-v1 |
 
 ---
-*索引由 `scripts/gen-plan-index.sh` 自动生成，勿手动编辑*
+*索引由 `.qoder/scripts/gen-plan-index.sh` 自动生成，勿手动编辑*

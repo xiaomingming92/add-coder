@@ -31,6 +31,7 @@
     "predev": "npm run db:ensure",
     "dev": "tsup --watch",
     "db:ensure": "bash scripts/db-ensure.sh",
+    "sync": "bash scripts/sync-magic-dirs.sh",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "generate": "tsx src/caijuehub/transcribe.ts",
