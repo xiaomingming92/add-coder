@@ -77,6 +77,25 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 | Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
 | Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
 
+### ⑥ Prompt Cache Native — ¥218/mo, 98% Savings
+
+The ADD paradigm isn't just methodology — its structured Step workflow naturally aligns with DeepSeek's Prompt Cache prefix-matching mechanism, delivering extreme token cost efficiency. **Real-world billing validation**:
+
+| Metric | Value |
+|--------|-------|
+| July actual DeepSeek bill | **¥218.35** |
+| Theoretical cost without cache | ¥11,100 |
+| Cache hit rate | **99.31%** |
+| Cache hit vs miss price gap | **120x** (¥0.025/M vs ¥3/M) |
+| Total cost savings | **98.1%** |
+
+```
+Traditional IDE free chat:  cache hit rate 85–91%, ~5,000 MISS tokens/req
+ADD paradigm + Qoder:       cache hit rate 99.31%, only 2,426 MISS tokens/req
+```
+
+> 📊 [Full analysis report](./docs/ADD范式缓存命中分析报告.md) — 4 Mermaid diagrams, 17-day daily data, cross-IDE comparison, and cost modeling.
+
 ---
 
 ## Quick Start
