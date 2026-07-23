@@ -70,6 +70,25 @@ hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中
 
 > 实施 Plan: [add-coder-hook-full-alignment-plan-v1](./.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | 触发源: [GitHub Issue #6](https://github.com/xiaomingming92/add-coder/issues/6)
 
+### ⑥ Prompt Cache 原生友好 — 月费 ¥218，节省 98%
+
+ADD 范式不仅是方法论——它的结构化 Step 流程天然适配 DeepSeek Prompt Cache 的前缀匹配机制，带来极致的 Token 成本效率。**实测数据验证**：
+
+| 指标 | 数值 |
+|------|------|
+| DeepSeek 7月实际账单 | **¥218.35** |
+| 若无 Prompt Cache 理论费用 | ¥11,100 |
+| Cache 命中率 | **99.31%** |
+| 缓存命中 vs 未命中价差 | **120 倍**（¥0.025/M vs ¥3/M） |
+| 总费用节省 | **98.1%** |
+
+```
+传统 IDE 自由对话:  cache 命中率 85-91%, 每次请求 MISS 5,000 tokens
+ADD 范式 + Qoder:     cache 命中率 99.31%, 每次请求 MISS 仅 2,426 tokens
+```
+
+> 📊 [完整分析报告](./docs/ADD范式缓存命中分析报告.md) — 含 4 张 Mermaid 图表、17 天逐日数据、跨 IDE 对比与成本建模。
+
 ---
 
 ## 快速开始
@@ -134,7 +153,21 @@ npx add-coder init
 
 ## MCP 审计工具链
 
-`init` 自动部署 MCP 服务器 (`mcp-server.ts`) 到项目中，IDE 通过 `mcp.json` 加载。提供以下审计与治理工具：
+`init` 自动部署 MCP 服务器 (`mcp-server.ts`) 到项目中，IDE 通过 `mcp.json` 加载。基于 **MCP 协议六大能力**（四大原语 + 两个横切）：
+
+```
+MCP 能力            方向              当前状态     说明
+─────────────────────────────────────────────────────────────
+Tools              Client→Server     ✅ 已实现     17 个审计与治理工具（pull 模式）
+Resources+Sub      Client←Server     🔜 本轮       Plan/Review/Route/Task 状态实时推送
+Notifications      Server→Client     🔜 本轮       HITL 就绪通知 / Hook 结果推送
+Sampling           Server→Client     🔜 本轮       服务端回调 AI 生成 Review
+── 横切 ──
+Elicitation        Server→Client     🔜 本轮       向用户请求 HITL 确认/风险输入
+Tasks (实验性)     双向              🔜 本轮       长任务持久化 + 状态追踪
+```
+
+**当前已实现的 17 个 Tools**：
 
 | 工具 | 用途 | 触发场景 |
 |------|------|---------|
@@ -148,7 +181,7 @@ npx add-coder init
 | `check_spec_sync` | Spec 文档勾选状态与代码一致性 | Spec 执行后 |
 | `find_related_docs` | 检索相关架构/规范文档 | 语境理解 |
 
-> 完整工具列表见 [MCP 工具链规范](https://github.com/xiaomingming92/codein2027/blob/main/docs/大田精准耕播智能决策系统/knowledge/02-规范/%E3%80%8A%E5%BC%80%E5%8F%91%E6%93%8D%E4%BD%9C%E5%AE%A1%E8%AE%A1%E5%AD%98%E6%A1%A3%E8%A7%84%E8%8C%83%E3%80%8B.md)。
+> 完整六能力架构设计见 [MCP 重构 Plan](.qoder/plans/2026-07/23/add-coder-mcp-restructure-plan-v1.md)。
 
 ## 架构全景
 
@@ -298,6 +331,25 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 | VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
 | Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
 | Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
+
+### ⑥ Prompt Cache Native — ¥218/mo, 98% Savings
+
+The ADD paradigm isn't just methodology — its structured Step workflow naturally aligns with DeepSeek's Prompt Cache prefix-matching mechanism, delivering extreme token cost efficiency. **Real-world billing validation**:
+
+| Metric | Value |
+|--------|-------|
+| July actual DeepSeek bill | **¥218.35** |
+| Theoretical cost without cache | ¥11,100 |
+| Cache hit rate | **99.31%** |
+| Cache hit vs miss price gap | **120x** (¥0.025/M vs ¥3/M) |
+| Total cost savings | **98.1%** |
+
+```
+Traditional IDE free chat:  cache hit rate 85–91%, ~5,000 MISS tokens/req
+ADD paradigm + Qoder:       cache hit rate 99.31%, only 2,426 MISS tokens/req
+```
+
+> 📊 [Full analysis report](./docs/ADD范式缓存命中分析报告.md) — 4 Mermaid diagrams, 17-day daily data, cross-IDE comparison, and cost modeling.
 
 ---
 
