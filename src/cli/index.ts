@@ -7,7 +7,7 @@ import { statusCommand } from "./commands/status";
 
 const { version } = JSON.parse(
     readFileSync(new URL("../package.json", import.meta.url), "utf-8"),
-);
+) as { version: string };
 
 const program = new Command();
 

@@ -11,7 +11,6 @@ export const WRITER_CONFIG = {
 // >>> USER CODE >>>
 import { existsSync, mkdirSync, writeFileSync, chmodSync } from "fs";
 import { join, dirname } from "path";
-import { ask } from "../../lib/utils";
 import { selectFiles } from "../../lib/select-files";
 
 export async function writeFiles(
