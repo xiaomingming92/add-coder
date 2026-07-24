@@ -16,7 +16,8 @@
     },
     "include": [
         "src",
-        "templates/core/scripts"
+        "templates/core/scripts",
+        "scripts/*.ts"
     ],
     "exclude": [
         "node_modules",
