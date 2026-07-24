@@ -336,6 +336,15 @@ async function renderAndWrite(ctx: InitContext) {
         console.log(`claude adapter (via Agent Host): ${claudeFiles.size} 文件`);
     }
 
+    // 确保空目录存在（reviews/ 等运行时产出目录）
+    for (const d of [".add", magicDir]) {
+        const reviewsDir = resolve(projectRoot, d, "reviews")
+        if (!existsSync(reviewsDir)) {
+            if (dry) { console.log(`[dry-run] 将创建 ${reviewsDir}/`); }
+            else { mkdirSync(reviewsDir, { recursive: true }) }
+        }
+    }
+
     return await writeFiles(projectRoot, allFiles, { force: options.force, dryRun: options.dryRun });
 }
 
