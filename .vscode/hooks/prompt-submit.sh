@@ -8,6 +8,7 @@ export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 
 COMMON_LIB="$HOOK_DIR/lib/common.sh"
 [ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
+[ -f "$HOOK_DIR/lib/notify.sh" ] && source "$HOOK_DIR/lib/notify.sh" 2>/dev/null || true
 
 export PROJECT_DIR="$PWD"
 
@@ -56,6 +57,7 @@ if [ -z "$state" ]; then
   Step 8: 收敛判断
 如果 add-paradigm SKILL 尚未激活，请先调用它。
 EOF
+  write_hook_event "prompt-submit" "deny" "$prompt" "无活跃 ADD Plan 下检测到开发任务" "no-active-plan" "none" 2>/dev/null || true
   exit 2
 fi
 
@@ -68,6 +70,20 @@ cat <<EOF
   当前 Step: ${step}
   handoff: ${handoff}
 EOF
+
+# ─── Hook 治理日报（注入 AI 上下文）───
+HOOK_JSONL="${MAGIC_DIR:-.qoder}/reports/hook-events.jsonl"
+if [ -f "$HOOK_JSONL" ]; then
+  TODAY="$(date +%Y-%m-%d)"
+  TOTAL=$(grep -c "\"ts\":\"${TODAY}" "$HOOK_JSONL" 2>/dev/null || echo 0)
+  NO_PLAN=$(grep "\"ts\":\"${TODAY}" "$HOOK_JSONL" 2>/dev/null | grep -c '"planKeyword":"no-active-plan"' || echo 0)
+  if [ "$TOTAL" -gt 0 ] 2>/dev/null; then
+    echo "[Hook 治理] 今日拦截: ${TOTAL} 次 | 无 Plan 违规: ${NO_PLAN} 次"
+    if [ "$NO_PLAN" -ge 10 ] 2>/dev/null; then
+      echo "[Hook ⚠️] 无 Plan 违规已达 ${NO_PLAN} 次（≥10），建议创建 Plan"
+    fi
+  fi
+fi
 
 # 模板全文注入（tpl-injected 去重）
 TPL_SCRIPT="$HOOK_DIR/lib/preload-templates.sh"
