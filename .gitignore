@@ -16,4 +16,5 @@ docker-compose.yml
 debug-dump/
 */debug-dump/
 */plans/
+!.qoder/plans/
 */specs/
