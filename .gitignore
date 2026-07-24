@@ -21,3 +21,6 @@ debug-dump/
 !.qoder/plans/
 */specs/
 !.qoder/specs/
+!.add/specs/
+!.claude/specs/
+!.vscode/specs/
