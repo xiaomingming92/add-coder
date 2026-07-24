@@ -19,6 +19,7 @@ import { ask, detectPm } from "../../lib/utils";
 import { injectPrisma } from "../prisma-injector";
 import type { Adapter, AddCoderConfig } from "../../config/schema";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync } from "fs";
+import { createHash } from "crypto";
 import { resolve } from "path";
 import { spawnSync } from "child_process";
 import { createConnection } from "net";
@@ -346,12 +347,11 @@ async function renderAndWrite(ctx: InitContext) {
     }
 
     if (!dry) {
-        const crypto = require("crypto");
         const hashMap: Record<string, string> = {};
         let npmVer = "";
-        try { npmVer = JSON.parse(readFileSync(resolve(projectRoot, "node_modules", "add-coder", "templates", ".add-coder-src-hash.json"), "utf-8"))._version || ""; } catch { /* ignore */ }
+        try { npmVer = (JSON.parse(readFileSync(resolve(projectRoot, "node_modules", "add-coder", "templates", ".add-coder-src-hash.json"), "utf-8")) as Record<string, string>)._version ?? ""; } catch { /* ignore */ }
         for (const [rp, c] of allFiles) {
-            hashMap[rp] = crypto.createHash("sha256").update(c).digest("hex").slice(0, 8);
+            hashMap[rp] = createHash("sha256").update(c).digest("hex").slice(0, 8);
         }
         const hashOut = resolve(projectRoot, magicDir, ".add-coder-hash.json");
         writeFileSync(hashOut, JSON.stringify(hashMap, null, 2) + "\n", "utf-8");
