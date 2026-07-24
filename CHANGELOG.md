@@ -5,7 +5,45 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.0] - 2026-07-24
 
+### sync --patch 热更新（核心）
+
+- **双 hash 机制**：源 hash（gen-src-hash.ts 扫描 253 模板文件 SHA256，prepare 链路打 npm）+ 产出 hash（init 渲染后写 .add-coder-hash.json 基线）
+- **六场景矩阵**：①same→跳过 ②auto→静默覆盖 ③skip→不碰 ④conflict→交互勾选 ⑤missing→静默写入 ⑥PATCH_GUARD→永不触碰
+- **三版本边界**：`.add-coder-version` 哨兵文件 + npmVersion 对比 → isFirstPatch/isUpgrade/hashLost 精准判定
+- **selectFiles 交互统一**：`[a]` 全部跳过 `[A]` 全部覆盖，init/sync 共用同一 UI
+- **PATCH_GUARD**：plans/specs/reviews 永不触碰，由 caijuehub `sync-rules.toml` 驱动
+- **`npx add-coder sync --adapter=qoder --patch`** 一条命令替代旧三步（备份→init→恢复）
+
+### Caijuehub 规则引擎 — 首次 TOML 直驱业务代码
+
+- **sync-rules.toml**：`[guard]` 管⑥ / `[patch]` 管①②④⑤（3 行为参数）/ `[version]` 管 3 边界
+- **transcribe.ts**：新增 genSyncRules 生成器 + GENERATORS 注册 → 产出 sync.strategy.ts
+- **sync.ts 薄壳化**：`import { SYNC_CONFIG }` 替代所有硬编码，改规则不改代码
+- **这是 codein2027 集中裁决层理论的第一个工程落地**：人类从"追踪散落的 if"升级为"读一张决策表"，O(N×M)→O(1)。AI Agent 可大规模索引、检索、修改规则
+- **docs/caijuehub.md**：规则引擎架构文档，联动 README/GUIDE/DEVELOPMENT
+
+### 文档体系
+
+- **README**：新增 ⑦ Caijuehub 规则引擎 + sync-patch 升级入口
+- **GUIDE.md §七**：add-coder 升级实操（旧三步 vs 新一条命令）
+- **DEVELOPMENT.md §八**：双 hash 架构图 + 六场景矩阵 + 版本边界保护 + caijuehub TOML 驱动
+- **docs/interaction-spec.md**：CLI 交互规范文档（`[a]/[A]` 键盘语义统一标准）
+- **Handoff + Review + Specs 三元组**：Plan→ADD Route→Task→Handoff 完整闭环
+
+### 构建
+
+- **gen-src-hash.ts**：TypeScript 构建脚本，`prepare` 链路：`tsup && tsx scripts/gen-src-hash.ts`
+- **tsconfig**：`scripts/*.ts` 加入编译范围
+
+### 修复
+
+- **.gitignore**：`.qoder/specs/` 加入版本追踪（`!` 例外），与 plans 一致
+- **podman-compose.add.yml**：移除 `env_file`，变量由 `--env-file .env.development` 统一注入
+- **adapter-rules.toml**：修复重复 `[magic_path]` 段导致 TOML 解析失败
+
+---
 ## [0.2.9] - 2026-07-24
 
 ### MCP 能力重构（核心）
