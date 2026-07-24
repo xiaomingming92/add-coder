@@ -1,6 +1,6 @@
 # Plans 总览
 
-> 自动生成: 2026-07-24 14:46:24 | 文档总数: 15 | 下次更新: 每天 2:00 AM
+> 自动生成: 2026-07-24 22:52:24 | 文档总数: 18 | 下次更新: 每天 2:00 AM
 
 
 ## 2026-07
@@ -21,7 +21,10 @@
 | 23 | plan | [add-coder-mcp-restructure-plan-v1.md](2026-07/23/add-coder-mcp-restructure-plan-v1.md) | add-coder-mcp-restructure-plan-v1 |
 | 23 | plan | [add-coder-selfhost-sync-plan-v1.md](2026-07/23/add-coder-selfhost-sync-plan-v1.md) | add-coder-selfhost-sync-plan-v1 |
 | 24 | add-route | [add-coder-hook-notify-upgrade-add-route-v1.md](2026-07/24/add-coder-hook-notify-upgrade-add-route-v1.md) | add-coder-hook-notify-upgrade-add-route-v1 |
+| 24 | handoff | [add-coder-hook-notify-upgrade-handoff-v1.md](2026-07/24/add-coder-hook-notify-upgrade-handoff-v1.md) | add-coder — 3 轮原子事务交接手册 |
+| 24 | handoff | [add-coder-sync-patch-handoff-v1.md](2026-07/24/add-coder-sync-patch-handoff-v1.md) | add-coder — sync-patch 热更新功能 交接手册 |
 | 24 | plan | [add-coder-hook-notify-upgrade-plan-v1.md](2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md) | add-coder-hook-notify-upgrade-plan-v1 |
+| 24 | plan | [add-coder-sync-patch-plan-v1.md](2026-07/24/add-coder-sync-patch-plan-v1.md) | add-coder-sync-patch-plan-v1 |
 
 ---
 *索引由 `.qoder/scripts/gen-plan-index.sh` 自动生成，勿手动编辑*

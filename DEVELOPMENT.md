@@ -2,7 +2,7 @@
 
 > 给 add-coder 贡献者的开发手册 — 目录结构、sync 机制、init 流程、唯一真源原则。
 
-📦 **用户使用文档** → [README.md](./README.md) | **实践指南** → [GUIDE.md](./GUIDE.md) | **能力清单&调试** → [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md)
+📦 **用户使用文档** → [README.md](./README.md) | **实践指南** → [GUIDE.md](./GUIDE.md) | **能力清单&调试** → [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md) | **交互规范** → [docs/interaction-spec.md](./docs/interaction-spec.md) | **规则引擎** → [docs/caijuehub.md](./docs/caijuehub.md)
 
 ---
 
@@ -15,8 +15,9 @@
 - [五、数据流转](#五数据流转)
 - [六、init 流程剖析](#六init-流程剖析)
 - [七、多 adapter hooks 差异化](#七多-adapter-hooks-差异化)
-- [八、常见开发场景](#八常见开发场景)
-- [九、鸡生蛋蛋生鸡：自举的时间边界](#九鸡生蛋蛋生鸡自举的时间边界)
+- [八、sync --patch 热更新原理](#八sync---patch-热更新原理)
+- [九、常见开发场景](#九常见开发场景)
+- [十、鸡生蛋蛋生鸡：自举的时间边界](#十鸡生蛋蛋生鸡自举的时间边界)
 
 ---
 
@@ -347,7 +348,75 @@ templates/adapters/qoder/ →          .qoder/mcp.json
 
 ---
 
-## 八、常见开发场景
+## 八、sync --patch 热更新原理
+
+### 8.1 问题
+
+`npm update add-coder` 后，用户项目的模板文件（hooks/agents/skills/templates/vocabulary 等）停留在旧版本。
+
+### 8.2 双 hash 机制
+
+```
+build 时（prepare）              用户 init 时                sync --patch 时
+───────────────────            ───────────────            ───────────────
+gen-src-hash.ts                  init.ts                   sync.ts
+  │                               │                          │
+  │ 扫描 templates/               │ renderCore+Adapter        │ 读 npm 源 hash
+  │ 253 文件 SHA256(8位)           │ → 写文件                  │ 读用户产出 hash
+  ▼                               ▼                          ▼
+templates/                       .qoder/                    对比：
+.add-coder-src-hash.json         .add-coder-hash.json       ┌──────────────┐
+  ├─ _version: "0.2.10"           ├─ hooks/doc-format: "a3f" │ same → 跳过  │
+  ├─ core/hooks/...: "c8e"        ├─ hooks/pre-tool: "7b1"  │ missing→写入 │
+  └─ adapters/qoder/...: "fe3"    └─ ...                     │ conflict→交互│
+        │                         └──────────────────────────┘
+        │ npm publish
+        ▼
+    npm 包（templates/ 随包发布）
+```
+
+### 8.3 六场景矩阵
+
+| # | 用户 | 源模板 | 判定 | 行为 | caijuehub 驱动 |
+|:---:|------|------|------|------|------|
+| ① | 没改 | 没变 | same | 跳过 | `on_same: skip` |
+| ② | 没改 | 变了 | auto | 静默覆盖 | 版本边界 → baseline |
+| ③ | 改了 | 没变 | skip | 不碰 | `on_conflict: skip`（用户选[a]） |
+| ④ | 改了 | 变了 | conflict | 交互勾选 | `on_conflict: interactive` |
+| ⑤ | — | 不存在 | missing | 静默写入 | `on_missing: write` |
+| ⑥ | PATCH_GUARD | — | skip | 永不触碰 | caijuehub `[guard]` |
+
+### 8.4 版本边界保护
+
+`.add-coder-version` 哨兵文件（永不删除）记录安装版本。与 npm 包 `_version` 对比：
+
+| 场景 | 判定 | 行为 |
+|------|------|------|
+| 无 version 文件 | `isFirstPatch` | 全部写基线（老用户首次升级） |
+| version 不同 | `isUpgrade` | 全部写基线（版本升级） |
+| version 相同但 hash 丢失 | `hashLost` | 全部进 conflict（保护用户数据） |
+
+### 8.5 caijuehub 规则驱动
+
+所有行为参数定义在 `src/caijuehub/sync-rules.toml`：
+
+```toml
+[patch]           # 6 场景 → 3 参数
+on_missing = "write"          # ⑤
+on_conflict = "interactive"   # ②④
+on_same = "skip"              # ①
+
+[version]         # 3 边界 → 3 参数
+on_first_patch = "baseline"   # 首次
+on_upgrade = "baseline"       # 升级
+on_hash_lost = "conflict"     # 丢失
+```
+
+改 TOML → `npm run generate` → 策略生效。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
+
+---
+
+## 九、常见开发场景
 
 ### 场景 1：修复一个 hook bug（影响所有 IDE）
 
@@ -402,7 +471,7 @@ cp -r .backup/20260723_073802/hooks/* .qoder/hooks/
 
 ---
 
-## 九、鸡生蛋蛋生鸡：自举的时间边界
+## 十、鸡生蛋蛋生鸡：自举的时间边界
 
 ### 9.1 问题本质
 
@@ -566,6 +635,8 @@ npx add-coder init --adapter claude --force --dry-run
 | [README.md](./README.md) | 用户文档：快速开始、命令、架构全景 |
 | [GUIDE.md](./GUIDE.md) | 实践指南：从零上手 ADD 工作流 |
 | [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md) | 能力清单 & 调试指南 |
+| [docs/interaction-spec.md](./docs/interaction-spec.md) | CLI 交互规范（键盘命令统一标准） |
+| [docs/caijuehub.md](./docs/caijuehub.md) | Caijuehub 规则引擎（TOML 驱动策略） |
 | [scripts/sync-magic-dirs.sh](./scripts/sync-magic-dirs.sh) | 自举同步脚本 |
 | [.qoder/plans/.../add-coder-selfhost-sync-plan-v1.md](./.qoder/plans/2026-07/23/add-coder-selfhost-sync-plan-v1.md) | 同步方案 Plan |
 | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | Qoder 治理文档（hooks 覆盖说明） |
