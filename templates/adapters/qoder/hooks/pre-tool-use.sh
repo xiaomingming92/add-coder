@@ -40,18 +40,18 @@ if [ "$tool_name" = "Bash" ]; then
     write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过终端直接写文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
-  # mv 无重定向但仍操作文件（覆盖行首 / ; / && / || / | 后的 mv）
-  if echo "$cmd" | grep -qE '(^|;|\|\||&&|\|)\s*mv\s+/tmp/'; then
-    echo "⛔ 禁止通过 mv /tmp/ 绕过 IDE 工具: $cmd" >&2
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过 mv 绕过 IDE 工具\"}}"
-    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过 mv 绕过 IDE 工具" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
+  # cp / mv / touch — 可创建或覆盖文件，无重定向也拦（对齐 core §A 检测5）
+  if echo "$cmd" | grep -qE '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'; then
+    echo "⛔ 禁止通过 cp/mv/touch 操作文件: $cmd。请使用 Write 或 SearchReplace 工具。" >&2
+    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过 cp/mv/touch 操作文件，请使用 IDE 工具\"}}"
+    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过 cp/mv/touch 操作文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
-  # python/node 脚本写文件
-  if echo "$cmd" | grep -qE '(python3|python|node)[[:space:]].*[>]{1,2}'; then
-    echo "⛔ 禁止通过脚本语言直接写文件: $cmd。请使用 Write/Edit/SearchReplace 工具。" >&2
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过脚本语言直接写文件，请使用 IDE 工具\"}}"
-    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过脚本语言直接写文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
+  # python/node/ruby/perl/php 脚本解释器 — 可写任意文件
+  if echo "$cmd" | grep -qE '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'; then
+    echo "⛔ 禁止通过脚本解释器直接写文件: $cmd。请使用 Write 或 SearchReplace 工具。" >&2
+    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过脚本解释器直接写文件，请使用 IDE 工具\"}}"
+    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过脚本解释器直接修改文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
   mark_dev_action 2>/dev/null || true
