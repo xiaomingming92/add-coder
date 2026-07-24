@@ -43,12 +43,21 @@ function renderList(items: FileItem[], selected: Set<number>, startIdx: number, 
     if (items.length > height) {
         out += `\n  ── ${startIdx + 1}-${endIdx} / ${items.length} (↑↓ 滚动) ──\n`;
     }
-    out += `\n命令: [a]全选 [n]取消全选 [1-${items.length}]切换 [↑↓]滚动 [Enter]确认 [q]退出\n`;
+    out += `\n命令: [a]全部跳过 [A]全部覆盖 [1-${items.length}]切换 [Enter]确认 [q]退出\n`;
     return out;
 }
 
 /**
- * @description: 交互式文件选择器 — 展示文件列表 + 改动计数，支持键盘操作
+ * @description: 交互式文件选择器 — 清单勾选 + git-diff 风格改动计数，支持键盘操作
+ *
+ * 交互规范（详见 docs/interaction-spec.md § selectFiles）:
+ *   [a] 全部跳过 — deselect all，回车后什么也不写
+ *   [A] 全部覆盖 — select all，回车后全部覆盖
+ *   [1-N] 切换 — toggle 单个文件
+ *   [↑↓] 滚动 — 超出可见区域时使用
+ *   [Enter] 确认 — 以当前勾选状态写入
+ *   [q] 退出 — 取消操作，不写入任何文件
+ *
  * @param {string} projectRoot - 项目根目录
  * @param {Map<string, string>} files - 待处理文件映射 (relPath → content)
  * @return {Promise<Map<string, string>>} 用户选中的文件子集
@@ -104,12 +113,12 @@ export async function selectFiles(
         });
 
         rl.on("line", (input: string) => {
-            const trimmed = input.trim().toLowerCase();
-            if (trimmed === "q" || trimmed === "quit") {
+            const trimmed = input.trim();
+            if (trimmed === "q" || trimmed.toLowerCase() === "quit") {
                 rl.close();
-            } else if (trimmed === "a") {
+            } else if (trimmed === "A") {
                 items.forEach((_, i) => selected.add(i));
-            } else if (trimmed === "n") {
+            } else if (trimmed === "a") {
                 selected.clear();
             } else {
                 // 尝试按数字切换
