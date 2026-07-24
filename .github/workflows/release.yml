@@ -52,6 +52,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # build 后可能产生 gen-src-hash 文件变更，先提交再 bump
+          git add templates/.add-coder-src-hash.json pnpm-lock.yaml 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "chore(build): auto-generated artifacts"
           npm version ${{ inputs.bump }} -m "v%s"
           git push
           git push --tags
