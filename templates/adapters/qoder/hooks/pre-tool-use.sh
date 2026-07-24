@@ -8,6 +8,17 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 export PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
 source "$HOOK_DIR/lib/common.sh" 2>/dev/null || true
+source "$HOOK_DIR/lib/notify.sh" 2>/dev/null || true
+
+# ── Hook 通知: 提前计算 Plan 关联信息 ──
+ACTIVE_PLAN=$(detect_active_add 2>/dev/null || true)
+if [ -n "$ACTIVE_PLAN" ]; then
+  PLAN_KEYWORD="${ACTIVE_PLAN%%::*}"
+  PLAN_STATUS="active"
+else
+  PLAN_KEYWORD="no-active-plan"
+  PLAN_STATUS="none"
+fi
 
 tool_name=$(json_get "$input" "tool_name")
 [ -z "$tool_name" ] && tool_name=$(echo "$input" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/' || echo "")
@@ -19,24 +30,28 @@ if [ "$tool_name" = "Bash" ]; then
   if echo "$cmd" | grep -qiE 'rm[[:space:]]+-rf[[:space:]]+/|DROP[[:space:]]+TABLE|git[[:space:]]+push[[:space:]]+--force|mkfs\.|dd[[:space:]]+if='; then
     echo "⛔ 危险命令已被阻止: $cmd" >&2
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"危险命令已被阻止\"}}"
+    write_hook_event "pre-tool-use" "deny" "$cmd" "危险命令已被阻止" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
   # 终端写文件拦截（含 > / >> / << heredoc / mv / touch / python -c > file）
   if echo "$cmd" | grep -qE '(cat|echo|tee|sed[[:space:]]+-i|awk|printf|cp|mv|dd|touch)[[:space:]]*.*([>]{1,2}|[|][[:space:]]*tee|<<)'; then
     echo "⛔ 禁止通过终端命令直接写文件: $cmd。请使用 Write/Edit/SearchReplace 工具。" >&2
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过终端直接写文件，请使用 IDE 工具\"}}"
+    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过终端直接写文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
-  # mv 无重定向但仍操作文件
-  if echo "$cmd" | grep -qE '^[[:space:]]*mv[[:space:]]+/tmp/'; then
+  # mv 无重定向但仍操作文件（覆盖行首 / ; / && / || / | 后的 mv）
+  if echo "$cmd" | grep -qE '(^|;|\|\||&&|\|)\s*mv\s+/tmp/'; then
     echo "⛔ 禁止通过 mv /tmp/ 绕过 IDE 工具: $cmd" >&2
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过 mv 绕过 IDE 工具\"}}"
+    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过 mv 绕过 IDE 工具" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
   # python/node 脚本写文件
   if echo "$cmd" | grep -qE '(python3|python|node)[[:space:]].*[>]{1,2}'; then
     echo "⛔ 禁止通过脚本语言直接写文件: $cmd。请使用 Write/Edit/SearchReplace 工具。" >&2
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"禁止通过脚本语言直接写文件，请使用 IDE 工具\"}}"
+    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过脚本语言直接写文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
   mark_dev_action 2>/dev/null || true
@@ -52,7 +67,10 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
     if type detect_active_add >/dev/null 2>&1; then
       state=$(detect_active_add 2>/dev/null || true)
       if [ -z "$state" ]; then
-        echo "[ADD PreToolUse] ⚠️ 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——请先执行 add-paradigm" >&2
+        echo "⛔ 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——请先执行 add-paradigm" >&2
+        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan/Spec/Review 写入需要活跃 ADD Plan，请先执行 add-paradigm\"}}"
+        write_hook_event "pre-tool-use" "deny" "$file_path" "Plan/Spec/Review 写入需活跃 ADD Plan" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
+        exit 2
       fi
     fi
   fi
@@ -60,6 +78,7 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
   if echo "$file_path" | grep -qE '\.env$|\.env\.production$|\.env\.local$|credentials|secrets'; then
     echo "⛔ 敏感文件受保护，禁止写入: $file_path" >&2
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"敏感文件受保护\"}}"
+    write_hook_event "pre-tool-use" "deny" "$file_path" "敏感文件受保护" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
 

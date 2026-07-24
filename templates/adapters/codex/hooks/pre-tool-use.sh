@@ -1,7 +1,7 @@
 #!/bin/bash
 # pre-tool-use.sh — PreToolUse §A§B（阻断模式，通用适配版）
 # §A: Bash 裸写保护 — 拦截所有绕过 IDE 追踪的文件写操作
-# §B: 源码 Plan 关联检查 — 无 Plan 的 src/**/*.ts 编辑阻断
+# §B: Write/Edit 写入前置守卫 — Plan/Spec/Review 需要活跃 ADD Plan + 敏感文件保护
 # 治理卡位 #4: 危险命令拦截 / 模板路径兜底 / 写入前置守卫 / 敏感文件保护
 set -euo pipefail
 
@@ -12,6 +12,17 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 PARENT="$(dirname "$HOOK_DIR")"
 MAGIC_DIR="$(basename "$PARENT")"
 PROJECT_DIR="$PWD"
+
+# ── Hook 通知: 拦截事件写入 jsonl（旁路，失败不阻断 exit 2）──
+source "${HOOK_DIR}/lib/notify.sh" 2>/dev/null || true
+ACTIVE_PLAN=$(detect_active_add 2>/dev/null || true)
+if [ -n "$ACTIVE_PLAN" ]; then
+  PLAN_KEYWORD="${ACTIVE_PLAN%%::*}"
+  PLAN_STATUS="active"
+else
+  PLAN_KEYWORD="no-active-plan"
+  PLAN_STATUS="none"
+fi
 
 # ── §A 辅助函数: 阻断日志 ──
 _log_block() {
@@ -32,7 +43,7 @@ command=$(echo "$input" | jq -r '.tool_input.command // empty')
 if [ -n "$command" ]; then
 
   # 检测 1: 脚本解释器 — 可写任意文件，无法解析脚本内容做细粒度拦截
-  if echo "$command" | grep -qE '^\s*(python3?|node|ruby|perl|php)(\s|$)'; then
+  if echo "$command" | grep -qE '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'; then
     _reason="禁止通过脚本解释器直接修改文件。请使用 Write 或 SearchReplace 工具操作文件。"
     cat >&2 <<'EOF'
 ⛔ [ADD PreToolUse §A] 阻断: 禁止通过脚本解释器直接修改文件。
@@ -47,6 +58,7 @@ if [ -n "$command" ]; then
 EOF
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
     _log_block "脚本解释器" "$command"
+    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过脚本解释器直接修改文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
 
@@ -61,6 +73,7 @@ EOF
 EOF
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
     _log_block "sed -i" "$command"
+    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过 sed -i 原地编辑" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
 
@@ -75,6 +88,7 @@ EOF
 EOF
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
     _log_block "重定向" "$command"
+    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过重定向写入文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
 
@@ -88,11 +102,12 @@ EOF
 EOF
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
     _log_block "tee/dd" "$command"
+    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过 tee/dd 写入文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
 
   # 检测 5: cp / mv / touch — 可创建或覆盖文件
-  if echo "$command" | grep -qE '^\s*(cp|mv|touch)\b'; then
+  if echo "$command" | grep -qE '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'; then
     _reason="禁止通过 cp/mv/touch 操作文件。请使用 Write 或 SearchReplace 工具。"
     cat >&2 <<'EOF'
 ⛔ [ADD PreToolUse §A] 阻断: 禁止通过 cp/mv/touch 操作文件。
@@ -101,6 +116,7 @@ EOF
 EOF
     echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
     _log_block "cp/mv/touch" "$command"
+    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过 cp/mv/touch 操作文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit 2
   fi
 
@@ -109,23 +125,37 @@ EOF
   exit 0
 fi
 
-# ═══════════════ §B: 源码 Plan 关联检查 ═══════════════
-file_path=$(echo "$input" | jq -r '.tool_input.file_path // empty')
-[ -z "$file_path" ] && exit 0
+# ═══════════════ §B: Write/Edit 文件写入前置守卫 ═══════════════
+# 非 Bash 工具（Write/Edit）的文件写入需要经过:
+#   1. Plan/Spec/Review 文档写入 → 需要活跃 ADD Plan
+#   2. 敏感文件保护 → 阻断写入
+#   3. Dev Action 标记 → 用于 Stop 检查
+# 注意: 不再对 src/**/*.ts 做 Plan 白名单放行，避免绕过 skill/rules 规定的 HITL。
+tool_name=$(echo "$input" | jq -r '.tool_name // empty')
+if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
+  file_path=$(echo "$input" | jq -r '.tool_input.file_path // empty')
+  [ -z "$file_path" ] && exit 0
 
-if ! echo "$file_path" | grep -qE '(src/|/src/).*\.(ts|tsx)$'; then
+  if echo "$file_path" | grep -qE '\.(qoder|claude|add)/(plans|specs|reviews)/'; then
+    if type detect_active_add >/dev/null 2>&1; then
+      state=$(detect_active_add 2>/dev/null || true)
+      if [ -z "$state" ]; then
+        echo "⛔ 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——请先执行 add-paradigm" >&2
+        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan/Spec/Review 写入需要活跃 ADD Plan，请先执行 add-paradigm\"}}"
+        write_hook_event "pre-tool-use" "deny" "$tool_name $file_path" "Plan/Spec/Review 写入需活跃 ADD Plan" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
+        exit 2
+      fi
+    fi
+  fi
+
+  if echo "$file_path" | grep -qE '\.env$|\.env\.production$|\.env\.local$|credentials|secrets'; then
+    echo "⛔ 敏感文件受保护，禁止写入: $file_path" >&2
+    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"敏感文件受保护\"}}"
+    exit 2
+  fi
+
+  mark_dev_action 2>/dev/null || true
   exit 0
 fi
 
-MOD=$(basename "$file_path" | sed 's/\.[jt]sx\?$//')
-
-MATCHES=$(grep -rl "$MOD" "$PROJECT_DIR/$MAGIC_DIR/plans" "$PROJECT_DIR/$MAGIC_DIR/specs" "$PROJECT_DIR/$MAGIC_DIR/reports" 2>/dev/null | wc -l)
-
-if [ "$MATCHES" -gt 0 ]; then
-  echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"相关 ADD Plan 已存在\"}}"
-  exit 0
-fi
-
-echo "⛔ 阻断: ${file_path} 无相关 ADD Plan。请先创建 Plan（plan-template / simple-plan-template）。" >&2
-echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"无相关 ADD Plan。请用 AskUserQuestion 询问用户选择 plan-template 或 simple-plan-template 创建 Plan。\"}}"
-exit 2
+exit 0
