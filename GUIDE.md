@@ -278,3 +278,37 @@ docs/{项目}/knowledge/
     └─ AI 通过 session-init 自动加载 handoff → 恢复上下文
     └─ 继续 Plan 2（UI 层）开发
 ```
+
+---
+
+## 七、add-coder 升级与模板更新
+
+### 什么时候需要更新
+
+`npm update add-coder` 或 `pnpm update add-coder` 后，add-coder 自带的模板文件（hooks、templates、skills 等）可能已更新，但你的项目里还是旧版。
+
+### 旧做法（三步，不推荐）
+
+```bash
+mv .qoder .qoder.backup
+npx add-coder init --adapter=qoder --force
+cp -r .qoder.backup/{plans,specs,reviews} .qoder/
+```
+
+### 新做法（一条命令）
+
+```bash
+npx add-coder sync --adapter=qoder --patch
+```
+
+**做了什么**：
+- 渲染最新版模板（hooks/agents/skills/templates/vocabulary 等）
+- 新增的文件自动写入
+- 有改动的文件弹出勾选列表让你选（`[a]` 全部跳过，`[A]` 全部覆盖）
+- plans/specs/reviews 永远不会被触碰
+
+### 原理
+
+add-coder build 时记录每个模板文件的 hash（`templates/.add-coder-src-hash.json`），发布到 npm。你的项目 init 时记录产出 hash（`.qoder/.add-coder-hash.json`）。`sync --patch` 对比两个 hash + 版本号，精准判断哪些文件是 add-coder 更新的、哪些是你改的。
+
+代码细节： [DEVELOPMENT.md §八](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)。
