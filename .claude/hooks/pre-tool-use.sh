@@ -7,6 +7,17 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 COMMON_LIB="$HOOK_DIR/lib/common.sh"
 [ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
+[ -f "$HOOK_DIR/lib/notify.sh" ] && source "$HOOK_DIR/lib/notify.sh" 2>/dev/null || true
+
+# ── Hook 通知: 提前计算 Plan 关联信息 ──
+ACTIVE_PLAN=$(detect_active_add 2>/dev/null || true)
+if [ -n "$ACTIVE_PLAN" ]; then
+  PLAN_KEYWORD="${ACTIVE_PLAN%%::*}"
+  PLAN_STATUS="active"
+else
+  PLAN_KEYWORD="no-active-plan"
+  PLAN_STATUS="none"
+fi
 
 input=$(parse_input)
 tool_name=$(json_get "$input" "tool_name")
@@ -20,21 +31,25 @@ if [ "$tool_name" = "Bash" ]; then
   # 危险命令
   if echo "$cmd" | grep -qiE 'rm[[:space:]]+-rf[[:space:]]+/|DROP[[:space:]]+TABLE|git[[:space:]]+push[[:space:]]+--force|mkfs\.|dd[[:space:]]+if='; then
     echo "⛔ 危险命令已被阻止: $cmd" >&2
+    write_hook_event "pre-tool-use" "deny" "$cmd" "危险命令已被阻止" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit $EXIT_BLOCK
   fi
   # 终端写文件拦截（含 > / >> / << heredoc / mv / touch / python -c > file）
   if echo "$cmd" | grep -qE '(cat|echo|tee|sed[[:space:]]+-i|awk|printf|cp|mv|dd|touch)[[:space:]]*.*([>]{1,2}|[|][[:space:]]*tee|<<)'; then
     echo "⛔ 禁止通过终端命令直接写文件: $cmd。请使用 Write/Edit/SearchReplace 工具。" >&2
+    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过终端直接写文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit $EXIT_BLOCK
   fi
-  # mv 无重定向但仍操作文件
-  if echo "$cmd" | grep -qE '^[[:space:]]*mv[[:space:]]+/tmp/'; then
-    echo "⛔ 禁止通过 mv /tmp/ 绕过 IDE 工具: $cmd" >&2
+  # cp / mv / touch — 可创建或覆盖文件，无重定向也拦（对齐 core §A 检测5）
+  if echo "$cmd" | grep -qE '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'; then
+    echo "⛔ 禁止通过 cp/mv/touch 操作文件: $cmd。请使用 Write 或 SearchReplace 工具。" >&2
+    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过 cp/mv/touch 操作文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit $EXIT_BLOCK
   fi
-  # python/node 脚本写文件
-  if echo "$cmd" | grep -qE '(python3|python|node)[[:space:]].*[>]{1,2}'; then
-    echo "⛔ 禁止通过脚本语言直接写文件: $cmd。请使用 Write/Edit/SearchReplace 工具。" >&2
+  # python/node/ruby/perl/php 脚本解释器 — 可写任意文件
+  if echo "$cmd" | grep -qE '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'; then
+    echo "⛔ 禁止通过脚本解释器直接写文件: $cmd。请使用 Write 或 SearchReplace 工具。" >&2
+    write_hook_event "pre-tool-use" "deny" "$cmd" "禁止通过脚本解释器直接修改文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit $EXIT_BLOCK
   fi
   mark_dev_action
@@ -51,7 +66,10 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
     if type detect_active_add >/dev/null 2>&1; then
       state=$(detect_active_add 2>/dev/null || true)
       if [ -z "$state" ]; then
-        echo "[ADD PreToolUse] ⚠️ 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——请先执行 add-paradigm" >&2
+        echo "⛔ 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——请先执行 add-paradigm" >&2
+        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan/Spec/Review 写入需要活跃 ADD Plan，请先执行 add-paradigm\"}}"
+        write_hook_event "pre-tool-use" "deny" "$file_path" "Plan/Spec/Review 写入需活跃 ADD Plan" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
+        exit $EXIT_BLOCK
       fi
     fi
   fi
@@ -59,6 +77,7 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
   # 敏感文件保护
   if echo "$file_path" | grep -qE '\.env$|\.env\.production$|\.env\.local$|credentials|secrets'; then
     echo "⛔ 敏感文件受保护，禁止写入: $file_path" >&2
+    write_hook_event "pre-tool-use" "deny" "$file_path" "敏感文件受保护" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
     exit $EXIT_BLOCK
   fi
 
