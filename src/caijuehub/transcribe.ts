@@ -67,11 +67,39 @@ function genWriterRules(rules: TomlData): string {
 };`;
 }
 
+function genSyncRules(rules: TomlData): string {
+    const d = rules as any;
+    const g = d.guard?.patterns || [];
+    const h = d.hash || {};
+    const p = d.patch || {};
+    const v = d.version || {};
+    const def = d.default || {};
+    const patterns = g.map((s: string) => `/${s}/`).join(", ");
+    return `export const SYNC_CONFIG = {
+    PATCH_GUARD: [${patterns}],
+    HASH_OUTPUT_FILE: "${h.output_file || '.add-coder-hash.json'}",
+    HASH_SRC_FILE: "${h.src_file || 'templates/.add-coder-src-hash.json'}",
+    HASH_HEX_LENGTH: ${h.hex_length || 8},
+    PATCH_ON_MISSING: "${p.on_missing || 'write'}",
+    PATCH_ON_CONFLICT: "${p.on_conflict || 'interactive'}",
+    PATCH_ON_SAME: "${p.on_same || 'skip'}",
+    VERSION_ON_FIRST: "${v.on_first_patch || 'baseline'}",
+    VERSION_ON_UPGRADE: "${v.on_upgrade || 'baseline'}",
+    VERSION_ON_HASH_LOST: "${v.on_hash_lost || 'conflict'}",
+    VERSION_SENTINEL: "${v.sentinel_file || '.add-coder-version'}",
+    DEFAULT_ON_MISSING: "${def.on_missing || 'write'}",
+    DEFAULT_ON_EXISTING: "${def.on_existing || 'skip'}",
+    PROMPT_FULL: "${def.prompt_full || ''}",
+    PROMPT_PATCH_DONE: "${def.prompt_patch_done || ''}",
+};`;
+}
+
 const GENERATORS: Record<string, RuleGenerator> = {
     "detect-ide": genDetectRules,
     "resolve-adapters": genAdapterRules,
     "prisma-inject": genPrismaRules,
     "write-files": genWriterRules,
+    "sync-patch": genSyncRules,
 };
 
 function readExistingUserCode(filePath: string): string {

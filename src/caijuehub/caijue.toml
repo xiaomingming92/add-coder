@@ -38,3 +38,10 @@ type = "strategy"
 description = "文件写入模式决策"
 rules = "writer-rules.toml"
 implementation = "src/caijuehub/strategies/writer.strategy.ts"
+
+[[caijue]]
+id = "sync-patch"
+type = "strategy"
+description = "sync 命令行为：补缺 / --patch 覆盖更新，双 hash 校验 + PATCH_GUARD 保护"
+rules = "sync-rules.toml"
+implementation = "src/caijuehub/strategies/sync.strategy.ts"

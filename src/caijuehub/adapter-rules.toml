@@ -4,12 +4,8 @@
 claude = ".claude"
 qoder = ".qoder"
 vscode = ".vscode"
-# 适配器选择规则
+trae = ".trae"
+codex = ".codex"
 
 [auto]
 deploy = ["claude", "qoder", "vscode"]
-
-[magic_path]
-claude = ".claude"
-qoder = ".qoder"
-vscode = ".vscode"
