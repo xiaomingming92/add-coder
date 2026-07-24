@@ -43,7 +43,7 @@ function resolveAdapter(projectRoot: string, specified?: string): Adapter {
 function isUserData(p: string) { return SYNC_CONFIG.PATCH_GUARD.some(r => r.test(p)); }
 function hash8(c: string) { return createHash("sha256").update(c).digest("hex").slice(0, SYNC_CONFIG.HASH_HEX_LENGTH); }
 function loadHashFile(root: string, magic: string): Record<string, string> {
-    try { return JSON.parse(readFileSync(resolve(root, magic, SYNC_CONFIG.HASH_OUTPUT_FILE), "utf-8")); } catch { return {}; }
+    try { return JSON.parse(readFileSync(resolve(root, magic, SYNC_CONFIG.HASH_OUTPUT_FILE), "utf-8")) as Record<string, string>; } catch { return {}; }
 }
 function loadVersionFile(root: string, magic: string): string {
     try { return readFileSync(resolve(root, magic, SYNC_CONFIG.VERSION_SENTINEL), "utf-8").trim(); } catch { return ""; }
@@ -114,7 +114,7 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
         const outHash = loadHashFile(projectRoot, magicDir);
         const srcHashPath = resolve(projectRoot, "node_modules", "add-coder", "templates", ".add-coder-src-hash.json");
         let npmVersion = "";
-        try { npmVersion = JSON.parse(readFileSync(srcHashPath, "utf-8"))._version || ""; } catch { /* ignore */ }
+        try { npmVersion = (JSON.parse(readFileSync(srcHashPath, "utf-8")) as Record<string, string>)._version ?? ""; } catch { /* ignore */ }
         const installedVersion = loadVersionFile(projectRoot, magicDir);
         const isFirstPatch = !installedVersion;
         const isUpgrade = installedVersion && npmVersion && installedVersion !== npmVersion;

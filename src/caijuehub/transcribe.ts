@@ -68,13 +68,13 @@ function genWriterRules(rules: TomlData): string {
 }
 
 function genSyncRules(rules: TomlData): string {
-    const d = rules as any;
-    const g = d.guard?.patterns || [];
-    const h = d.hash || {};
-    const p = d.patch || {};
-    const v = d.version || {};
-    const def = d.default || {};
-    const patterns = g.map((s: string) => `/${s}/`).join(", ");
+    const d = rules as { guard?: { patterns?: string[] }; hash?: { output_file?: string; src_file?: string; hex_length?: number }; patch?: { on_missing?: string; on_conflict?: string; on_same?: string }; version?: { on_first_patch?: string; on_upgrade?: string; on_hash_lost?: string; sentinel_file?: string }; default?: { on_missing?: string; on_existing?: string; prompt_full?: string; prompt_patch_done?: string } };
+    const g = d.guard?.patterns ?? [];
+    const h = d.hash ?? {};
+    const p = d.patch ?? {};
+    const v = d.version ?? {};
+    const def = d.default ?? {};
+    const patterns = g.map((s: string): string => `/${s}/`).join(", ");
     return `export const SYNC_CONFIG = {
     PATCH_GUARD: [${patterns}],
     HASH_OUTPUT_FILE: "${h.output_file || '.add-coder-hash.json'}",
