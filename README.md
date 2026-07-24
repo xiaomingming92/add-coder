@@ -160,16 +160,16 @@ npx add-coder init
 ```
 MCP 能力            方向              当前状态     说明
 ─────────────────────────────────────────────────────────────
-Tools              Client→Server     ✅ 已实现     17 个审计与治理工具（pull 模式）
-Resources+Sub      Client←Server     🔜 本轮       Plan/Review/Route/Task 状态实时推送
-Notifications      Server→Client     🔜 本轮       HITL 就绪通知 / Hook 结果推送
-Sampling           Server→Client     🔜 本轮       服务端回调 AI 生成 Review
+Tools              Client→Server     ✅ 已实现     18 个审计与治理工具（pull 模式）
+Resources+Sub      Client←Server     ✅ 已实现      8 个端点 Plan/Review/Route/Task/Hook 状态推送
+Notifications      Server→Client     ✅ 已实现      HITL 就绪 + Hook 拦截事件推送
+Sampling           Server→Client     ✅ 已实现      服务端回调 AI 生成 Review (HITL 两步法)
 ── 横切 ──
-Elicitation        Server→Client     🔜 本轮       向用户请求 HITL 确认/风险输入
-Tasks (实验性)     双向              🔜 本轮       长任务持久化 + 状态追踪
+Elicitation        Server→Client     ✅ 已实现      向用户请求 HITL 确认/风险输入
+Tasks (实验性)     双向              ✅ 已实现      长任务持久化 + 状态追踪
 ```
 
-**当前已实现的 17 个 Tools**：
+**当前已实现的 18 个 Tools**：
 
 | 工具 | 用途 | 触发场景 |
 |------|------|---------|
@@ -182,6 +182,7 @@ Tasks (实验性)     双向              🔜 本轮       长任务持久化 +
 | `check_add_route_status` | add-route 文件存在性校验 | Step 3 前 |
 | `check_spec_sync` | Spec 文档勾选状态与代码一致性 | Spec 执行后 |
 | `find_related_docs` | 检索相关架构/规范文档 | 语境理解 |
+| `get_hook_events` | 查询 Hook 拦截事件（planKeyword/hook/时间过滤+分组） | 治理审计、阈值告警 |
 
 > 完整六能力架构设计见 [MCP 重构 Plan](.qoder/plans/2026-07/23/add-coder-mcp-restructure-plan-v1.md)。
 
@@ -251,8 +252,8 @@ Tasks (实验性)     双向              🔜 本轮       长任务持久化 +
 | 计划 | 说明 |备注|
 |------|------|------|
 | Demo 仓库演示 | 提供完整示例仓库，展示 Policy-Update-Loop 与 Report 体系的端到端闭环实践 |--|
-| MCP 能力重构 | MCP 工具链架构升级，提升审计与门禁工具的可扩展性和独立部署能力 | 2026-07/23/add-coder-mcp-restructure-plan-v1.md |
-| Hook 通知升级 | Hook 拦截事件 jsonl → fs.watch → record_dev_operation 落库 + Notification + 治理信号 | 2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md |
+| MCP 能力重构 | ✅ v0.2.9 MCP 工具链架构升级，提升审计与门禁工具的可扩展性和独立部署能力 | 2026-07/23/add-coder-mcp-restructure-plan-v1.md |
+| Hook 通知升级 | ✅ v0.2.9 Hook 拦截事件 jsonl → fs.watch → record_dev_operation 落库 + Notification + 治理信号 | 2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md |
 | 对话记忆增强 | 长期项目知识记忆和plan级别的稀疏记忆 |--|
 
 
@@ -503,8 +504,8 @@ npx add-coder init
 | Plan | Description | remark |
 |------|-------------|:---:|
 | Demo Repo | Full example repository showcasing Policy-Update-Loop with Report system end-to-end | 📋 |
-| ~~MCP Restructure~~ | 3,467-line monolith → 27 modules covering all six MCP primitives (Tools/Resources/Notifications/Sampling/Elicitation/Tasks) | 2026-07/23/add-coder-mcp-restructure-plan-v1.md  |
-| Hook Notification Upgrade | ~36 files: hook intercept → jsonl → fs.watch → record_dev_operation + Notification + governance signals | 2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md|
+| ~~MCP Restructure~~ | ✅ v0.2.9 3,467-line monolith → 27 modules covering all six MCP primitives | 2026-07/23/... |
+| ~~Hook Notification Upgrade~~ | ✅ v0.2.9 ~36 files: hook intercept → jsonl → fs.watch → record_dev_operation | 2026-07/24/... |
 | Memory Enhancement | Long-term project knowledge memory and plan-level sparse memory | 📋 |
 
 ---
