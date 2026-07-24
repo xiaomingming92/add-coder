@@ -248,11 +248,11 @@ Tasks (实验性)     双向              🔜 本轮       长任务持久化 +
 
 ## 🎬 预告
 
-| 计划 | 说明 |
-|------|------|
-| Demo 仓库演示 | 提供完整示例仓库，展示 Policy-Update-Loop 与 Report 体系的端到端闭环实践 |
-| MCP 能力重构 | MCP 工具链架构升级，提升审计与门禁工具的可扩展性和独立部署能力 |
-| 对话记忆增强 | 长期项目知识记忆和plan级别的稀疏记忆 |
+| 计划 | 说明 |备注|
+|------|------|------|
+| Demo 仓库演示 | 提供完整示例仓库，展示 Policy-Update-Loop 与 Report 体系的端到端闭环实践 |--|
+| MCP 能力重构 | MCP 工具链架构升级，提升审计与门禁工具的可扩展性和独立部署能力 |2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md + 2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md|
+| 对话记忆增强 | 长期项目知识记忆和plan级别的稀疏记忆 |--|
 
 
 
@@ -499,10 +499,11 @@ npx add-coder init
 
 ## 🎬 Coming Soon
 
-| Plan | Description |
-|------|-------------|
-| Demo Repo | A full example repository showcasing end-to-end closed-loop practice of Policy-Update-Loop and the Report system |
-| MCP Restructure | MCP toolchain architecture upgrade, improving audit and gateway tool extensibility and standalone deployment capability |
-| Memory Enhancement | Long-term project knowledge memory and plan-level sparse memory |
+| Plan | Description | Status |
+|------|-------------|:---:|
+| Demo Repo | Full example repository showcasing Policy-Update-Loop with Report system end-to-end | 📋 |
+| ~~MCP Restructure~~ | 3,467-line monolith → 27 modules covering all six MCP primitives (Tools/Resources/Notifications/Sampling/Elicitation/Tasks) | ✅ DPS=87 |
+| Hook Notification Upgrade | ~36 files: hook intercept → jsonl → fs.watch → record_dev_operation + Notification + governance signals | ✅ DPS=87 |
+| Memory Enhancement | Long-term project knowledge memory and plan-level sparse memory | 📋 |
 
 ---
