@@ -8,6 +8,18 @@ input=$(cat)
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 PARENT_DIR="$(dirname "$HOOK_DIR")"
 MAGIC_DIR="$(basename "$PARENT_DIR")"
+PROJECT_DIR="$PWD"
+
+# ── Hook 通知: 拦截事件写入 jsonl（旁路，失败不阻断 exit 2）──
+source "${HOOK_DIR}/lib/notify.sh" 2>/dev/null || true
+ACTIVE_PLAN=$(detect_active_add 2>/dev/null || true)
+if [ -n "$ACTIVE_PLAN" ]; then
+  PLAN_KEYWORD="${ACTIVE_PLAN%%::*}"
+  PLAN_STATUS="active"
+else
+  PLAN_KEYWORD="no-active-plan"
+  PLAN_STATUS="none"
+fi
 
 # DEBUG: dump stdin for investigation
 mkdir -p "$MAGIC_DIR/debug-dump"
@@ -44,6 +56,7 @@ CONTENT=$(echo "$input" | jq -r '
 if [ -z "$CONTENT" ]; then
   echo "⛔ 拒绝：Write 工具未传 file_content，无法校验手写文档格式" >&2
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"Write 工具未传 file_content，无法校验手写文档。请用 SearchReplace 改写已有文件，或用 Write 工具重试。"}}'
+  write_hook_event "doc-format-guard" "deny" "Write" "Write 工具未传 file_content" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
   exit 2
 fi
 
@@ -91,6 +104,7 @@ if [ -z "$TEMPLATE_NAME" ]; then
         else
           echo "⛔ handoff 文件内容无法识别模板类型（缺 '## 全局元信息' 或 '## 1. 交接前状态'），拒绝写入" >&2
           echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"handoff 内容不符合 single/multi 模板规范"}}'
+          write_hook_event "doc-format-guard" "deny" "$file_path" "handoff 模板类型无法识别" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
           exit 2
         fi
         ;;
@@ -111,6 +125,7 @@ if [ -z "$TEMPLATE_NAME" ]; then
         fi
         echo "⛔ 拒绝：无法识别文档类型 (file_path: $file_path)，缺少模板匹配规则" >&2
         echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"无法识别 ADD 文档类型，请联系管理员更新 doc-format-guard.sh"}}'
+        write_hook_event "doc-format-guard" "deny" "$file_path" "无法识别文档类型" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
         exit 2
         ;;
     esac
@@ -122,6 +137,7 @@ SCHEMA_FILE="$TEMPLATES_DIR/${TEMPLATE_NAME%.md}.schema.json"
 if [ ! -f "$SCHEMA_FILE" ]; then
   echo "⛔ 阻断：模板 ${TEMPLATE_NAME} 缺少对应的 .schema.json 校验规则" >&2
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"缺少 .schema.json 校验规则文件，禁止无规则放行"}}'
+  write_hook_event "doc-format-guard" "deny" "$file_path" "缺少 .schema.json 校验规则" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
   exit 2
 fi
 
@@ -172,6 +188,7 @@ if [ -n "$ISSUES" ]; then
   echo "⛔ $TEMPLATE_NAME 校验不通过:
 $ISSUES" >&2
   echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"文档格式校验不通过，请对照模板修正\"}}"
+  write_hook_event "doc-format-guard" "deny" "$file_path" "文档格式校验不通过" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
   exit 2
 fi
 
