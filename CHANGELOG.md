@@ -6,6 +6,90 @@
 
 ---
 
+## [0.2.9] - 2026-07-24
+
+### MCP 能力重构（核心）
+
+- **Hook 事件治理体系**：jsonl 旁路 + fs.watch 目录监听 + 内存缓冲队列（50/2s）→ 批量 Prisma 落库 → DevOperation 审计闭环
+- **18→18 工具**：新增 `get_hook_events`（planKeyword/hook/时间过滤 + 分组聚合 + 阈值告警）
+- **6→8 Resource 端点**：新增 `hook-events/daily` + `hook-events/weekly` 报表
+- **通知升级**：hook.ts 重写为目录监听 + 队列 + 批量写入；hitl.ts 新增 5min 周期阈值告警
+- **sampling/review.ts**：HITL 两步法（temporary.md → 人类拍板 → 完整 Review），支持 3 种类型
+
+### 治理卡位升级
+
+- **Hook 事件注入**：lib/notify.sh 零依赖 jsonl 写入 + 73 注入点覆盖 5 adapter 全部 exit 2
+- **治理摘要注入**：UserPromptSubmit 自动输出 `[Hook 治理] 今日拦截: N 次`（5 IDE 全覆盖）
+- **pre-tool-use.sh 正则加固**：`^` 锚点 → 命令分隔符上下文，修复 `&& mv` / `for do mv` 绕过
+
+### 修复
+
+- **Prisma v6/v7 路径兼容**：`shared/prisma.ts` client.ts + client.js 双候选
+- **fs.watch 目录监听**：文件后创建不丢事件 + 启动时预创建空 jsonl
+- **notify.sh 同步**：lib/notify.sh 分发到所有 adapter lib/ 目录
+- **capabilities-and-debugging.md**：更新至 29 文件/18 工具/8 端点
+
+## [0.2.8] - 2026-07-23
+
+### 变更
+
+- 文档调整
+- 缓存命中介绍
+
+## [0.2.7] - 2026-07-23
+
+### 变更
+
+- MCP 适配调整
+
+## [0.2.6] - 2026-07-23
+
+### 修复
+
+- MCP 读文件路径错误修复
+
+## [0.2.5] - 2026-07-23
+
+### 修复
+
+- SearchReplace 工具修复
+
+## [0.2.4] - 2026-07-23
+
+### 新增
+
+- HITL temporary.md 机制 + sync 脚本全覆盖重构
+
+## [0.2.3] - 2026-07-23
+
+### 新增
+
+- ADD 范式增强：HITL 总览 + 精简版 Plan + 算法化校验
+- 自举同步脚本 sync-magic-dirs.sh
+
+### 变更
+
+- CLI 工程质量：init 管道化 + sync 对齐 + lint 严格化
+- 模板源统一动态 MAGIC_DIR + IDE 变量去污染
+
+## [0.2.2] - 2026-07-22
+
+### 变更
+
+- Hook 能力增强和修复
+
+### 修复
+
+- 模板文件禁止词检查矛盾
+
+## [0.2.1] - 2026-07-17
+
+### 变更
+
+- README 双语折叠 → 独立章节
+- 架构全景图更新：五端 IDE + 事件覆盖数
+- CHANGELOG 补全 0.1.14→0.2.0 全版本链
+
 ## [0.2.0] - 2026-07-17
 
 ### 新增
