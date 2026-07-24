@@ -1,6 +1,6 @@
 # Plans 总览
 
-> 自动生成: 2026-07-23 12:22:45 | 文档总数: 10 | 下次更新: 每天 2:00 AM
+> 自动生成: 2026-07-24 14:46:24 | 文档总数: 15 | 下次更新: 每天 2:00 AM
 
 
 ## 2026-07
@@ -17,6 +17,11 @@
 | 17 | add-route | [add-coder-hook-full-alignment-add-route-v1.md](2026-07/17/add-coder-hook-full-alignment-add-route-v1.md) | add-coder-hook-full-alignment-add-route-v1 |
 | 17 | handoff | [add-coder-hook-full-alignment-handoff-v1.md](2026-07/17/add-coder-hook-full-alignment-handoff-v1.md) | add-coder Hook 体系四端对齐 — 6 轮原子事务交接手册 |
 | 17 | plan | [add-coder-hook-full-alignment-plan-v1.md](2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | add-coder-hook-full-alignment-plan-v1 |
+| 23 | add-route | [add-coder-mcp-restructure-add-route-v1.md](2026-07/23/add-coder-mcp-restructure-add-route-v1.md) | add-coder-mcp-restructure-add-route-v1 |
+| 23 | plan | [add-coder-mcp-restructure-plan-v1.md](2026-07/23/add-coder-mcp-restructure-plan-v1.md) | add-coder-mcp-restructure-plan-v1 |
+| 23 | plan | [add-coder-selfhost-sync-plan-v1.md](2026-07/23/add-coder-selfhost-sync-plan-v1.md) | add-coder-selfhost-sync-plan-v1 |
+| 24 | add-route | [add-coder-hook-notify-upgrade-add-route-v1.md](2026-07/24/add-coder-hook-notify-upgrade-add-route-v1.md) | add-coder-hook-notify-upgrade-add-route-v1 |
+| 24 | plan | [add-coder-hook-notify-upgrade-plan-v1.md](2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md) | add-coder-hook-notify-upgrade-plan-v1 |
 
 ---
 *索引由 `.qoder/scripts/gen-plan-index.sh` 自动生成，勿手动编辑*
