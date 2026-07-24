@@ -2,7 +2,7 @@
 
 > 给 add-coder 贡献者的开发手册 — 目录结构、sync 机制、init 流程、唯一真源原则。
 
-📦 **用户使用文档** → [README.md](./README.md) | **实践指南** → [GUIDE.md](./GUIDE.md)
+📦 **用户使用文档** → [README.md](./README.md) | **实践指南** → [GUIDE.md](./GUIDE.md) | **能力清单&调试** → [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md)
 
 ---
 
@@ -565,6 +565,7 @@ npx add-coder init --adapter claude --force --dry-run
 |------|------|
 | [README.md](./README.md) | 用户文档：快速开始、命令、架构全景 |
 | [GUIDE.md](./GUIDE.md) | 实践指南：从零上手 ADD 工作流 |
+| [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md) | 能力清单 & 调试指南 |
 | [scripts/sync-magic-dirs.sh](./scripts/sync-magic-dirs.sh) | 自举同步脚本 |
 | [.qoder/plans/.../add-coder-selfhost-sync-plan-v1.md](./.qoder/plans/2026-07/23/add-coder-selfhost-sync-plan-v1.md) | 同步方案 Plan |
 | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | Qoder 治理文档（hooks 覆盖说明） |
