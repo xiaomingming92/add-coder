@@ -345,6 +345,20 @@ async function renderAndWrite(ctx: InitContext) {
         }
     }
 
+    if (!dry) {
+        const crypto = require("crypto");
+        const hashMap: Record<string, string> = {};
+        let npmVer = "";
+        try { npmVer = JSON.parse(readFileSync(resolve(projectRoot, "node_modules", "add-coder", "templates", ".add-coder-src-hash.json"), "utf-8"))._version || ""; } catch { /* ignore */ }
+        for (const [rp, c] of allFiles) {
+            hashMap[rp] = crypto.createHash("sha256").update(c).digest("hex").slice(0, 8);
+        }
+        const hashOut = resolve(projectRoot, magicDir, ".add-coder-hash.json");
+        writeFileSync(hashOut, JSON.stringify(hashMap, null, 2) + "\n", "utf-8");
+        if (npmVer) { writeFileSync(resolve(projectRoot, magicDir, ".add-coder-version"), npmVer + "\n", "utf-8"); }
+        console.log(`hash: ${Object.keys(hashMap).length} entries → ${magicDir}/.add-coder-hash.json`);
+    }
+
     return await writeFiles(projectRoot, allFiles, { force: options.force, dryRun: options.dryRun });
 }
 

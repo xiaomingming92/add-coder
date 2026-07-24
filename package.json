@@ -27,7 +27,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "prepare": "tsup",
+    "prepare": "tsup && tsx scripts/gen-src-hash.ts",
     "predev": "npm run db:ensure",
     "dev": "tsup --watch",
     "db:ensure": "bash scripts/db-ensure.sh",
@@ -35,6 +35,8 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "generate": "tsx src/caijuehub/transcribe.ts",
+    "podman-add-coder-up": "podman-compose --env-file .env.development -f podman-compose.add.yml up -d",
+    "podman-add-coder-down": "podman-compose --env-file .env.development -f podman-compose.add.yml down",
     "test": "vitest run"
   },
   "keywords": [
