@@ -10,16 +10,17 @@
         "rootDir": ".",
         "declaration": true,
         "resolveJsonModule": true,
+                "ignoreDeprecations": "6.0",
         "types": [
             "node"
         ]
     },
     "include": [
-        "src",
-        "templates/core/scripts"
+        "src"
     ],
     "exclude": [
         "node_modules",
-        "dist"
+        "dist",
+        "templates"
     ]
 }

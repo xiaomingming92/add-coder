@@ -51,31 +51,24 @@
   "email": "wujixmm@gmail.com",
   "license": "AGPL-3.0-only",
   "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0-beta.5",
     "commander": "^13.1.0",
     "smol-toml": "^1.7.0",
-    "zod": "^3.24.0"
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
     "@prisma/adapter-libsql": "^7.0.0",
     "@prisma/adapter-pg": "^7.0.0",
     "@prisma/client": "^7.0.0",
     "dotenv": "*",
     "prisma": "^7.0.0",
-    "tsx": "*",
-    "zod": "^3.24.0"
+    "tsx": ">=4"
   },
   "peerDependenciesMeta": {
     "@prisma/client": {
       "optional": false
     },
     "prisma": {
-      "optional": false
-    },
-    "@modelcontextprotocol/sdk": {
-      "optional": false
-    },
-    "zod": {
       "optional": false
     },
     "dotenv": {
