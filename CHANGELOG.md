@@ -7,6 +7,14 @@
 ---
 ## [0.3.0] - 2026-07-24
 
+### Caijuehub 规则引擎 — 首次 TOML 直驱业务代码
+
+- **sync-rules.toml**：`[guard]` 管⑥ / `[patch]` 管①②④⑤（3 行为参数）/ `[version]` 管 3 边界
+- **transcribe.ts**：新增 genSyncRules 生成器 + GENERATORS 注册 → 产出 sync.strategy.ts
+- **sync.ts 薄壳化**：`import { SYNC_CONFIG }` 替代所有硬编码，改规则不改代码
+- **这是 codein2027 集中裁决层理论的第一个工程落地**：人类从"追踪散落的 if"升级为"读一张决策表"，O(N×M)→O(1)。AI Agent 可大规模索引、检索、修改规则
+- **docs/caijuehub.md**：规则引擎架构文档，联动 README/GUIDE/DEVELOPMENT
+
 ### sync --patch 热更新（核心）
 
 - **双 hash 机制**：源 hash（gen-src-hash.ts 扫描 253 模板文件 SHA256，prepare 链路打 npm）+ 产出 hash（init 渲染后写 .add-coder-hash.json 基线）
@@ -15,14 +23,6 @@
 - **selectFiles 交互统一**：`[a]` 全部跳过 `[A]` 全部覆盖，init/sync 共用同一 UI
 - **PATCH_GUARD**：plans/specs/reviews 永不触碰，由 caijuehub `sync-rules.toml` 驱动
 - **`npx add-coder sync --adapter=qoder --patch`** 一条命令替代旧三步（备份→init→恢复）
-
-### Caijuehub 规则引擎 — 首次 TOML 直驱业务代码
-
-- **sync-rules.toml**：`[guard]` 管⑥ / `[patch]` 管①②④⑤（3 行为参数）/ `[version]` 管 3 边界
-- **transcribe.ts**：新增 genSyncRules 生成器 + GENERATORS 注册 → 产出 sync.strategy.ts
-- **sync.ts 薄壳化**：`import { SYNC_CONFIG }` 替代所有硬编码，改规则不改代码
-- **这是 codein2027 集中裁决层理论的第一个工程落地**：人类从"追踪散落的 if"升级为"读一张决策表"，O(N×M)→O(1)。AI Agent 可大规模索引、检索、修改规则
-- **docs/caijuehub.md**：规则引擎架构文档，联动 README/GUIDE/DEVELOPMENT
 
 ### 文档体系
 
