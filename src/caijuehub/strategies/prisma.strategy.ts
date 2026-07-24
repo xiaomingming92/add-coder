@@ -1,3 +1,6 @@
+// ⚠️ 由 caijuehub/transcribe.ts 自动生成，不要手动编辑！
+// 改 *-rules.toml 后重新运行: add-coder generate
+
 // >>> CAIJUE GENERATED START >>>
 export const PRISMA_CONFIG = {
     onMissing: "ask",
@@ -6,10 +9,9 @@ export const PRISMA_CONFIG = {
     autoGenerate: true,
     migrationName: "add_workflow_init",
     schemaArg: "--schema=prisma/",
-    requiresUserModel: false,
+    requiresUserModel: true,
 };
 // <<< CAIJUE GENERATED END <<<
-
 // >>> USER CODE >>>
 import { spawnSync } from "child_process";
 import { copyFileSync, existsSync, readFileSync, unlinkSync, writeFileSync, mkdirSync } from "fs";

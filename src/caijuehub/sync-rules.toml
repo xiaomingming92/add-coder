@@ -1,0 +1,36 @@
+# sync 命令行为规则
+
+[guard]
+# PATCH_GUARD: --patch 模式下也不写入的路径模式
+patterns = ["[/]plans[/]", "[/]specs[/]", "[/]reviews[/]"]
+
+[hash]
+# 产出 hash 文件名
+output_file = ".add-coder-hash.json"
+# 源 hash 文件路径（相对于 npm 包 root）
+src_file = "templates/.add-coder-src-hash.json"
+# SHA256 截取前 N 位
+hex_length = 8
+
+[patch]
+# 6 hash 矩阵 → 3 行为参数
+on_missing = "write"             # ⑤ 文件不存在 → 静默写入
+on_conflict = "interactive"      # ②④ 内容有差异 → selectFiles 交互
+on_same = "skip"                 # ① 内容一致 → 跳过
+# ⑥ PATCH_GUARD → guard.patterns
+# ③ 用户改了源没变 → on_conflict: skip（用户选[a]）
+
+[version]
+# 3 版本边界 — 在 hash 矩阵之前判定
+# installedVersion vs npmVersion
+on_first_patch = "baseline"      # isFirstPatch → 静默写基线
+on_upgrade = "baseline"          # isUpgrade → 静默写基线  
+on_hash_lost = "conflict"        # hashLost → 全部进交互保护
+sentinel_file = ".add-coder-version"
+
+[default]
+# 默认模式（无 --patch）
+on_missing = "write"
+on_existing = "skip"             # 已有文件不碰
+prompt_full = "所有 ADD 模板文件已就位。使用 --patch 更新已有文件。"
+prompt_patch_done = "所有 ADD 模板文件已是最新。"
