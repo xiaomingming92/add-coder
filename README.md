@@ -106,7 +106,7 @@ on_missing = "write"          # 文件缺失时：静默写入
 on_upgrade = "baseline"       # 版本升级时：自动覆盖
 ```
 
-`npm run generate` 后，策略直驱 sync.ts 行为。**产品经理、市场人员可以通过改 TOML 调整软件能力**——这是规则与代码分离带来的人机协作范式进步。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
+`npm run generate` 后，策略直驱 sync.ts 行为。**人类从"追踪散落的 if"升级为"读一张决策表"**——认知负担从 O(N×M) 降为 O(1)。产品经理、市场人员改 TOML 即可把控软件能力，决策权集中、单一入口绕不过去。这是 [codein2027 集中裁决层理论](https://github.com/xiaomingming92/codein2027) 的第一个工程落地。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
 
 ---
 
@@ -385,7 +385,7 @@ on_missing = "write"          # file missing → silent write
 on_upgrade = "baseline"       # version upgrade → auto overwrite
 ```
 
-After `npm run generate`, the strategy directly drives sync.ts behavior. **Product managers and marketing teams can adjust software capabilities by editing TOML** — a paradigm leap in human-AI collaboration enabled by separating rules from code. Details: [docs/caijuehub.md](./docs/caijuehub.md).
+After `npm run generate`, the strategy directly drives sync.ts behavior. **Humans upgrade from "hunting scattered if-statements" to "reading a decision table"** — cognitive load drops from O(N×M) to O(1). Product managers and marketers edit TOML to control software capabilities, with decisions centralized at a single entry point that cannot be bypassed. This is the first engineering implementation of [codein2027's Centralized Decision Layer theory](https://github.com/xiaomingming92/codein2027). Details: [docs/caijuehub.md](./docs/caijuehub.md).
 
 ---
 
