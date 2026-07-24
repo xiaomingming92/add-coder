@@ -8,6 +8,8 @@ Make 0.75 into one.
 
 
 > 🧭 **从零上手实操？** 请参见 [GUIDE.md](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md) — 包含触发词速查、需求转 Plan、完整链路演练。
+>
+> 🔄 **add-coder 升级后更新模板？** `npx add-coder sync --adapter=qoder --patch` — 实操看 [GUIDE.md §版本升级](#) | 原理看 [DEVELOPMENT.md](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)
 
 ```bash
 npx add-coder init
@@ -90,6 +92,21 @@ hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中
 | Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 (原生) / 14 (导入 Claude) | `.codex/hooks.json` |
 
 > 实施 Plan: [add-coder-hook-full-alignment-plan-v1](./.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | 触发源: [GitHub Issue #6](https://github.com/xiaomingming92/add-coder/issues/6)
+
+### ⑦ Caijuehub 规则引擎：业务规则直驱代码
+
+Caijuehub 是 add-coder 历史上第一个实现 **TOML 规则声明 → 自动生成策略 → 业务代码消费** 的裁决引擎。以 sync --patch 为例：
+
+```toml
+# sync-rules.toml — 改这里，不改代码
+[patch]
+on_conflict = "interactive"   # 内容冲突时：交互勾选
+on_missing = "write"          # 文件缺失时：静默写入
+[version]
+on_upgrade = "baseline"       # 版本升级时：自动覆盖
+```
+
+`npm run generate` 后，策略直驱 sync.ts 行为。**产品经理、市场人员可以通过改 TOML 调整软件能力**——这是规则与代码分离带来的人机协作范式进步。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
 
 ---
 
@@ -354,6 +371,21 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 | VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
 | Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
 | Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
+
+### ⑦ Caijuehub Rule Engine: Business Rules Drive Code
+
+Caijuehub is add-coder's first implementation of **TOML declaration → auto-generated strategy → business code consumption**. Using sync --patch as an example:
+
+```toml
+# sync-rules.toml — edit here, not code
+[patch]
+on_conflict = "interactive"   # content conflict → interactive checkbox
+on_missing = "write"          # file missing → silent write
+[version]
+on_upgrade = "baseline"       # version upgrade → auto overwrite
+```
+
+After `npm run generate`, the strategy directly drives sync.ts behavior. **Product managers and marketing teams can adjust software capabilities by editing TOML** — a paradigm leap in human-AI collaboration enabled by separating rules from code. Details: [docs/caijuehub.md](./docs/caijuehub.md).
 
 ---
 
