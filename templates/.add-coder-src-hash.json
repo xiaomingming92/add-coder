@@ -1,5 +1,5 @@
 {
-  "_version": "0.2.10",
+  "_version": "0.3.0",
   "adapters/claude/hooks/doc-format-guard.sh": "ec59ad3f",
   "adapters/claude/hooks/lib/common.sh": "db321ef6",
   "adapters/claude/hooks/lib/context-inject.sh": "4132f203",
