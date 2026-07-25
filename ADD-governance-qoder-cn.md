@@ -97,3 +97,30 @@ UserPromptSubmit hook additional context: ADD workflow active. ...
 1. **`PROJECT_DIR` 必须最先设置**：所有 `source lib/*.sh` 之前，因为被 source 的脚本可能依赖 `${PROJECT_DIR}` 定位文件
 2. **additionalContext 放在入口最前**：在任何 `exit` 分支之前，确保所有代码路径都能注入上下文
 3. **Stop/PreToolUse 不用 JSON**：中断/阻断类输出走 stderr 纯文本，不走 stdout JSON
+
+---
+
+## MCP Server 配置
+
+Qoder CN 的 MCP Server 配置位于 `.qoder/mcp.json`。
+
+**关键约束**：
+- `command` 必须使用 `node_modules/.bin/tsx` 的**绝对路径**，裸命令 `tsx` 在非交互式 MCP 进程中因 PATH 不可用会失败
+- 若 add-coder 以 `link:` 方式集成到下游项目，MCP Server 的 `PROJECT_ROOT` 可能因模块路径穿透错误解析。必须在 `.qoder/mcp.json` 的 `env` 中显式声明：
+
+```json
+{
+  "mcpServers": {
+    "add-dev-tools": {
+      "command": "<node_modules/.bin/tsx 绝对路径>",
+      "args": ["<项目根>/.qoder/scripts/mcp-server.ts"],
+      "env": {
+        "NODE_ENV": "development",
+        "PROJECT_ROOT": "<项目根绝对路径>"
+      }
+    }
+  }
+}
+```
+
+> `npx add-coder sync --adapter=qoder --patch` 会自动渲染 `{{projectRoot}}` 占位符为实际项目根路径。
