@@ -6,7 +6,8 @@
         "{{projectRoot}}/.qoder/scripts/mcp-server.ts"
       ],
       "env": {
-        "NODE_ENV": "development"
+        "NODE_ENV": "development",
+        "PROJECT_ROOT": "{{projectRoot}}"
       }
     }
   }

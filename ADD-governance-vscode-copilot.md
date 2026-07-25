@@ -130,3 +130,16 @@ VS Code Copilot 的 `.github/hooks/*.json` 默认指向 `.vscode/hooks/xxx.sh`�
 - 只用 Claude Code CLI → 不需要改 JSON，直接走 `.claude/settings.json`
 
 ---
+
+## MCP Server 配置
+
+VS Code Copilot 的 MCP Server 配置位于 `.vscode/settings.json`（通过 Copilot 扩展的 MCP 配置项）。Agent Host 模式下 `.claude/mcp.json` 同步生效。
+
+**关键约束**：若 add-coder 以 `link:` 方式集成（如 `pnpm link`），MCP Server 的 `PROJECT_ROOT` 可能因模块路径穿透错误解析。必须在 MCP 配置的 `env` 中显式声明 `PROJECT_ROOT`。
+
+| 配置位置 | 适用场景 | 配置方式 |
+|---------|---------|---------|
+| `.vscode/settings.json` | VS Code Copilot 原生 | MCP Server 的 `env.PROJECT_ROOT` 设为项目根绝对路径 |
+| `.claude/mcp.json` | Agent Host（Claude Code 通道） | `env` 中 `PROJECT_ROOT: "{{projectRoot}}"`，`npx add-coder sync --patch` 自动渲染 |
+
+> `command` 必须用绝对路径：裸命令 `tsx` 在非交互式 MCP 进程中因 PATH 不可用会失败。

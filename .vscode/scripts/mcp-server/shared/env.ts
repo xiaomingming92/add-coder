@@ -6,8 +6,8 @@ import { existsSync } from "fs"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-export const PROJECT_ROOT = resolve(__dirname, "..", "..", "..", "..")
-export const MAGIC_DIR = basename(resolve(__dirname, "..", "..", ".."))
+export const PROJECT_ROOT = process.env.PROJECT_ROOT || resolve(__dirname, "..", "..", "..", "..")
+export const MAGIC_DIR = process.env.MAGIC_DIR || basename(resolve(__dirname, "..", "..", ".."))
 export const PROJECT_ID = basename(PROJECT_ROOT)
 
 const ENV_CANDIDATES = [".env.development.local", ".env.development", ".env.local", ".env"]
