@@ -7,7 +7,7 @@ import { resolveProjectRoot } from "./project-root-strategy.js"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-// 裁决层驱动：PROJECT_ROOT 推导由 project-root-rules.toml → project-root-strategy.ts 定义
+// 集中裁决层驱动：PROJECT_ROOT 推导由 project-root-rules.toml → project-root-strategy.ts 定义
 export const PROJECT_ROOT = resolveProjectRoot(__dirname)
 
 export const MAGIC_DIR = process.env.MAGIC_DIR || basename(resolve(__dirname, "..", "..", ".."))
