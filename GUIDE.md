@@ -23,7 +23,7 @@
   - [4.4 每轮都有交接文档](#44-每轮都有交接文档)
   - [4.5 Review 的 HITL 审核：先过总览再逐条分析](#45-review-的-hitl-审核先过总览再逐条分析)
 - [五、目录结构速查](#五目录结构速查)
-- [六、一条完整链路走一遍](#六一条完整链路走一遍)
+- [七、add-coder 升级后怎么更新本地文件](#七add-coder-升级后怎么更新本地文件)
 
 ---
 
@@ -281,11 +281,9 @@ docs/{项目}/knowledge/
 
 ---
 
-## 七、add-coder 升级与模板更新
+## 七、add-coder 升级后怎么更新本地文件
 
-### 什么时候需要更新
-
-`npm update add-coder` 或 `pnpm update add-coder` 后，add-coder 自带的模板文件（hooks、templates、skills 等）可能已更新，但你的项目里还是旧版。
+`npm update add-coder` 后，Skills、rules、hooks、templates 还在用旧版？一条命令搞定：
 
 ### 旧做法（三步，不推荐）
 
