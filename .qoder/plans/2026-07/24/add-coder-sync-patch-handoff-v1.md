@@ -71,6 +71,7 @@ rm -f docs/interaction-spec.md
 - [x] `sync --adapter=qoder --patch` 实测通过
 - [x] DevOperation 审计日志 6 条落库（beforeState/afterState 完整）
 - [x] DPS 75 🟡 WARN
+- [x] MCP Server 环境修复 6 条追加落库（2026-07-25，见下方追加记录）
 
 ---
 
@@ -153,10 +154,38 @@ grep -R "SYNC_CONFIG\|PATCH_GUARD\|gen-src-hash" src/cli/ src/caijuehub/ scripts
 - [x] PATCH_GUARD 保护 plans/specs/reviews
 - [x] adapter 文件参与冲突交互
 - [x] 默认 sync 行为不变
-- [x] DevOperation 审计日志 6 条完整
+- [x] DevOperation 审计日志 6+6=12 条完整
+- [x] MCP Server PROJECT_ROOT 三层推导 + caijuehub 裁决链就绪
 
 ---
 
 ## 10. 脱敏要求
 
 无凭据信息。配置文件路径均为项目相对路径。
+
+---
+
+## 11. 追加记录：MCP Server 环境修复（2026-07-25）
+
+同步 add-coder v0.3.1 后，add-dev-tools MCP Server 启动失败，根因修复如下：
+
+| # | targetId | action | 说明 |
+|---|----------|:--:|------|
+| 1 | `.qoder/mcp.json` | MODIFY | `command` 改为绝对路径，`env` 新增 `PROJECT_ROOT` |
+| 2 | `package.json` | MODIFY | 安装 `@modelcontextprotocol/server@2.0.0-beta.5` |
+| 3 | `.qoder/.../shared/env.ts` | MODIFY | 精简为 `resolveProjectRoot(__dirname)`，消费 caijuehub 策略 |
+| 4 | `.qoder/.../shared/project-root-strategy.ts` | CREATE | 裁决层消费：三层 fallback（env_var → dirname → cwd） |
+| 5 | `.qoder/.../shared/prisma.ts` | MODIFY | `add-prisma` 路径优先，修复双 DB provider 不匹配 |
+| 6 | `src/caijuehub/project-root-rules.toml` | CREATE | 裁决层规则：`tiers = ["env_var", "dirname_fallback", "cwd_fallback"]` |
+
+**恢复查询**：
+```text
+query_audit_logs({ planKeyword: "add-coder-sync-patch", targetType: "MCP_CONFIG" })
+query_audit_logs({ planKeyword: "add-coder-sync-patch", targetType: "CAIJUEHUB" })
+```
+
+**数据库修正**（记录写入了错误的 planKeyword，需进容器修）：
+```bash
+podman exec add-coder-postgres psql -U add-coder_admin -d add-coder -c \
+  "UPDATE \"DevOperation\" SET \"planKeyword\" = 'add-coder-sync-patch' WHERE \"planKeyword\" = 'device-registry-refactor';"
+```
