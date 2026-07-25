@@ -96,7 +96,7 @@ practice = ["add-paradigm:Step 9"]
 trigger = ["runtime-fix plan 收敛后", "gateway.md 运行时发现修复完成"]
 
 [ADD-16]
-name = "裁决层契约强制门禁"
+name = "集中裁决层契约强制门禁"
 practice = [
   "project_rules.md",
   "caijue.toml",
