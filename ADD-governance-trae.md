@@ -61,3 +61,28 @@ Trae 的注入通道为 **stdout**（与 Claude Code 兼容）。Trae 支持导�
 | SessionEnd | ❌ | ✅ |
 | PreCompact | ❌ | ✅ |
 | 权限系统 | 无 hookpoint | PermissionRequest/Denied |
+
+---
+
+## MCP Server 配置
+
+Trae 通过导入 Claude Code 配置获得 MCP 能力，MCP Server 配置位于 `.claude/mcp.json`。
+
+**关键约束**：若 add-coder 以 `link:` 方式集成（如 `pnpm link`），MCP Server 的 `PROJECT_ROOT` 可能因模块路径穿透错误解析。必须在 `.claude/mcp.json` 的 `env` 中显式声明：
+
+```json
+{
+  "mcpServers": {
+    "add-dev-tools": {
+      "command": "<node_modules/.bin/tsx 绝对路径>",
+      "args": ["<项目根>/.claude/scripts/mcp-server.ts"],
+      "env": {
+        "NODE_ENV": "development",
+        "PROJECT_ROOT": "<项目根绝对路径>"
+      }
+    }
+  }
+}
+```
+
+> `command` 必须用绝对路径：裸命令 `tsx` 在非交互式 MCP 进程中因 PATH 不可用会失败。
