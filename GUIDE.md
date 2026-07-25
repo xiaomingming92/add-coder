@@ -283,7 +283,7 @@ docs/{项目}/knowledge/
 
 ## 七、add-coder 升级后怎么更新本地文件
 
-`npm update add-coder` 后，Skills、rules、hooks、templates 还在用旧版？一条命令搞定：
+`npm update add-coder` 后，Skills、rules、hooks、templates等还在用旧版？一条命令搞定：
 
 ### 旧做法（三步，不推荐）
 
