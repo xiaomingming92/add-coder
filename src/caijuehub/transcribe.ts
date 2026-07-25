@@ -94,12 +94,20 @@ function genSyncRules(rules: TomlData): string {
 };`;
 }
 
+function genProjectRootRules(rules: TomlData): string {
+    const prio = (rules as any).priority || {};
+    const tiers: string[] = prio.tiers || ["env_var", "dirname_fallback", "cwd_fallback"];
+    const tierList = tiers.map((s: string) => `"${s}"`).join(", ");
+    return `export const PROJECT_ROOT_PRIORITY = [${tierList}] as const;\nexport type ProjectRootTier = (typeof PROJECT_ROOT_PRIORITY)[number];`;
+}
+
 const GENERATORS: Record<string, RuleGenerator> = {
     "detect-ide": genDetectRules,
     "resolve-adapters": genAdapterRules,
     "prisma-inject": genPrismaRules,
     "write-files": genWriterRules,
     "sync-patch": genSyncRules,
+    "project-root-resolution": genProjectRootRules,
 };
 
 function readExistingUserCode(filePath: string): string {

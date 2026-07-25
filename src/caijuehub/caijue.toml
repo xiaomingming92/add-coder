@@ -45,3 +45,12 @@ type = "strategy"
 description = "sync 命令行为：补缺 / --patch 覆盖更新，双 hash 校验 + PATCH_GUARD 保护"
 rules = "sync-rules.toml"
 implementation = "src/caijuehub/strategies/sync.strategy.ts"
+
+# ──── Runtime 环境策略 ────────────────────────────────────────
+
+[[caijue]]
+id = "project-root-resolution"
+type = "strategy"
+description = "MCP Server 运行时 PROJECT_ROOT 三层推导链：env 变量 → __dirname 推算 → process.cwd 向上查找"
+rules = "project-root-rules.toml"
+implementation = "templates/core/scripts/mcp-server/shared/project-root-strategy.ts"

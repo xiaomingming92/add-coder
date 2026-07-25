@@ -1,0 +1,42 @@
+# ============================================================
+# PROJECT_ROOT 解析优先级链
+# ============================================================
+# env.ts 运行时推导 PROJECT_ROOT 的三层 fallback 策略。
+# 解决非 link 安装、link 集成、IDE 非项目 cwd 三种场景的兼容。
+
+[priority]
+# 优先级从高到低，命中即返回
+tiers = ["env_var", "dirname_fallback", "cwd_fallback"]
+
+# ──── Tier 1: 环境变量 ────────────────────────────────────────
+[priority.env_var]
+source = "process.env.PROJECT_ROOT"
+description = "mcp.json env 字段传入，link 场景下最可靠。由模板 {{projectRoot}} 占位符渲染。"
+when = "IDE 或 mcp.json 显式传入了 PROJECT_ROOT"
+fallthrough = "env 变量未设置时进入 Tier 2"
+
+# ──── Tier 2: __dirname 推算 ──────────────────────────────────
+[priority.dirname_fallback]
+source = "resolve(__dirname, '..', '..', '..', '..')"
+description = "从当前文件路径往上走 4 层到项目根。非 link 场景下完全正确；link 场景下指向包真实路径。"
+example = "env.ts 位于 .qoder/scripts/mcp-server/shared/ → 4 层上 → 项目根"
+when = "env 变量缺失"
+pros = ["零依赖，推导确定性强", "非 link 场景 (npm install / pnpm add) 100% 正确", "link 场景下对包自身（如 add-coder dev）正确"]
+cons = ["link 场景下消费项目（如 weather_proxy）会指向包的真实路径而非项目根"]
+fallthrough = "返回路径下找不到 .env.development 时进入 Tier 3"
+
+# ──── Tier 3: process.cwd 向上查找 ────────────────────────────
+[priority.cwd_fallback]
+source = "findProjectRoot(process.cwd())"
+description = "从当前工作目录向上遍历，寻找 package.json。MCP 协议下 stdio server 的 cwd 通常为项目根。"
+when = "前两层均失败"
+pros = ["覆盖 IDE 启动进程时 cwd 异常的场景", "与 MCP 协议行为一致"]
+cons = ["IDE cwd 可能为 /home/user 或 /，向上无 package.json → 返回根目录 /", "返回 / 会导致 .env.development 加载失败"]
+fallthrough = "无第四层，抛出 DATABASE_URL 未设置错误"
+
+# ──── 边界情况 ────────────────────────────────────────────────
+[edge_cases]
+# 根目录兜底陷阱
+root_fallback_trap = "findProjectRoot 在 cwd 异常时返回 /（truthy），会遮蔽后续 fallback。已修复：__dirname 推算前置避免此问题。"
+# link 兼容
+link_scenario = "消费项目需在 mcp.json 的 env 中显式设置 PROJECT_ROOT，或依赖 cwd fallback 正确推导"
