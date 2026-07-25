@@ -94,9 +94,11 @@ function genSyncRules(rules: TomlData): string {
 };`;
 }
 
+interface ProjectRootRules { priority?: { tiers?: string[] } }
+
 function genProjectRootRules(rules: TomlData): string {
-    const prio = (rules as any).priority || {};
-    const tiers: string[] = prio.tiers || ["env_var", "dirname_fallback", "cwd_fallback"];
+    const d = rules as unknown as ProjectRootRules;
+    const tiers: string[] = d.priority?.tiers ?? ["env_var", "dirname_fallback", "cwd_fallback"];
     const tierList = tiers.map((s: string) => `"${s}"`).join(", ");
     return `export const PROJECT_ROOT_PRIORITY = [${tierList}] as const;\nexport type ProjectRootTier = (typeof PROJECT_ROOT_PRIORITY)[number];`;
 }
