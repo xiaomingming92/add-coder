@@ -9,6 +9,8 @@ Make 0.75 into one.
 
 > 🧭 **从零上手实操？** 请参见 [GUIDE.md](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md) — 包含触发词速查、需求转 Plan、完整链路演练。
 >
+> 📖 **想看 ADD 范式真实落地案例？** → [老设备续命工程](#-案例示范老安卓设备续命工程) — weather_proxy 实践。
+>
 > 🔄 **add-coder 升级后担心更新本地Skills,rules,hooks,templates等等会很麻烦？** `npx add-coder sync --adapter=qoder --patch` — 实操看 [GUIDE.md §版本升级](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md#%E4%B8%83add-coder-%E5%8D%87%E7%BA%A7%E5%90%8E%E6%80%8E%E4%B9%88%E6%9B%B4%E6%96%B0%E6%9C%AC%E5%9C%B0%E6%96%87%E4%BB%B6) | 原理看 [DEVELOPMENT.md](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)
 
 ```bash
@@ -109,6 +111,20 @@ hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中
 > 实施 Plan: [add-coder-hook-full-alignment-plan-v1](./.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | 触发源: [GitHub Issue #6](https://github.com/xiaomingming92/add-coder/issues/6)
 
 
+
+---
+
+## 📖 案例示范：老安卓设备续命工程
+
+[weather_proxy](https://github.com/xiaomingming92/weather_proxy) 是 ADD 范式在真实项目中的完整落地案例——为一个 2010 年代的旧 Android 设备（中兴 V880 / HTC G13）重建天气服务。
+
+- 🧓 **硬件完好，软件死亡** — 厂商天气服务全部关停，设备只能看不能用
+- 📐 **ADD 范式全链路可见** — 从 `.trae/specs/` 早期三元组 → `.qoder/` 标准化 → 集中裁决层 TOML 化
+- 🔧 **集中裁决层实战** — `caijuehub/` 三层架构：TOML 声明 → 转录引擎 → 策略消费，新增机型只需 10 行配置
+- 📊 **DeviceRegistry 重构** — cron-service.ts 647→232 行，stop() 全覆盖，4 个历史 Bug 修复
+- 🧪 **45 用例全覆盖** — vitest，tsc --noEmit 零错误，ESLint 零新增
+
+> ⚠️ 仅限个人学习与技术讨论。详见 [weather_proxy/README.md](https://github.com/xiaomingming92/weather_proxy#readme)。
 
 ---
 
@@ -256,8 +272,8 @@ Tasks (实验性)     双向              ✅ 已实现      长任务持久化 
 >   image: docker.io/postgres:16-alpine
 >   ports: ["127.0.0.1:5433:5432"]
 >   environment:
->     POSTGRES_DB: mydb
->     POSTGRES_USER: admin
+>     POSTGRES_DB: <your-db>
+>     POSTGRES_USER: <your-db-user>
 >     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 > ```
 > 数据卷建议挂载到 `~/data/your_project/postgres/`，避免容器销毁丢失数据。
@@ -284,6 +300,8 @@ Tasks (实验性)     双向              ✅ 已实现      长任务持久化 
 
 
 > 🧭 **Getting hands-on?** See [GUIDE.md](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md) — trigger word quick reference, requirements-to-Plan, and full workflow walkthrough.
+>
+> 📖 **Want to see ADD in action?** → [Old Android Device Revival](#-case-study-breathing-life-back-into-old-android-devices) — weather_proxy practice.
 >
 > 🔄 **Worried about updating local Skills, rules, hooks, templates after upgrading add-coder?** `npx add-coder sync --adapter=qoder --patch` — how-to: [GUIDE.md](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md#%E4%B8%83add-coder-%E5%8D%87%E7%BA%A7%E5%90%8E%E6%80%8E%E4%B9%88%E6%9B%B4%E6%96%B0%E6%9C%AC%E5%9C%B0%E6%96%87%E4%BB%B6) | principles: [DEVELOPMENT.md](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)
 
@@ -390,6 +408,20 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 | VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
 | Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
 | Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
+
+---
+
+## 📖 Case Study: Breathing Life Back into Old Android Devices
+
+[weather_proxy](https://github.com/xiaomingming92/weather_proxy) is a complete ADD paradigm implementation — rebuilding weather services for 2010-era Android devices (ZTE V880 / HTC G13).
+
+- 🧓 **Hardware intact, software dead** — official weather services all shut down
+- 📐 **Full ADD pipeline** — `.trae/specs/` triads → `.qoder/` standardization → Caijuehub TOML
+- 🔧 **Caijuehub in action** — 3-layer architecture: TOML declaration → transcribe engine → strategy consumption
+- 📊 **DeviceRegistry refactor** — cron-service.ts 647→232 lines, 4 historical bugs fixed
+- 🧪 **45 test cases** — vitest, zero tsc errors, zero new ESLint warnings
+
+> ⚠️ Personal learning & technical discussion only. See [weather_proxy/README.md](https://github.com/xiaomingming92/weather_proxy#readme).
 
 ---
 
@@ -526,7 +558,7 @@ npx add-coder init
 >   ports: ["127.0.0.1:5433:5432"]
 >   environment:
 >     POSTGRES_DB: mydb
->     POSTGRES_USER: admin
+>     POSTGRES_USER: <your-db-user>
 >     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 > ```
 > Mount data volume to `~/data/your_project/postgres/` to avoid data loss on container removal.
