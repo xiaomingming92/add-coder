@@ -9,7 +9,7 @@ Make 0.75 into one.
 
 > 🧭 **从零上手实操？** 请参见 [GUIDE.md](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md) — 包含触发词速查、需求转 Plan、完整链路演练。
 >
-> 🔄 **add-coder 升级后更新模板？** `npx add-coder sync --adapter=qoder --patch` — 实操看 [GUIDE.md §版本升级](#) | 原理看 [DEVELOPMENT.md](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)
+> 🔄 **add-coder 升级后担心更新本地Skills,rules,hooks,templates等等会很麻烦？** `npx add-coder sync --adapter=qoder --patch` — 实操看 [GUIDE.md §版本升级](#) | 原理看 [DEVELOPMENT.md](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)
 
 ```bash
 npx add-coder init
