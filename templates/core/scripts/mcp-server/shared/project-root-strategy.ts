@@ -20,7 +20,7 @@ function findProjectRoot(fromDir: string): string {
   return resolve(fromDir, "..", "..", "..", "..")
 }
 
-/** 裁决层消费：按 PROJECT_ROOT_PRIORITY 顺序逐层尝试。 */
+/** 集中裁决层消费：按 PROJECT_ROOT_PRIORITY 顺序逐层尝试。 */
 export function resolveProjectRoot(__dirname: string): string {
   const resolvers: Record<string, () => string> = {
     env_var:          () => process.env.PROJECT_ROOT || "",

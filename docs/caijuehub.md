@@ -4,7 +4,7 @@
 
 ## 概述
 
-Caijuehub 是 add-coder 的裁决中心：将 CLI 命令中易变的配置（正则、路径、策略、提示文本）从 TypeScript 硬编码中抽离为 TOML 规则文件。修改行为只需编辑 TOML 并运行 `npm run generate`，无需触碰业务代码。
+Caijuehub 是 add-coder 的集中裁决层：将 CLI 命令中易变的配置（正则、路径、策略、提示文本）从 TypeScript 硬编码中抽离为 TOML 规则文件。修改行为只需编辑 TOML 并运行 `npm run generate`，无需触碰业务代码。
 
 ## 架构
 
