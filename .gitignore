@@ -13,6 +13,7 @@ docker-compose.add.yml
 .claude/mcp.json
 .qoder/mcp.json
 .vscode/mcp.json
+.vscode/settings.json
 
 # Runtime artifacts
 debug-dump/
