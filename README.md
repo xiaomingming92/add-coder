@@ -147,7 +147,7 @@ npx add-coder init
 |------|------|------|
 | ① | 检测 IDE | 扫描 `.qoder/` `.claude/` `.vscode/` 存在性，或通过 `--adapter` 指定 |
 | ② | 加载配置 | 交互式问答 > `add-coder.config.ts` > 自动检测 > 默认值 |
-| ③ | 数据库部署 | `db-ensure.sh` 启容器/PG 连接 + `injectPrisma()` 裁决层（Prisma init → AddUser 模型复制 → db push → generate） |
+| ③ | 数据库部署 | `db-ensure.sh` 启容器/PG 连接 + `injectPrisma()` 集中裁决层（Prisma init → AddUser 模型复制 → db push → generate） |
 | ④ | 渲染模板 | 55 个 core 模板文件（skills/agents/templates/plans/specs/scripts…） |
 | ⑤ | 部署适配 | 将 core 内容复制到 `.add/` `.qoder/` `.claude/` 三目录，补 IDE 专属 hooks/mcp |
 | ⑥ | 写入文件 | 交互/yes/force/dry-run 四种模式，`.sh` 脚本自动 `chmod` |

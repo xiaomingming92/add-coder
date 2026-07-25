@@ -10,7 +10,7 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 **范式边界**（定义在 `.qoder/rules/project_rules.md` ADD-0）：
 - ADD 是开发阶段编程范式，不是运行时范式
 - 反馈闭环消费者：IDE 中的 AI 助手 + 编程人员
-- 运行时范式（裁决层/能力模型）是独立的下一步演化
+- 运行时范式（集中裁决层/能力模型）是独立的下一步演化
 
 **核心原则**（始终生效，定义在 `.qoder/rules/project_rules.md`）：
 - ADD-0：范式边界与消费者定义
@@ -324,7 +324,7 @@ Plan 级闭包: {业务功能描述}
 
 #### 0.7.1 Plan 活跃判定标准（裁决逻辑）
 
-> **裁决定位**："某个 Plan 是否活跃"不是文档约定问题，而是需要从 add-route 的 Step 勾选状态中做确定性判定的裁决逻辑。在 add-coder 项目的 hook 脚本中以 shell 函数实现（`detect_active_add`），暂不依赖 caijuehub 裁决层分发（`npx add-coder init` 不产出 caijuehub）。
+> **裁决定位**："某个 Plan 是否活跃"不是文档约定问题，而是需要从 add-route 的 Step 勾选状态中做确定性判定的裁决逻辑。在 add-coder 项目的 hook 脚本中以 shell 函数实现（`detect_active_add`），暂不依赖 caijuehub 集中裁决层分发（`npx add-coder init` 不产出 caijuehub）。
 
 **活跃判定规则**：
 

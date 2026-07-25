@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # db-ensure.sh — 容器启动 + 环境准备
-# prisma init/copy/push/generate 由 init.ts → injectPrisma() 裁决层处理
+# prisma init/copy/push/generate 由 init.ts → injectPrisma() 集中裁决层处理
 # 用法: bash db-ensure.sh <engine> <container> [--migrate]
 set -euo pipefail
 

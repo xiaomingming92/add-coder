@@ -99,7 +99,7 @@
 
 | 触发词 | LLM 含义 | 优先级 |
 |--------|---------|--------|
-| `裁决层` / `caijue` / `caijue.toml` | 读 `src/caijuehub/caijue.toml` | 🟡 P1 |
+| `集中裁决层` / `caijue` / `caijue.toml` | 读 `src/caijuehub/caijue.toml` | 🟡 P1 |
 | `agentAudit` / `审计打点` | ADD-7：业务代码中调用 `agentAudit(phase, detail, extra)` 植入运行时审计点（区别于 `record_dev_operation` MCP 工具） | 🟡 P1 |
 | `agentAuditNodeStart` / `agentAuditNodeEnd` | ADD-2：节点进入/退出阶段标记，用于验证阶段对称性 | 🟡 P1 |
 | `Phase` / `AgentAuditPhase` | `src/lib/agent-audit-logger.ts` 中的阶段联合类型 | 🟡 P1 |
@@ -352,7 +352,7 @@ LLM: "验收通过 → 自动写 devlog日志(走mcp)（无需用户提醒）→
 
 | 优先级 | 触发词 | LLM 含义 |
 |:--:|------|---------|
-| P1 | `裁决层` / `caijue` / `caijue.toml` | 读 `src/caijuehub/caijue.toml`，含所有裁决条目 |
+| P1 | `集中裁决层` / `caijue` / `caijue.toml` | 读 `src/caijuehub/caijue.toml`，含所有裁决条目 |
 | P1 | `agentAudit` / `审计打点` | ADD-7：在业务代码中调用 `agentAudit(phase, detail, extra)` 植入运行时审计点（与 `record_dev_operation` 不同：前者是代码内审计函数，后者是 MCP 工具写 AuditLog 表） |
 | P2 | `agentAuditNodeStart/End` | ADD-2：节点进入/退出阶段标记，用于阶段对称性验证 |
 | P1 | `Phase` / `AgentAuditPhase` | `src/lib/agent-audit-logger.ts` 中的阶段联合类型 |

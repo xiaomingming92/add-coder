@@ -6,7 +6,7 @@
 
 **我要做…** | **用这个模板** | **为什么**
 --|--|--
-| 写产品需求文档 | `prd-standard-template.md` | 含 Plan 拆分建议 + 裁决层关联 |
+| 写产品需求文档 | `prd-standard-template.md` | 含 Plan 拆分建议 + 集中裁决层关联 |
 | 增量更新 PRD | `prd-incremental-template.md` | 在原 PRD 上追加/修改 |
 | 新建开发任务（需要架构设计） | `standard-plan-template.md` | 含方案选型、架构设计、依赖图，适合复杂改动（**默认**）
 | 新建开发任务（简单修复） | `simple-plan-template.md` | 内联 Handoff，无需独立 spec 文件（仅小修改/用户主动提）

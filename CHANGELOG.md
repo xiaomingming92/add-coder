@@ -206,7 +206,7 @@
 
 ### 新增
 
-- **injectPrisma**：CLI init 集成 Prisma 裁决层，自动检测/初始化/迁移数据库
+- **injectPrisma**：CLI init 集成 Prisma 集中裁决层，自动检测/初始化/迁移数据库
 - **magicDir 参数化**：适配器感知的目标目录参数化，支持 qoder/claude/vscode 独立部署
 - **PRD 模板落地**：`prd-standard-template.md` 与 `prd-incremental-template.md` 双模板部署
 - **文档锚定**：模板部署后自动补充 `.qoder/reports/` 等文档目录
