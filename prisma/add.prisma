@@ -39,3 +39,80 @@ model AuditLog {
 
   @@index([traceId])
 }
+
+// ===== HITL 人机审核架构 =====
+
+enum HitlType {
+  PLAN
+  PLAN_REVIEW
+}
+
+enum HitlStatus {
+  DRAFT
+  SUBMITTED
+  TONGYI
+  BOHUI
+}
+
+enum ReviewType {
+  PLAN_REVIEW
+  IMPLEMENTATION
+  RUNTIME
+}
+
+model HitlRecord {
+  id           String      @id @default(cuid())
+  planName     String
+  plan         PlanRecord  @relation(fields: [planName], references: [planName])
+  round        Int         @default(1)
+  type         HitlType    @default(PLAN)
+  status       HitlStatus  @default(DRAFT)
+  proposalPath String?
+  approvedAt   DateTime?
+  rejectedAt   DateTime?
+  rejectReason String?
+  createdBy    String      @default("ai-assistant")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([planName, round])
+  @@index([planName])
+  @@index([status])
+}
+
+model PlanRecord {
+  id             String        @id @default(cuid())
+  planName       String        @unique
+  planPath       String
+  specPath       String?
+  tasksPath      String?
+  checklistPath  String?
+  totalTasks     Int           @default(0)
+  doneTasks      Int           @default(0)
+  checklistT     Int           @default(0)
+  checklistTDone Int           @default(0)
+  checklistR     Int           @default(0)
+  planKeyword    String?
+  hitls          HitlRecord[]
+  reviews        ReviewRecord[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([planKeyword])
+}
+
+model ReviewRecord {
+  id           String     @id @default(cuid())
+  planName     String
+  plan         PlanRecord @relation(fields: [planName], references: [planName], onDelete: Cascade)
+  type         ReviewType @default(PLAN_REVIEW)
+  reviewPath   String?
+  p0Count      Int        @default(0)
+  p1Count      Int        @default(0)
+  backflowRate Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([planName])
+  @@index([type])
+}
