@@ -9,7 +9,7 @@ Make 0.75 into one.
 
 > 🧭 **从零上手实操？** 请参见 [GUIDE.md](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md) — 包含触发词速查、需求转 Plan、完整链路演练。
 >
-> 📖 **想看 ADD 范式真实落地案例？** → [老设备续命工程](#-案例示范老安卓设备续命工程) — weather_proxy 实践。
+> 📖 **想看 ADD 范式真实落地案例？** → [老设备续命工程](#-案例示范老安卓设备续命工程) — weather_proxy 实践。->或者add-coder项目本身就是很好的落地案例(自举成功)。
 >
 > 🔄 **add-coder 升级后担心更新本地Skills,rules,hooks,templates等等会很麻烦？** `npx add-coder sync --adapter=qoder --patch` — 实操看 [GUIDE.md §版本升级](https://github.com/xiaomingming92/add-coder/blob/main/GUIDE.md#%E4%B8%83add-coder-%E5%8D%87%E7%BA%A7%E5%90%8E%E6%80%8E%E4%B9%88%E6%9B%B4%E6%96%B0%E6%9C%AC%E5%9C%B0%E6%96%87%E4%BB%B6) | 原理看 [DEVELOPMENT.md](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)
 
