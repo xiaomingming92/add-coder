@@ -54,3 +54,10 @@ type = "strategy"
 description = "MCP Server 运行时 PROJECT_ROOT 三层推导链：env 变量 → __dirname 推算 → process.cwd 向上查找"
 rules = "project-root-rules.toml"
 implementation = "templates/core/scripts/mcp-server/shared/project-root-strategy.ts"
+
+[[caijue]]
+id = "sync-prisma-schema"
+type = "strategy"
+description = "Prisma schema 增量同步：diff add-coder 基准 vs 消费方 schema，interactive 确认后只插不删"
+rules = "sync-rules.toml"
+implementation = "src/caijuehub/strategies/prisma-sync.strategy.ts"

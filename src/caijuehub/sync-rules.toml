@@ -34,3 +34,20 @@ on_missing = "write"
 on_existing = "skip"             # 已有文件不碰
 prompt_full = "所有 ADD 模板文件已就位。使用 --patch 更新已有文件。"
 prompt_patch_done = "所有 ADD 模板文件已是最新。"
+
+# ═══════════════ Prisma schema 增量同步 ═══════════════
+[prisma]
+# add-coder 基准 schema（相对于消费项目根目录）
+base_schema = "node_modules/add-coder/templates/core/prisma/add.prisma"
+# 消费项目中对应的目标 schema
+target_pattern = "prisma/add/schema.prisma"
+# 同步项类型
+sync_items = ["model", "enum"]
+# ── 行为策略 ──
+# interactive=交互确认，auto=静默执行，skip/ignore=跳过，block=阻断
+on_missing_model = "interactive"  # 消费方缺表
+on_field_conflict = "interactive" # 同名字段定义不同
+on_missing_field = "interactive"  # 基准有、消费方无
+on_extra_field = "ignore"         # 消费方特有（不做操作）
+# 汇总提示
+prompt = "add-coder 标准 add.prisma 与消费方 schema 存在差异。"
