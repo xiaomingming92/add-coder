@@ -5,6 +5,9 @@ import { registerDocsTools } from "./docs.js"
 import { registerQualityTools } from "./quality.js"
 import { registerGatewayTools } from "./gateway.js"
 import { registerHookEventTools } from "./hook-event-report.js"
+import { registerHitlTools } from "./hitl.js"
+import { registerPlanTools } from "./plan.js"
+import { registerReviewTools } from "./review.js"
 
 export function registerAllTools(server: McpServer) {
   registerContextTools(server)    // 5 tools
@@ -13,5 +16,8 @@ export function registerAllTools(server: McpServer) {
   registerQualityTools(server)    // 4 tools
   registerGatewayTools(server)    // 5 tools
   registerHookEventTools(server)  // 1 tool: get_hook_events
-  // Total: 18 tools
+  registerHitlTools(server)       // 3 tools: create_hitl / update_hitl / status_hitl
+  registerPlanTools(server)       // 3 tools: plan_track / plan_status / plan_sync
+  registerReviewTools(server)     // 3 tools: review_track / review_status / review_sync
+  // Total: 27 tools
 }
