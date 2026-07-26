@@ -25,3 +25,10 @@ debug-dump/
 !.add/specs/
 !.claude/specs/
 !.vscode/specs/
+
+# Runtime reports
+*/reports/
+
+# HITL sentinel files (runtime artifacts)
+.hitl-tongyi-*
+.hitl-bohui-*
