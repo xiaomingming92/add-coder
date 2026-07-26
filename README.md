@@ -2,7 +2,7 @@
 
 Make 0.75 into one.
 
-📦![NPM Downloads](https://img.shields.io/npm/dm/add-coder)
+ ![npm downloads](https://img.shields.io/npm/dm/add-coder) 
 
 > 🀄中文 | 🔤[English](#-english-readme)
 
