@@ -103,6 +103,21 @@ function genProjectRootRules(rules: TomlData): string {
     return `export const PROJECT_ROOT_PRIORITY = [${tierList}] as const;\nexport type ProjectRootTier = (typeof PROJECT_ROOT_PRIORITY)[number];`;
 }
 
+interface PrismaSyncRules { base_schema?: string; target_pattern?: string; sync_items?: string[]; on_diff?: string; on_missing_model?: string; on_field_conflict?: string; on_missing_field?: string; on_extra_field?: string; prompt?: string }
+
+function genPrismaSyncRules(rules: TomlData): string {
+    const d = (rules as Record<string, unknown>).prisma as PrismaSyncRules | undefined;
+    const base = d?.base_schema ?? "prisma/add.prisma";
+    const target = d?.target_pattern ?? "prisma/add/schema.prisma";
+    const items = (d?.sync_items ?? ["model", "enum"]).map((s: string) => `"${s}"`).join(", ");
+    const missingModel = d?.on_missing_model ?? d?.on_diff ?? "interactive";
+    const fieldConflict = d?.on_field_conflict ?? d?.on_diff ?? "interactive";
+    const missingField = d?.on_missing_field ?? d?.on_diff ?? "interactive";
+    const extraField = d?.on_extra_field ?? "ignore";
+    const prompt = d?.prompt ?? "add-coder add.prisma 有新模型需要同步。";
+    return `export const SYNC_PRISMA_CONFIG = {\n    BASE_SCHEMA: "${base}",\n    TARGET_PATTERN: "${target}",\n    SYNC_ITEMS: [${items}],\n    ON_MISSING_MODEL: "${missingModel}",\n    ON_FIELD_CONFLICT: "${fieldConflict}",\n    ON_MISSING_FIELD: "${missingField}",\n    ON_EXTRA_FIELD: "${extraField}",\n    PROMPT: "${prompt}",\n};`;
+}
+
 const GENERATORS: Record<string, RuleGenerator> = {
     "detect-ide": genDetectRules,
     "resolve-adapters": genAdapterRules,
@@ -110,6 +125,7 @@ const GENERATORS: Record<string, RuleGenerator> = {
     "write-files": genWriterRules,
     "sync-patch": genSyncRules,
     "project-root-resolution": genProjectRootRules,
+    "sync-prisma-schema": genPrismaSyncRules,
 };
 
 function readExistingUserCode(filePath: string): string {
