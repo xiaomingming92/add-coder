@@ -27,6 +27,7 @@
 | P2 | ADD-14 RAHS 下游执行健康度闸门 | 范围保真度 + 类型安全 + 审计完整度 + Spec 合规 + 阶段对称性。`check_rahs`（RAHS ≥ 90）在 Step 4/8 量化阻断 | ✅ 已实现 | 2026-06-11 引入 |
 | P2 | ADD-15 add-route 闭环自检 | Step 3 代码完成后必须调用 `check_add_route_completeness` 扫描 add-route Step 完成度，防止执行遗漏。返回 complete 方可进入 Step 3.5 | ✅ 已实现 | 2026-06-11 引入 |
 | P2 | ADD-17 HITL 磋商临时文件机制 | doc-format-guard 要求 Plan/Review 文件包含完整章节才放行，HITL 第一步只写总览表会被 guard 阻断。用 `{name}.temporary.md` 做磋商（不受 guard 检查），人类拍板后再写正式文件并删除 temporary.md | ✅ 已实现 | 2026-07-23 引入 |
+| P2 | ADD-18 HITL 人机审核强制规则 | Plan/Review 必须经过 HITL 审批（`create_hitl` → 人工 tongyi/bohui → `update_hitl` 确认）。无 `.hitl-tongyi-{planName}` 哨兵时 pre-tool-use hook 阻断写入正式文件。提案文件按 hitl-template.md 生成 + schema 校验 | ✅ 已实现 | 2026-07-27 引入 |
 
 
 ### P0 规则：不可跳过
@@ -68,6 +69,7 @@ AI 助手必须先恢复到基线、找到对应的 SKILL 文件并按步骤执�
 | ADD-15 | `add-paradigm` Step 3.6 + MCP `check_add_route_completeness` | Step 3 代码完成后自检 |
 | ADD-16 | `add-paradigm` Step 9 | runtime-fix plan 收敛后，关闭 gateway.md 运行时发现 |
 | ADD-17 | `add-paradigm` 独立能力：生成 Plan / Step 0 | Plan/Review HITL 磋商时（写入 temporary.md 绕过 guard，拍板后写正式文件） |
+| ADD-18 | `add-paradigm` 独立能力：生成 Plan + Step 0 + pre-tool-use §C | HITL 审批强制：create_hitl → 人工 tongyi/bohui → update_hitl 确认；hook 哨兵检查 |
 
 ---
 
@@ -444,6 +446,24 @@ reason: 中文/英文说明本次改动的目的
 2. 每个文件完成改动后分别记录一次（粒度 = 文件级）
 3. 所有文件改完后记录一次「计划完成」
 
+### devlog 双层记录与轮次闭合
+
+> **ADD-7 的核心约束：devlog 不是事后补的，是实现的一部分。**
+
+**双层记录机制**：
+
+| 层次 | 触发时机 | action | 粒度 |
+|------|---------|--------|------|
+| 细粒度层 | 每个 Task 完成 | 操作对应 action（MODEL_CREATED、TOOL_CREATED…） | 文件/工具级 |
+| 轮次边界层 | 每轮全部 Task 完成 | `ROUND_CLOSED` | 轮次级 |
+
+**硬规则**：
+
+1. tasks.md 中 Task 标记 `[x]` 前，MUST 已调用 `record_dev_operation` 落库——无 devlog 的 `[x]` 等于空勾选
+2. 禁止先批量 `[x]` 再回头补 devlog
+3. 每轮结束后 MUST 记录一条 `ROUND_CLOSED`，不替代细粒度记录
+4. `ROUND_CLOSED` 后 MUST 调用 `query_audit_logs` 回查确认落库
+
 ## ADD-8：目录路径与文件命名约定
 
 ADD 开发流程产生多种产物（方案、拆分、交接、评审、spec），必须按约定的目录和命名规范存放，保证文件可追溯到需求来源。
@@ -786,6 +806,37 @@ ADD-0.1 要求"文档先行"（先改文档再改代码）。ADD-16 是对 ADD-0
 ### 与 ADD-0.1 的关系
 
 ADD-0.1 要求"文档先行"——HITL 磋商本身就是文档先行的一种形式（先对齐方向再产出文档）。temporary.md 机制确保 HITL 的"先拍板再展开"哲学不因 guard 的"完整章节校验"而被破坏。
+
+---
+
+## ADD-18：HITL 人机审核强制规则
+
+**Plan 和 PLAN_REVIEW 类型 Review 在写入正式文件前，必须经过 HITL 审批。** 审批通过后生成 `.hitl-tongyi-{planName}` 哨兵文件，pre-tool-use hook 以此判断是否允许写入。
+
+### 强制流程
+
+```
+① create_hitl({ planName, type }) → HitlRecord DRAFT，生成 hitl.md 提案文件
+② 人类审阅 hitl.md → 逐行拍板
+③ update_hitl({ planName, status: "TONGYI" }) → 写 .hitl-tongyi-{planName} 哨兵
+   或 update_hitl({ planName, status: "BOHUI", reason }) → 提案驳回
+④ TONGYI 后：正式写入 Plan/Review 文件（hook §C 放行）
+⑤ BOHUI 后：create_hitl 新建 round+1，重新审批
+```
+
+### 适用范围
+
+| 文档类型 | HITL 审批 | 依据 |
+|---------|:--------:|------|
+| Plan | ✅ 必须 | pre-tool-use §C 拦截 plans/ 目录 |
+| Review（PLAN_REVIEW） | ✅ 必须 | pre-tool-use §C 拦截 reviews/ 目录（不含 implementation/runtime） |
+| Review（implementation/runtime） | ❌ 不需要 | 走 §B 活跃 Plan 检查 |
+| Spec / Tasks / Checklist | ❌ 不需要 | 直接写 |
+| Handoff | ❌ 不需要 | 直接写 |
+
+### 与 ADD-17 的关系
+
+ADD-17 定义 HITL 如何在 guard 约束下运作（temporary.md 绕过 guard 完成磋商）。ADD-18 定义 HITL 审批本身是强制的——不经过 create_hitl→update_hitl 流程，hook 阻止写入。两者互补：ADD-17 是"怎么做 HITL"，ADD-18 是"必须做 HITL"。
 
 ---
 

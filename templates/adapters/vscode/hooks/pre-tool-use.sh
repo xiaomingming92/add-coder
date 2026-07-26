@@ -81,6 +81,36 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
     exit $EXIT_BLOCK
   fi
 
+  # §C: HITL tongyi 检查 — plans/ + PLAN_REVIEW reviews/ 写入前必须有 .hitl-tongyi-{planName} 哨兵
+  # implementation/runtime review 不需要 HITL，走 §B 活跃 Plan 检查
+  if echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(plans)/'; then
+    _do_hitl=true
+  elif echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(reviews)/'; then
+    if echo "$file_path" | grep -qE '-(implementation|runtime)'; then
+      _do_hitl=false  # implementation/runtime review 不被 HITL 拦截
+    else
+      _do_hitl=true   # PLAN_REVIEW 需要 HITL
+    fi
+  else
+    _do_hitl=false
+  fi
+
+  if [ "$_do_hitl" = true ]; then
+    _relative=$(echo "$file_path" | sed 's|.*/\.\(qoder\|claude\|add\|vscode\|trae\)/\(plans\|reviews\)/||')
+    _planName=$(basename "$_relative" .md | sed 's/-plan-v[0-9]*$//;s/-review-v[0-9]*$//;s/-review-implementation$//;s/-review-runtime$//')
+    if [ -n "$_planName" ]; then
+      _tongyi_marker="${PROJECT_DIR}/.hitl-tongyi-${_planName}"
+      if [ ! -f "$_tongyi_marker" ]; then
+        echo "⛔ [ADD PreToolUse §C] HITL 未 tongyi: $file_path" >&2
+        echo "   原因: 哨兵文件 $_tongyi_marker 不存在" >&2
+        echo "   操作: 请先调用 create_hitl 创建审批，再 update_hitl({ status: \"TONGYI\" })" >&2
+        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"HITL 未 tongyi: $_tongyi_marker 不存在\"}}"
+        write_hook_event "pre-tool-use" "deny" "$file_path" "HITL 未 tongyi: $_tongyi_marker" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
+        exit $EXIT_BLOCK
+      fi
+    fi
+  fi
+
   mark_dev_action
   exit 0
 fi
