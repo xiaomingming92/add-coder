@@ -21,7 +21,10 @@ import { loadConfig } from "../config-loader";
 import { detectIDE, resolveAdapters } from "../detect";
 
 import { selectFiles } from "../../lib/select-files";
+import { ask } from "../../lib/utils";
 import { SYNC_CONFIG } from "../../caijuehub/strategies/sync.strategy";
+import { SYNC_PRISMA_CONFIG } from "../../caijuehub/strategies/prisma-sync.strategy";
+import { diffPrisma } from "../writer";
 
 const ADAPTER_RENDERERS: Record<string, (config: AddCoderConfig, targetDir: string, dryRun: boolean, magicDir: string) => Map<string, string>> = {
     claude: renderClaude, qoder: renderQoder, vscode: renderVSCode, trae: renderTrae, codex: renderCodex,
@@ -158,6 +161,9 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
         }
         saveHashFile(projectRoot, magicDir, new Map([...missingFiles, ...conflictFiles]));
         saveVersionFile(projectRoot, magicDir, npmVersion);
+        
+        // Prisma schema diff
+        await checkPrismaDiff(projectRoot, options);
         return;
     }
 
@@ -185,4 +191,281 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
 
     const result = await writeFiles(projectRoot, filesToWrite, { yes: true });
     console.log(`同步完成: 新建 ${result.created}, 跳过 ${result.skipped}`);
+
+    // ════════════ Prisma schema diff ════════════
+    await checkPrismaDiff(projectRoot, options);
+}
+
+/** Prisma schema diff 检查（--patch 模式下触发） */
+async function checkPrismaDiff(projectRoot: string, options: { adapter?: string; patch?: boolean }) {
+    if (!options.patch) return;
+    const basePath = resolve(projectRoot, SYNC_PRISMA_CONFIG.BASE_SCHEMA);
+    const targetPath = resolve(projectRoot, SYNC_PRISMA_CONFIG.TARGET_PATTERN);
+    if (!existsSync(basePath)) {
+        console.log(`\n⚠️  基准 schema 不存在: ${basePath}`);
+        console.log(`  请确保 add-coder 已正确安装。`);
+        return;
+    }
+    const result = diffPrisma(basePath, targetPath);
+    if (!result.hasDiff) {
+        console.log(`\n✅ Prisma schema 与 add-coder 标准一致，无需同步。`);
+        return;
+    }
+
+    const targetExists = existsSync(targetPath);
+
+    console.log(`\n⚠️  Prisma schema 差异检测:`);
+    console.log(`  基准: ${result.baseSchema} (add-coder 标准)`);
+    if (targetExists) console.log(`  目标: ${result.targetPath} (消费方)`);
+
+    // ── 1. 缺表 — 策略: ON_MISSING_MODEL ──
+    if (result.missing.length > 0 && targetExists) {
+        let selected: typeof result.missing = [];
+        await handleDiffAction(SYNC_PRISMA_CONFIG.ON_MISSING_MODEL, {
+            label: "缺失模型/枚举",
+            show() {
+                console.log(`\n  🔴 缺失模型/枚举（${result.missing.length} 项）:`);
+                for (let i = 0; i < result.missing.length; i++) {
+                    const m = result.missing[i];
+                    console.log(`  [${i + 1}] ${m.type} ${m.name} (${m.fields.length} 字段)`);
+                }
+            },
+            async confirm() {
+                const ans = await ask(`\n  输入编号选择性注入（如 1,3），a 全部注入，回车跳过: `);
+                if (ans === "a" || ans === "all") {
+                    selected = [...result.missing];
+                    return true;
+                }
+                if (!ans.trim()) return false;
+                const indices = ans.split(/[,，]+/).map(s => parseInt(s.trim()) - 1).filter(i => !isNaN(i) && i >= 0 && i < result.missing.length);
+                if (indices.length === 0) return false;
+                selected = indices.map(i => result.missing[i]);
+                return true;
+            },
+            async execute() {
+                const n = injectMissingModels(result.targetPath, selected);
+                console.log(`  ✅ 已将 ${n} 个模型/枚举注入 ${result.targetPath}`);
+                return n;
+            },
+        });
+    }
+
+    // ── 2. 字段级差异 — 策略: ON_FIELD_CONFLICT / ON_MISSING_FIELD / ON_EXTRA_FIELD ──
+    if (result.fieldDiffs.length > 0 && targetExists) {
+        console.log(`\n  🟡 字段级差异（${result.fieldDiffs.length} 个模型/枚举）:`);
+
+        for (const d of result.fieldDiffs) {
+            console.log(`\n  ── ${d.type} ${d.name}:`);
+
+            // 2a. 字段冲突
+            if (d.conflicts.length > 0) {
+                await handleDiffAction(SYNC_PRISMA_CONFIG.ON_FIELD_CONFLICT, {
+                    label: `冲突字段`,
+                    show() {
+                        console.log(`    ⚡ 冲突字段（同名字段、定义不同）:`);
+                        for (const c of d.conflicts) {
+                            console.log(`      · ${c.fieldName}`);
+                            console.log(`        基准: ${c.baseDef}`);
+                            console.log(`        消费方: ${c.targetDef}`);
+                        }
+                    },
+                    async confirm() {
+                        const ans = await ask(`    是否用基准定义覆盖这些冲突字段？(y/n): `);
+                        return ans === "y" || ans === "yes";
+                    },
+                    async execute() {
+                        const n = overwriteFieldLines(targetPath, basePath, d.name, d.conflicts);
+                        console.log(`    ✅ 已覆盖 ${n} 个冲突字段`);
+                        return n;
+                    },
+                });
+            }
+
+            // 2b. 缺字段
+            if (d.missingFields.length > 0) {
+                await handleDiffAction(SYNC_PRISMA_CONFIG.ON_MISSING_FIELD, {
+                    label: `缺失字段`,
+                    show() {
+                        console.log(`    📋 消费方缺少 ${d.missingFields.length} 个字段:`);
+                        for (const f of d.missingFields) {
+                            console.log(`      + ${f}`);
+                        }
+                    },
+                    async confirm() {
+                        const ans = await ask(`    是否补充这些缺失字段？(y/n): `);
+                        return ans === "y" || ans === "yes";
+                    },
+                    async execute() {
+                        const n = injectFieldLines(targetPath, basePath, d.name, d.missingFields);
+                        console.log(`    ✅ 已补充 ${n} 个字段`);
+                        return n;
+                    },
+                });
+            }
+
+            // 2c. 多余字段 — 策略: ON_EXTRA_FIELD
+            if (d.extraFields.length > 0) {
+                await handleDiffAction(SYNC_PRISMA_CONFIG.ON_EXTRA_FIELD, {
+                    label: `消费方特有字段`,
+                    show() {
+                        console.log(`    ℹ️  消费方特有 ${d.extraFields.length} 个字段（不做操作）:`);
+                        for (const f of d.extraFields) {
+                            console.log(`      - ${f}`);
+                        }
+                    },
+                    async confirm() { return false; },
+                    async execute() { return 0; },
+                });
+            }
+        }
+    }
+
+    // 汇总提示
+    if (targetExists) {
+        console.log(`\n  ${SYNC_PRISMA_CONFIG.PROMPT}`);
+        console.log(`  ▶ 请运行: npx prisma db push && npx prisma generate`);
+    } else {
+        console.log(`\n  目标 schema 文件不存在: ${result.targetPath}`);
+        console.log(`  请创建后再运行 sync --patch。`);
+    }
+}
+
+/**
+ * 策略驱动的 diff 动作分发。
+ * 由 caijuehub/sync-rules.toml [prisma] 定义策略，transcribe.ts 转录到 SYNC_PRISMA_CONFIG。
+ */
+async function handleDiffAction(
+    action: string,
+    ctx: {
+        label: string;
+        show: () => void;
+        confirm: () => Promise<boolean>;
+        execute: () => Promise<number>;
+    },
+): Promise<void> {
+    if (action === "skip" || action === "ignore") return;
+
+    ctx.show();
+
+    if (action === "auto") {
+        const n = await ctx.execute();
+        console.log(`  ✅ ${ctx.label}: 已处理 ${n} 项`);
+        return;
+    }
+
+    if (action === "interactive") {
+        const ok = await ctx.confirm();
+        if (!ok) { console.log(`  已跳过。`); return; }
+        const n = await ctx.execute();
+        console.log(`  ✅ ${ctx.label}: 已处理 ${n} 项`);
+        return;
+    }
+
+    if (action === "block") {
+        throw new Error(`⛔ Prisma 同步阻断: ${ctx.label}，策略为 block`);
+    }
+}
+
+/**
+ * 将缺失的模型/枚举块追加到目标 schema 文件。
+ */
+function injectMissingModels(
+    targetPath: string,
+    models: { type: string; name: string; body: string }[],
+): number {
+    let content = readFileSync(targetPath, "utf-8");
+    content = content.replace(/\n*$/, "\n");
+    content += `\n// ===== 由 add-coder sync --patch 自动注入 (${new Date().toISOString().slice(0, 10)}) =====\n\n`;
+    for (const m of models) {
+        content += m.body + "\n\n";
+    }
+    writeFileSync(targetPath, content, "utf-8");
+    return models.length;
+}
+
+/**
+ * 提取基准 schema 中指定模型的字段完整定义行。
+ */
+function getBaseFieldLines(basePath: string, modelName: string): Record<string, string> {
+    const content = readFileSync(basePath, "utf-8");
+    const blockRegex = /^(model|enum)\s+(\w+)\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/gm;
+    let match;
+    while ((match = blockRegex.exec(content)) !== null) {
+        if (match[2] !== modelName) continue;
+        const fields: Record<string, string> = {};
+        for (const line of match[3].split("\n")) {
+            const fm = line.match(/^\s*(\w+)\s+/);
+            if (fm) fields[fm[1]] = line.trim();
+        }
+        return fields;
+    }
+    return {};
+}
+
+/**
+ * 将缺失字段注入到目标模型块中（插入在最后一个字段后）。
+ */
+function injectFieldLines(
+    targetPath: string,
+    basePath: string,
+    modelName: string,
+    fieldKeys: string[],
+): number {
+    const baseFields = getBaseFieldLines(basePath, modelName);
+    if (Object.keys(baseFields).length === 0) return 0;
+
+    let content = readFileSync(targetPath, "utf-8");
+    let count = 0;
+
+    for (const key of fieldKeys) {
+        const fieldName = key.split(":")[0];
+        const fieldLine = baseFields[fieldName];
+        if (!fieldLine) continue;
+
+        // 字段已存在则跳过
+        if (new RegExp(`^\\s*${fieldName}\\s+`, "m").test(content)) continue;
+
+        // 找到模型块的最后一个闭合 }，在其前插入
+        const modelRegex = new RegExp(`(model\\s+${modelName}\\s*\\{[^}]*?)\\n(\\s*\\})`, "m");
+        const m = content.match(modelRegex);
+        if (!m) continue;
+
+        content = content.replace(modelRegex, `$1\n  ${fieldLine}\n$2`);
+        count++;
+    }
+
+    if (count > 0) writeFileSync(targetPath, content, "utf-8");
+    return count;
+}
+
+/**
+ * 覆盖目标模型中冲突的字段行（同名不同定义 → 用基准覆盖）。
+ */
+function overwriteFieldLines(
+    targetPath: string,
+    basePath: string,
+    modelName: string,
+    conflicts: { fieldName: string; baseDef: string; targetDef: string }[],
+): number {
+    const baseFields = getBaseFieldLines(basePath, modelName);
+    if (Object.keys(baseFields).length === 0) return 0;
+
+    let content = readFileSync(targetPath, "utf-8");
+    let count = 0;
+
+    for (const { fieldName } of conflicts) {
+        const baseLine = baseFields[fieldName];
+        if (!baseLine) continue;
+
+        // 找到目标中的字段行，保留缩进替换定义
+        const fieldRegex = new RegExp(`^(\\s*)(${fieldName}\\s+.*)$`, "m");
+        const match = content.match(fieldRegex);
+        if (!match) continue;
+
+        content = content.replace(fieldRegex, `${match[1]}${baseLine}`);
+        count++;
+    }
+
+    if (count > 0) writeFileSync(targetPath, content, "utf-8");
+    return count;
 }
