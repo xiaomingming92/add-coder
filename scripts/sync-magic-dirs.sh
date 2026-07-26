@@ -28,10 +28,7 @@ bake_magic_refs() {
         if grep -q 'MAGIC_DIR="\$(basename' "$file" 2>/dev/null; then
             # 使用 sed 脚本文件避免 shell 转义问题
             sed -i -f - "$file" <<SEDEOF
-/^# 动态探测 MAGIC_DIR/,/^MAGIC_DIR=.*basename/c\\
-MAGIC_DIR="${magic_dir}"
-s@'\$MAGIC_DIR/(plans|specs)/'@'${escaped_magic}/(plans|specs)/'@g
-s@'\$MAGIC_DIR/plans/'@'${escaped_magic}/plans/'@g
+s@^MAGIC_DIR=".*@MAGIC_DIR="${magic_dir}"@
 SEDEOF
         fi
     done
@@ -88,6 +85,9 @@ sync_dir() {
             echo "   📝 烘焙 .md 占位符（{{magicDir}} → $magic_dir, {{projectName}} → add-coder）"
             bake_md_placeholders "$dest" "$magic_dir"
         fi
+        
+        # 确保 hook 脚本可执行
+        find "$dest" -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         
         echo "   ✅ $name 同步完成"
     else
