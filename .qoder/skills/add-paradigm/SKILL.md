@@ -7,12 +7,12 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 
 本 Skill 引导你按照 ADD 范式完成功能开发。每次开始新功能、修复 Bug、或修改系统行为时，必须按此工作流执行。
 
-**范式边界**（定义在 `.qoder/rules/project_rules.md` ADD-0）：
+**范式边界**（定义在 `{{magicDir}}/rules/project_rules.md` ADD-0）：
 - ADD 是开发阶段编程范式，不是运行时范式
 - 反馈闭环消费者：IDE 中的 AI 助手 + 编程人员
 - 运行时范式（集中裁决层/能力模型）是独立的下一步演化
 
-**核心原则**（始终生效，定义在 `.qoder/rules/project_rules.md`）：
+**核心原则**（始终生效，定义在 `{{magicDir}}/rules/project_rules.md`）：
 - ADD-0：范式边界与消费者定义
 - ADD-0.1：广义文档先行（Documentation First）— Plan → Review → Spec → Code → Checklist → runtime-review → 回归校准。详细流程约束见 ADD-9~ADD-12
 - ADD-1：可观测性优先于功能实现
@@ -35,6 +35,8 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 |------|------|------|
 | ADD 工作路径与协同规范 | `{{docsDir}}/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md` | 目录结构、命名规范、五大阶段全貌 |
 | ADD 范式案例参考 | `{{docsDir}}/knowledge/02-规范/《ADD可审计开发范式案例参考》.md` | RAG/持久化/ChainTracer 实战案例 |
+| ADD 范式案例参考 | `{{docsDir}}/knowledge/02-规范/《ADD可审计开发范式案例参考》.md` | RAG/持久化/ChainTracer 实战案例 |
+| DEVELOPMENT.md | ‵/DEVELOPMENT.md‵| add范式要求的开发文档入口文件DEVELOPMENT.md，和`{{docsDir}}/knowledge/`的开发过程细节文档互动。开发前必读 |
 
 ---
 
@@ -50,9 +52,25 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
    - **精简版** `simple-plan-template.md`：≤3 文件、无新模块/架构、无外部 API 契约变更。Tasks 合并在 Plan 体内，无需独立 spec 文件。
    - **标准版** `standard-plan-template.md`：多模块、跨系统集成、含架构选型或数据模型设计。
 2. **读取模板**：读选定的模板文件，禁止凭记忆
-3. **命名规范**：`{项目名}-{功能名}-plan-v1.md` → `.qoder/plans/{YYYY-MM}/{DD}/`（按当天日期创建子目录）
-4. **HITL 总览（先写 temporary.md）**：doc-format-guard 要求写入 `.qoder/plans/` 的文件必须包含完整章节，但 HITL 第一步只写总览表不写正文。因此先在项目根目录写 `{plan-name}.temporary.md`（只含 HITL 表，不受 guard 检查），人类拍板后再写正式 Plan 文件并删除 temporary.md。
-5. **HITL 确认后展开**：人类拍板后，再填写以下正文章节。
+3. **命名规范**：`{项目名}-{功能名}-plan-v1.md` → `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（按当天日期创建子目录）
+4. **HITL 流程**：Plan 生成前先走 HITL 审批——
+   - **前置条件**：必须先调用 `plan_track({ planName })` 创建 PlanRecord（HITL 外键约束依赖）
+   - 调用 `create_hitl({ planName, type: "PLAN" })` 创建审批提案（自动递增 round，生成 hitl.md）
+   - 人类审核 hitl.md 后调用 `update_hitl({ planName, type: "PLAN", status: "TONGYI" })` 或 `update_hitl({ planName, type: "PLAN", status: "BOHUI", reason: "..." })`
+     - **交互模式（默认）**：`create_hitl` 和 `update_hitl` 均支持逐项决策弹框。
+     - **`create_hitl`**：LLM 传入 `dimensions: [{name, content}]`（根据对话动态决定维度数）→ 弹框显示每行「同意/调整」+ 底部「同意全部/驳回全部」。
+       - 选「调整」可编辑该行内容；选「同意全部」直接通过所有；选「驳回全部」取消创建。
+       - 不传 `dimensions` 时保持简单「同意/取消」弹框。
+     - **`update_hitl`**：自动读取 hitl.md 文件解析维度 → 弹框显示每行「同意/驳回」+ 底部「同意全部/驳回全部」。
+       - 逐项：有任一「驳回」→ 整体 BOHUI；全部「同意」→ TONGYI
+       - 无 hitl.md 文件时回退到简单「同意/驳回/取消」三按钮弹框
+   - **降级模式**：若工具返回 `resultType: "input_required"`（客户端不支持弹框），加 `_fallback: true` 参数重试，此时需手动传 status：
+     - `create_hitl({ planName, type: "PLAN", _fallback: true })`
+     - `update_hitl({ planName, type: "PLAN", status: "TONGYI", _fallback: true })`
+     - `_fallback` 模式跳过弹框，直接执行原始代码行为（`create_hitl` 生成 hitl.md，`update_hitl` 写哨兵+更新 DB）
+   - `status_hitl({ planName, type: "PLAN" })` 查询当前审批状态
+   - BOHUI 后调用 `create_hitl` 新建 round，从头开始下一轮审批
+5. **HITL 通过后展开**：TONGYI 后再填写以下正文章节。
 6. **必含章节（标准版）**：
    - PLAN 元信息（名称/时间/关联文档/ADD-7审计策略表）
    - HITL 计划总览（人类拍板入口）
@@ -85,6 +103,31 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 
 > Step 0 分两个阶段：**第一阶段**在编写任何代码之前，更新项目文档使其反映即将实现的变更；**第二阶段**在 Step 8 收敛判断通过后，回到架构文档做最终校准。两个阶段缺一不可。
 
+### 0.0 跨轮上下文恢复（新 Session / 稀疏上下文必执行）
+
+> **触发条件**：新对话首次进入 ADD 工作流、用户提到"上次""之前""回顾""继续"等跨轮语义、或上下文明显稀疏（无本轮 Plan 细节）。
+
+**检测链路**：`session-init` / `PromptSubmit` hook 检测到稀疏上下文时，自动提示 AI 执行以下流程。
+
+当检测到稀疏上下文时，MUST 调用以下工具三件套重建完整上下文：
+
+```text
+① plan_status({ planName })   → tasks.md 进度、实施阶段状态
+② review_status({ planName })  → P0/P1 缺陷数、回流率（跨轮审计）
+③ status_hitl({ planName })    → 审批是否已 tongyi/bohui
+④ 汇总三结果 → AI 确定：上次做到哪个 Task、有哪些未闭环缺陷、审批是否通过
+```
+
+**调用顺序**：① → ② → ③，汇总后即可进入后续 ADD 步骤，无需人工确认。
+
+**工具清单**：
+
+| 领域 | 工具 | 功能 |
+|------|------|------|
+| HITL | `create_hitl` / `update_hitl` / `status_hitl` | 审批提案创建、状态更新（含哨兵文件）、查询 |
+| Plan | `plan_track` / `plan_status` / `plan_sync` | 进度扫描入库、查询、回写 Plan 文档 |
+| Review | `review_track` / `review_status` / `review_sync` | 缺陷扫描入库、查询、回写 Review 文档 |
+
 ### 第一阶段：实施前项目文档更新
 
 #### 0.1 分析变更影响范围
@@ -98,7 +141,7 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 | 规范文档 | `docs/*/knowledge/02-规范/` 或 `03-规范/` | 开发规范、状态机规范、核心规范 |
 | AI 核心文档 | `docs/*/knowledge/03-规范/` | AI 智能体核心规范 |
 
-**此外，ADD 工作流的核心产物由 `.qoder/templates/` 下的 13 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
+**此外，ADD 工作流的核心产物由 `{{magicDir}}/templates/` 下的 13 个模板定义**，这些模板不是参考资料，而是每次变更必须产出的文档骨架。分析变更影响范围时，必须同步确认需要创建/更新哪些模板产物：
 
 | 模板 | 用途 | 对应阶段 |
 |------|------|---------|
@@ -121,7 +164,15 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 >
 > **每次根据模板生成文档时（plan/spec/review/handoff），MUST 先重新读取对应的模板文件，再填充内容。禁止凭记忆生成——模板可能已在迭代中更新，记忆中的版本可能不完整。**
 
-> **Review 的 HITL 磋商（temporary.md 机制）**：生成方案 Review（`review-template.md`）或实现 Review（`review-implementation-template.md`）时，和 Plan 一样——doc-format-guard 要求完整章节才放行，HITL 第一步只写总览表会被阻断。因此 Review 也走 temporary.md 流程：先写 `{review-name}.temporary.md`（只含 HITL 发现总览表）→ 人类拍板 → 生成完整 Review 写入 `.qoder/reviews/` → 删除 temporary。具体步骤见下方 Step 3.5.3（实现 Review）和 Step 0 方案 Review 产出。
+> **Review 的 HITL 磋商**：生成方案 Review（`review-template.md`）或实现 Review（`review-implementation-template.md`）时，MUST 走 HITL 审批——
+> 1. 调用 `create_hitl({ planName, type: "PLAN_REVIEW" })` 创建审批提案，自动生成 hitl.md 供人工审核
+> 2. 人类审核后调用 `update_hitl({ planName, type: "PLAN_REVIEW" })`（交互弹框选同意/驳回/取消）或 `update_hitl({ planName, type: "PLAN_REVIEW", status: "TONGYI", _fallback: true })`（降级模式）
+>    - 若客户端不支持 inputRequired 弹框，工具返回 `resultType: "input_required"` 时加 `_fallback: true` 重试
+> 3. `status_hitl({ planName, type: "PLAN_REVIEW" })` 可随时查询当前审批状态
+> 4. TONGYI 通过后，生成完整 Review 写入 `{{magicDir}}/reviews/`
+> 5. BOHUI 驳回后，`create_hitl` 新建 round 重新发起审批
+>
+> 仅 `review-template.md` 和 `review-implementation-template.md` 走 HITL；`review-runtime-template.md` 不走 HITL，直接生成。
 
 #### 0.2 搜索相关项目文档
 
@@ -166,7 +217,7 @@ find_related_docs({ query: "功能关键词" })
 4. **ADD-7 审计策略**：从 Plan 元信息 ADD-7 策略表复制，逐文件填写 targetType/action/beforeState/afterState
 5. **文件清单**：汇总所有涉及文件的 targetType 和操作类型
 
-**命名**：`{需求域名}-{核心内容}-add-route-v1.md` → `.qoder/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录）
+**命名**：`{需求域名}-{核心内容}-add-route-v1.md` → `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录）
 
 **关键约束**：
 - [ ] add-route 必须先于任何代码变更生成（Step 1 依赖 add-route 中的审计阶段清单）
@@ -192,7 +243,7 @@ find_related_docs({ query: "功能关键词" })
 > **核心原则**：Review 是诊断报告，Plan 是治疗方案。诊断报告的结论必须写进治疗方案，病人才能按修正后的方案治疗。
 
 **什么时候触发**：
-- Plan Review 已生成（`.qoder/reviews/{需求域名}-*review-v{n}.md` 存在）
+- Plan Review 已生成（`{{magicDir}}/reviews/{需求域名}-*review-v{n}.md` 存在）
 - Review 中有 P0/P1/P2 问题清单
 - 人类已确认 Review 结论（通过评审）
 
@@ -375,7 +426,9 @@ Plan 级闭包: {业务功能描述}
 
 ## 附录 A：协作文档规范（命名、格式与交互规则）
 
-> **目标**：确保 `.qoder/specs/`、`.qoder/reviews/` 下的 spec/review/handoff 文件遵循统一的命名和格式约定，使后续 AI Session 能快速定位和恢复上下文。
+> **目标**：确保 `{{magicDir}}/specs/`、`{{magicDir}}/reviews/` 下的 spec/review/handoff 文件遵循统一的命名和格式约定，使后续 AI Session 能快速定位和恢复上下文。
+
+> **全局文档编辑规则（A.0）**：修改 Plan、Spec、Handoff、tasks、checklist 中已有内容时，MUST 遵循增量修订格式——旧内容 `~~删除线~~` → 新内容 `[日期 修订: 原因]`，禁止直接覆盖。详见 `{{magicDir}}/rules/project_rules.md` §文档增量修订规则。
 
 **在编写任何代码之前，必须先确认本附录中的文件结构已就位。**
 
@@ -383,13 +436,13 @@ Plan 级闭包: {业务功能描述}
 
 | 文档类型 | 命名规则 | 示例 | 存放位置 |
 |---------|---------|------|---------|
-| 开发任务（specs 三元组） | `项目名-任务名/` | `add-coder-response-strategy/` | `.qoder/specs/` |
-| review 文件 | `项目名-任务名-round{N}-review.md` | `add-coder-response-strategy-round2-review.md` | `.qoder/reviews/` |
-| handoff 文件 | `项目名-需求名-handoff.md` | `add-coder-co-agent-handoff.md` | `.qoder/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录） |
+| 开发任务（specs 三元组） | `项目名-任务名/` | `{{projectName}}-response-strategy/` | `{{magicDir}}/specs/` |
+| review 文件 | `项目名-任务名-round{N}-review.md` | `{{projectName}}-response-strategy-round2-review.md` | `{{magicDir}}/reviews/` |
+| handoff 文件 | `项目名-需求名-handoff.md` | `{{projectName}}-co-agent-handoff.md` | `{{magicDir}}/plans/{YYYY-MM}/{DD}/`（与 Plan 同目录） |
 
 **命名规则说明**：
 
-- **项目名**：当前仓库的项目标识，本项目为 `add-coder`
+- **项目名**：当前仓库的项目标识，本项目为 `{{projectName}}`
 - **任务名**：用小写中划线描述该原子事务的核心功能，如 `response-strategy`、`expert-registry`、`semantic-cache`
 - **需求名**：如果某个需求需要拆分成多个任务（多轮），handoff 文件用需求名命名（如 `co-agent`），每个任务作为 handoff 中的独立章节（如 `<第2轮>`）
 - **如果需求与任务是一对一**：handoff 可以省略轮次编号，直接描述任务内容
@@ -400,7 +453,7 @@ Plan 级闭包: {业务功能描述}
 每个 spec 目录 MUST 包含三个文件，形成"需求→执行→验收"闭环：
 
 ```
-.qoder/specs/{任务名}/
+{{magicDir}}/specs/{任务名}/
   ├── spec.md       # 需求定义：Why / What Changes / Impact / Boundaries / Requirements
   ├── tasks.md      # 执行拆分：Preconditions / Forbidden / Tasks / Dependencies / Verification
   └── checklist.md  # 验收清单：编号验证项，每条可追溯到 tasks.md 的 Task
@@ -790,7 +843,7 @@ check_add_route_completeness({ planKeyword: "<Plan 核心关键词>" })
 
 ### 3.5.1 运行 spec checklist
 
-检查 `.qoder/specs/{task}/checklist.md` 中的所有检查项：
+检查 `{{magicDir}}/specs/{task}/checklist.md` 中的所有检查项：
 
 - `[T]` 编译期验证项：逐项执行并勾选
 - `[R]` 运行时验证项：保持 `[ ]`，将自动流转到 review-runtime.md
@@ -817,7 +870,7 @@ check_add_route_completeness({ planKeyword: "<Plan 核心关键词>" })
 当所有 `[T]` 项均通过后：
 
 1. 读取 `review-runtime-template.md`
-2. 复制为 `.qoder/reviews/{project}-review-runtime.md`
+2. 复制为 `{{magicDir}}/reviews/{project}-review-runtime.md`
 3. 替换占位符（标题、关联文档路径）
 4. §1 发现列表初始化为"尚无运行时发现"
 5. §1 末尾自动插入所有 `[R]` 项的"待运行时验证"清单
@@ -1048,6 +1101,31 @@ LIMIT 10;
 - [ ] **`check_add_route_completeness` 返回 `complete`**（ADD v2 新增：add-route 所有 Step 产出项全部 [x]，无遗漏）
 - [ ] **RAHS 最终核定 ≥ 90**——调用 `check_rahs({ planKeyword: "<Plan 核心关键词>" })`，RAHS < 90 不回退修复不得收敛。`check_dps` 和 `check_rahs` 的声明交集构成了 ADD 收敛的双轨裁决
 
+### 收敛后：记录 ROUND_CLOSED devlog
+
+> **收敛确认后、handoff 生成前，MUST 记录 ROUND_CLOSED。** ADD-7 原则见 `{{magicDir}}/rules/project_rules.md` §ADD-7。
+
+**操作**：调用 `record_dev_operation`，action 固定为 `ROUND_CLOSED`，afterState 包含本轮产出摘要。
+
+```text
+record_dev_operation({
+  userId: "ai-default",
+  planKeyword: "add-coder-hitl-mcp-hook",
+  action: "ROUND_CLOSED",
+  targetType: "PLAN",
+  targetId: "add-coder-hitl-mcp-hook-plan-v1::round1",
+  beforeState: "{\"status\":\"IN_PROGRESS\"}",
+  afterState: "{\"status\":\"CLOSED\",\"migration\":\"done\",\"adduser\":1}",
+  reason: "轮次1闭合：prisma 三表+枚举+migration 幂等+client regen"
+})
+```
+
+**落库后必须回查验证**：
+
+```text
+query_audit_logs({ targetId: "add-coder-hitl-mcp-hook-plan-v1::round1" })
+```
+
 ### 收敛后：执行验收闭环（ADD-12）
 
 收敛条件全部满足后，**必须回到 Step 0 第二阶段**执行验收后架构文档复核（ADD-12 双源头漂移的必然性）：重新阅读架构文档 → 逐项对照实现 → 标记偏差点 → 通知开发者决策。这是 ADD-0.1 广义文档先行的闭合步骤。
@@ -1065,7 +1143,7 @@ LIMIT 10;
    - **§9 后置确认**：逐项确认 tsc/ADD 合规/审计落库
 3. **审计查询语句必须可执行**：`query_audit_logs({ targetId: "..." })` 调用参数来自 `record_dev_operation` 落库的 targetId
 4. **双向链接**：handoff 文件内必须包含指向对应 plan + review 的链接；review 文件内必须包含指向 handoff 的链接
-5. **写入位置**：`{项目名}-{需求名}-handoff.md` → `.qoder/plans/`
+5. **写入位置**：`{项目名}-{需求名}-handoff.md` → `{{magicDir}}/plans/`
 
 ### 未收敛
 
@@ -1084,7 +1162,7 @@ LIMIT 10;
 
 ### 9.1 读取 report-handoff 模板
 
-读取 `.qoder/templates/report-handoff-template.md`，按模板格式在 handoff 中追加 Report Closure 章节。
+读取 `{{magicDir}}/templates/report-handoff-template.md`，按模板格式在 handoff 中追加 Report Closure 章节。
 
 ### 9.2 在 handoff 中追加 Report Closure 章节
 
