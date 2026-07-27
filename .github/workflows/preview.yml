@@ -1,0 +1,37 @@
+name: preview-publish
+
+on:
+  push:
+    branches:
+      - "feature/**"
+      - "fix/**"
+      - "feat/**"
+      - "enhance/**"
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - run: pnpm install
+      - run: pnpm build
+
+      - name: Derive preview version
+        run: |
+          BRANCH=$(echo "${{ github.ref_name }}" | sed 's|/|-|g' | sed 's/[^a-zA-Z0-9-]//g')
+          pnpm version prerelease --preid="${BRANCH}" --no-git-tag-version
+
+      - name: Publish preview
+        run: pnpm publish --no-git-checks --tag=preview
