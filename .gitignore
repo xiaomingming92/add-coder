@@ -32,3 +32,4 @@ debug-dump/
 # HITL sentinel files (runtime artifacts)
 .hitl-tongyi-*
 .hitl-bohui-*
+scripts/crontab*
