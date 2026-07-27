@@ -323,10 +323,16 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
     // 汇总提示
     if (targetExists) {
         console.log(`\n  ${SYNC_PRISMA_CONFIG.PROMPT}`);
-        console.log(`  ▶ 请运行: npx prisma db push && npx prisma generate`);
+        console.log(`  ▶ 请运行: npx prisma migrate dev && npx prisma generate`);
     } else {
         console.log(`\n  目标 schema 文件不存在: ${result.targetPath}`);
-        console.log(`  请创建后再运行 sync --patch。`);
+        const { writeFileSync, mkdirSync } = require('fs');
+        const { dirname } = require('path');
+        mkdirSync(dirname(targetPath), { recursive: true });
+        writeFileSync(targetPath, '// add.prisma — ADD 治理模型\n\n', 'utf-8');
+        const n = injectMissingModels(targetPath, result.missing);
+        console.log(`  ✅ 已创建并注入 ${n} 个模型/枚举`);
+        console.log(`  ▶ 请运行: npx prisma migrate dev && npx prisma generate`);
     }
 }
 

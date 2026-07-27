@@ -1,6 +1,6 @@
 # Plans 总览
 
-> 自动生成: 2026-07-24 22:52:24 | 文档总数: 18 | 下次更新: 每天 2:00 AM
+> 自动生成: 2026-07-27 13:02:02 | 文档总数: 25 | 下次更新: 每天 2:00 AM
 
 
 ## 2026-07
@@ -25,6 +25,13 @@
 | 24 | handoff | [add-coder-sync-patch-handoff-v1.md](2026-07/24/add-coder-sync-patch-handoff-v1.md) | add-coder — sync-patch 热更新功能 交接手册 |
 | 24 | plan | [add-coder-hook-notify-upgrade-plan-v1.md](2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md) | add-coder-hook-notify-upgrade-plan-v1 |
 | 24 | plan | [add-coder-sync-patch-plan-v1.md](2026-07/24/add-coder-sync-patch-plan-v1.md) | add-coder-sync-patch-plan-v1 |
+| 25 | add-route | [add-coder-hitl-mcp-hook-add-route-v1.md](2026-07/25/add-coder-hitl-mcp-hook-add-route-v1.md) | add-coder-hitl-mcp-hook-add-route-v1 |
+| 25 | handoff | [add-coder-hitl-mcp-hook-handoff-v1.md](2026-07/25/add-coder-hitl-mcp-hook-handoff-v1.md) | add-coder — HITL 人机审核架构 5 轮原子事务交接手册 |
+| 25 | plan | [add-coder-hitl-mcp-hook-plan-v1.hitl.md](2026-07/25/add-coder-hitl-mcp-hook-plan-v1.hitl.md) | add-coder-hitl-mcp-hook — HITL 提案 (round 1) |
+| 25 | plan | [add-coder-hitl-mcp-hook-plan-v1.md](2026-07/25/add-coder-hitl-mcp-hook-plan-v1.md) | add-coder-hitl-mcp-hook-plan-v1 |
+| 27 | plan | [add-coder-agent-memory.hitl.md](2026-07/27/add-coder-agent-memory.hitl.md) | add-coder-agent-memory — HITL 提案 (round 1) |
+| 27 | plan | [add-coder-sync-prisma-patch-plan-v1.hitl.md](2026-07/27/add-coder-sync-prisma-patch-plan-v1.hitl.md) | add-coder-sync-prisma-patch-plan-v1 — HITL 提案 (round 1) |
+| 27 | plan | [add-coder-sync-prisma-patch-plan-v1.md](2026-07/27/add-coder-sync-prisma-patch-plan-v1.md) | add-coder-sync-prisma-patch-plan-v1 |
 
 ---
 *索引由 `.qoder/scripts/gen-plan-index.sh` 自动生成，勿手动编辑*

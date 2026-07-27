@@ -333,3 +333,40 @@ export const DATABASE_URL = loadEnv("DATABASE_URL")                // 从 .env �
 - 轮次 1.2（shared/env.ts）需导出 PROJECT_ID
 - 轮次 4 的 Resources URI 需动态拼接 PROJECT_ID
 - 无新增文件，仅增强已有模块
+
+---
+ 
+## 六点六、shared/prisma.ts 跨项目 tsx 运行时兼容性修复
+
+> 补充于 2026-07-27：消费项目（farm-agent）通过 `add-coder sync` 获取 MCP server 模板后，tsx 启动 MCP server 时因 top-level `await` 在 CJS 编译模式下崩溃。
+
+### 问题
+
+`shared/prisma.ts` 使用 `await import()` 动态加载 Prisma client 和 adapter。当消费项目的 tsconfig 排除了 `.qoder/` 目录时，tsx 回退到 CJS 编译模式，不支持 top-level `await`：
+
+```
+ERROR: Top-level await is currently not supported with the "cjs" output format
+```
+
+add-coder 自身因 tsconfig 未排除 `.qoder/`，module 为 ESNext，不受影响。但模板需兼容所有消费项目的 tsconfig 配置。
+
+### 修复
+
+双层防护，适配 CJS 和 ESM 两种编译模式：
+
+| 层 | 方案 | 作用 |
+|:---:|------|------|
+| ① | `createRequire` 替代 `await import()` | 同步加载 Prisma client + adapter，CJS/ESM 双兼容 |
+| ② | `package.json` `{"type":"module"}` | tsconfig 未声明 module 时强制 ESM，消费项目免折腾 |
+
+```
+templates/core/scripts/mcp-server/shared/
+├── prisma.ts          ← createRequire + require() 同步加载
+└── package.json       ← {"type":"module"}
+```
+
+### Plan 影响
+
+- **轮次 1.3**（shared/prisma.ts）：模板源已更新，新增 `package.json`
+- **回灌**：通过 `add-coder sync` 下发到 `.qoder/`、`.claude/`、`.vscode/` 等 magicdir
+- **不涉及**：farm-agent 业务代码（Next.js `src/lib/prisma.ts` 懒初始化、24 文件导入迁移等）属于消费项目自身改动，不在本文范围

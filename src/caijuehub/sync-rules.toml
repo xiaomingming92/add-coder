@@ -40,7 +40,7 @@ prompt_patch_done = "所有 ADD 模板文件已是最新。"
 # add-coder 基准 schema（相对于消费项目根目录）
 base_schema = "node_modules/add-coder/templates/core/prisma/add.prisma"
 # 消费项目中对应的目标 schema
-target_pattern = "prisma/add/schema.prisma"
+target_pattern = "prisma/add.prisma"
 # 同步项类型
 sync_items = ["model", "enum"]
 # ── 行为策略 ──
