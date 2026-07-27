@@ -58,6 +58,7 @@
     "@modelcontextprotocol/server": "2.0.0-beta.5",
     "commander": "^13.1.0",
     "smol-toml": "^1.7.0",
+    "vector-cosine-similarity": "^1.8.0",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
