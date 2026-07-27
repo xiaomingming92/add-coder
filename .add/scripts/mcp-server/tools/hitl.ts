@@ -350,15 +350,17 @@ export function registerHitlTools(server: McpServer) {
       }
       await db.hitl.update({ where: { id: r.id }, data })
       // 写哨兵文件
+      const markerDir = join(PROJECT_ROOT, MAGIC_DIR, "hitl")
+      mkdirSync(markerDir, { recursive: true })
       const marker = s === "TONGYI"
-        ? `.hitl-tongyi-${planName}`
-        : `.hitl-bohui-${planName}`
+        ? join(markerDir, `.tongyi-${planName}`)
+        : join(markerDir, `.bohui-${planName}`)
       const markerContent = [
         `status: ${s}`,
         `time: ${new Date().toISOString()}`,
         reason ? `reason: ${reason}` : null,
       ].filter(Boolean).join("\n") + "\n"
-      writeFileSync(join(PROJECT_ROOT, marker), markerContent, "utf-8")
+      writeFileSync(marker, markerContent, "utf-8")
       // 响应
       const lines = [
         `✅ update_hitl`,
