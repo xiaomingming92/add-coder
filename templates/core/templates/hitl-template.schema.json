@@ -1,46 +1,23 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "HITL 提案模板校验",
-  "description": "hitl-template.md 生成的 HITL 提案文件必须满足的结构约束",
-  "type": "object",
-  "required": ["planName", "type", "decisionTable"],
-  "properties": {
-    "planName": {
-      "type": "string",
-      "pattern": "^[a-z0-9-]+-plan-v\\d+$",
-      "description": "Plan 名称，如 add-coder-sync-prisma-patch-plan-v1"
-    },
-    "type": {
-      "type": "string",
-      "enum": ["PLAN", "PLAN_REVIEW"],
-      "description": "审批类型"
-    },
-    "round": {
-      "type": "integer",
-      "minimum": 1,
-      "default": 1
-    },
-    "decisionTable": {
-      "type": "object",
-      "required": ["实施主体", "数据模型", "MCP 工具", "文件命名", "模板 + schema", "新增依赖", "预计文件数", "预计轮次"],
-      "properties": {
-        "实施主体": { "type": "string" },
-        "数据模型": { "type": "string" },
-        "MCP 工具": { "type": "string" },
-        "文件命名": { "type": "string" },
-        "模板 + schema": { "type": "string" },
-        "新增依赖": { "type": "string" },
-        "预计文件数": { "type": "string" },
-        "预计轮次": { "type": "string" }
-      }
-    },
-    "conclusion": {
-      "type": "object",
-      "properties": {
-        "decision": { "type": "string", "enum": ["tongyi", "bohui"] },
-        "reason": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      }
-    }
-  }
+    "template": "hitl-template.md",
+    "sections": [
+        {
+            "id": "hitl-overview",
+            "heading": "## HITL 计划总览",
+            "required": true
+        },
+        {
+            "id": "conclusion",
+            "heading": "## 审批结论",
+            "required": true
+        }
+    ],
+    "subsections": [],
+    "placeholders": [
+        "{{planName}}",
+        "{{round}}",
+        "{{type}}",
+        "{{createdAt}}"
+    ],
+    "forbidden_terms": []
 }
