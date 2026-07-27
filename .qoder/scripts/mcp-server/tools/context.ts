@@ -8,6 +8,7 @@ import { join, relative, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { readFileSafe, readdirRecursive } from "../shared/fs.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
+import { prisma } from "../shared/prisma.js"
 
 export function registerContextTools(server: McpServer) {
 
@@ -81,18 +82,29 @@ export function registerContextTools(server: McpServer) {
               .filter(f => f.endsWith(".md") && !f.includes("add-route") && !f.includes("handoff"))
               .sort()
             if (planFiles.length > 0) {
-              // 优先级1: 找 add-route 文件 → 反查所属 Plan（add-route 文件名含 planKeyword）
               let found = false
-              const allFiles = await readdirRecursive(plansDir)
-              const arFiles = allFiles.filter(f => f.includes("add-route") && f.endsWith(".md"))
-              for (const arf of arFiles) {
-                const arKeyword = basename(arf, ".md").replace(/-add-route-v\d+$/, "")
-                const matchingPlan = planFiles.find(f => f.toLowerCase().includes(arKeyword.toLowerCase()))
-                if (matchingPlan) {
-                  activePlan = matchingPlan; activePlanPath = join(plansDir, matchingPlan); found = true; break
+              // 优先级1: PlanRecord 中有未完成任务 → 该 Plan 为活跃（DB 是 SSOT）
+              try {
+                const records = await (prisma.planRecord as Record<string, (...a: unknown[]) => unknown>).findMany({
+                  where: {} as Record<string, unknown>, orderBy: { updatedAt: "desc" }, take: 10,
+                }) as { planName: string; totalTasks: number; doneTasks: number }[]
+                const inProgress = records.find(r => r.totalTasks > 0 && r.doneTasks < r.totalTasks)
+                if (inProgress) {
+                  const mp = planFiles.find(f => f.toLowerCase().includes(inProgress.planName.toLowerCase()))
+                  if (mp) { activePlan = mp; activePlanPath = join(plansDir, mp); found = true }
+                }
+              } catch { /* DB unavailable, fall through */ }
+              // 优先级2: 找 add-route 文件 → 反查所属 Plan
+              if (!found) {
+                const allFiles = await readdirRecursive(plansDir)
+                const arFiles = allFiles.filter(f => f.includes("add-route") && f.endsWith(".md"))
+                for (const arf of arFiles) {
+                  const arKeyword = basename(arf, ".md").replace(/-add-route-v\d+$/, "")
+                  const matchingPlan = planFiles.find(f => f.toLowerCase().includes(arKeyword.toLowerCase()))
+                  if (matchingPlan) { activePlan = matchingPlan; activePlanPath = join(plansDir, matchingPlan); found = true; break }
                 }
               }
-              // 优先级2: detect_active_add
+              // 优先级3: detect_active_add
               if (!found) {
                 try {
                   const detect = (await import("child_process")).spawnSync("bash", ["-c", `source $PWD/${MAGIC_DIR}/hooks/lib/state-detect.sh 2>/dev/null; detect_active_add`], { cwd: PROJECT_ROOT, encoding: "utf-8", timeout: 5000 })
@@ -100,7 +112,7 @@ export function registerContextTools(server: McpServer) {
                   if (result) { found = true; activePlan = result; activePlanPath = join(plansDir, result) }
                 } catch { /* fallthrough */ }
               }
-              // 优先级3: 最上面的 Plan 文件
+              // 优先级4: 最上面的 Plan 文件
               if (!found) {
                 activePlan = planFiles[planFiles.length - 1]
                 activePlanPath = join(plansDir, activePlan)
