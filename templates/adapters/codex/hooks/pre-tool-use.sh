@@ -25,7 +25,7 @@ else
 fi
 
 # ── §A 辅助函数: 阻断日志 ──
-_log_block() {hitl
+_log_block() {
   local rule="$1" cmd="$2"
   mkdir -p "$PROJECT_DIR/$MAGIC_DIR/debug-dump"
   cat >> "$PROJECT_DIR/$MAGIC_DIR/debug-dump/stdin.log" <<BLOCKLOG
@@ -132,7 +132,7 @@ fi
 #   3. Dev Action 标记 → 用于 Stop 检查
 # 注意: 不再对 src/**/*.ts 做 Plan 白名单放行，避免绕过 skill/rules 规定的 HITL。
 tool_name=$(echo "$input" | jq -r '.tool_name // empty')
-if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
+if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "SearchReplace" ]; then
   file_path=$(echo "$input" | jq -r '.tool_input.file_path // empty')
   [ -z "$file_path" ] && exit 0
 
@@ -177,9 +177,10 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
         echo "⛔ [ADD PreToolUse §C] HITL 未 tongyi: $file_path" >&2
         echo "   原因: 哨兵文件 $_tongyi_marker 不存在" >&2
         echo "   操作: 请先调用 create_hitl 创建审批，再 update_hitl({ status: \"TONGYI\" })" >&2
-        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"HITL 未 tongyi: $_tongyi_marker 不存在\"}}"
+        _reason="HITL 未 tongyi: 哨兵 ${_tongyi_marker} 不存在。请先 create_hitl → 人工 tongyi → update_hitl 后再写入"
+        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"${_reason}\",\"additionalContext\":\"${_reason}\"}}"
         write_hook_event "pre-tool-use" "deny" "$tool_name $file_path" "HITL 未 tongyi: $_tongyi_marker" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
-        exit 2
+        exit 0
       fi
     fi
   fi
