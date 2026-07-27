@@ -81,13 +81,15 @@ export function registerContextTools(server: McpServer) {
               .filter(f => f.endsWith(".md") && !f.includes("add-route") && !f.includes("handoff"))
               .sort()
             if (planFiles.length > 0) {
-              // 优先级1: Plan 的"关联文档"中明确声明了 add-route 且文件存在 → 该 Plan 为活跃
+              // 优先级1: 找 add-route 文件 → 反查所属 Plan（add-route 文件名含 planKeyword）
               let found = false
-              for (const pf of planFiles) {
-                const content = await readFileSafe(join(plansDir, pf)) || ""
-                const arMatch = content.match(/add-route[^:\n]*:\s*`?\.?(qoder|claude|add|vscode)\/plans\/[^`\s]+.md`?/)
-                if (arMatch && existsSync(join(plansDir, basename(arMatch[0].split("/").pop() || "")))) {
-                  activePlan = pf; activePlanPath = join(plansDir, pf); found = true; break
+              const allFiles = await readdirRecursive(plansDir)
+              const arFiles = allFiles.filter(f => f.includes("add-route") && f.endsWith(".md"))
+              for (const arf of arFiles) {
+                const arKeyword = basename(arf, ".md").replace(/-add-route-v\d+$/, "")
+                const matchingPlan = planFiles.find(f => f.toLowerCase().includes(arKeyword.toLowerCase()))
+                if (matchingPlan) {
+                  activePlan = matchingPlan; activePlanPath = join(plansDir, matchingPlan); found = true; break
                 }
               }
               // 优先级2: detect_active_add
