@@ -14,6 +14,7 @@ jobs:
     environment: npm-publish
     permissions:
       id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -27,6 +28,13 @@ jobs:
 
       - run: pnpm install
       - run: pnpm build
+
+      - name: Commit auto-generated artifacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add templates/.add-coder-src-hash.json pnpm-lock.yaml 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "chore(build): auto-generated artifacts"
 
       - name: Derive preview version
         run: |
