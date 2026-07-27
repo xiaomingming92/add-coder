@@ -170,7 +170,7 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "
 
   if [ "$_do_hitl" = true ]; then
     _relative=$(echo "$file_path" | sed 's|.*/\.\(qoder\|claude\|add\|vscode\|trae\)/\(plans\|reviews\)/||')
-    _planName=$(basename "$_relative" .md | sed 's/\.hitl$//;s/-plan-v[0-9]*$//;s/-review-v[0-9]*$//;s/-review-implementation$//;s/-review-runtime$//')
+    _planName=$(basename "$_relative" .md | sed 's/\.hitl$//;s/-plan-v[0-9]*$//;s/-add-route-v[0-9]*$//;s/-review-v[0-9]*$//;s/-review-implementation$//;s/-review-runtime$//')
     if [ -n "$_planName" ]; then
       _tongyi_marker="${PROJECT_DIR}/${MAGIC_DIR}/hitl/.tongyi-${_planName}"
       if [ ! -f "$_tongyi_marker" ]; then
