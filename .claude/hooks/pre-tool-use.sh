@@ -99,7 +99,7 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
     _relative=$(echo "$file_path" | sed 's|.*/\.\(qoder\|claude\|add\|vscode\|trae\)/\(plans\|reviews\)/||')
     _planName=$(basename "$_relative" .md | sed 's/-plan-v[0-9]*$//;s/-review-v[0-9]*$//;s/-review-implementation$//;s/-review-runtime$//')
     if [ -n "$_planName" ]; then
-      _tongyi_marker="${PROJECT_DIR}/.hitl-tongyi-${_planName}"
+      _tongyi_marker="${PROJECT_DIR}/${MAGIC_DIR}/hitl/.tongyi-${_planName}"
       if [ ! -f "$_tongyi_marker" ]; then
         echo "⛔ [ADD PreToolUse §C] HITL 未 tongyi: $file_path" >&2
         echo "   原因: 哨兵文件 $_tongyi_marker 不存在" >&2

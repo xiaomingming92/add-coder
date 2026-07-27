@@ -25,7 +25,7 @@ else
 fi
 
 # ── §A 辅助函数: 阻断日志 ──
-_log_block() {
+_log_block() {hitl
   local rule="$1" cmd="$2"
   mkdir -p "$PROJECT_DIR/$MAGIC_DIR/debug-dump"
   cat >> "$PROJECT_DIR/$MAGIC_DIR/debug-dump/stdin.log" <<BLOCKLOG
@@ -169,11 +169,10 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
   fi
 
   if [ "$_do_hitl" = true ]; then
-    # 提取 planName：去掉 magicDir 前缀，取第一段
     _relative=$(echo "$file_path" | sed 's|.*/\.\(qoder\|claude\|add\|vscode\|trae\)/\(plans\|reviews\)/||')
     _planName=$(basename "$_relative" .md | sed 's/-plan-v[0-9]*$//;s/-review-v[0-9]*$//;s/-review-implementation$//;s/-review-runtime$//')
     if [ -n "$_planName" ]; then
-      _tongyi_marker="${PROJECT_DIR}/.hitl-tongyi-${_planName}"
+      _tongyi_marker="${PROJECT_DIR}/${MAGIC_DIR}/hitl/.tongyi-${_planName}"
       if [ ! -f "$_tongyi_marker" ]; then
         echo "⛔ [ADD PreToolUse §C] HITL 未 tongyi: $file_path" >&2
         echo "   原因: 哨兵文件 $_tongyi_marker 不存在" >&2
