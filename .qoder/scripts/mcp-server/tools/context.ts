@@ -4,7 +4,7 @@ import { readFile } from "fs/promises"
 import { readdir } from "fs/promises"
 import { stat } from "fs/promises"
 import { existsSync } from "fs"
-import { join, relative } from "path"
+import { join, relative, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { readFileSafe, readdirRecursive } from "../shared/fs.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
@@ -81,8 +81,28 @@ export function registerContextTools(server: McpServer) {
               .filter(f => f.endsWith(".md") && !f.includes("add-route") && !f.includes("handoff"))
               .sort()
             if (planFiles.length > 0) {
-              activePlan = planFiles[planFiles.length - 1]
-              activePlanPath = join(plansDir, activePlan)
+              // 优先级1: Plan 的"关联文档"中明确声明了 add-route 且文件存在 → 该 Plan 为活跃
+              let found = false
+              for (const pf of planFiles) {
+                const content = await readFileSafe(join(plansDir, pf)) || ""
+                const arMatch = content.match(/add-route[^:\n]*:\s*`?\.?(qoder|claude|add|vscode)\/plans\/[^`\s]+.md`?/)
+                if (arMatch && existsSync(join(plansDir, basename(arMatch[0].split("/").pop() || "")))) {
+                  activePlan = pf; activePlanPath = join(plansDir, pf); found = true; break
+                }
+              }
+              // 优先级2: detect_active_add
+              if (!found) {
+                try {
+                  const detect = (await import("child_process")).spawnSync("bash", ["-c", `source $PWD/${MAGIC_DIR}/hooks/lib/state-detect.sh 2>/dev/null; detect_active_add`], { cwd: PROJECT_ROOT, encoding: "utf-8", timeout: 5000 })
+                  const result = (detect.stdout || "").trim()
+                  if (result) { found = true; activePlan = result; activePlanPath = join(plansDir, result) }
+                } catch { /* fallthrough */ }
+              }
+              // 优先级3: 最上面的 Plan 文件
+              if (!found) {
+                activePlan = planFiles[planFiles.length - 1]
+                activePlanPath = join(plansDir, activePlan)
+              }
               parts.push(`最近 Plan: ${activePlan}`)
               const allPlanFiles = await readdirRecursive(plansDir)
               const addRouteFile = allPlanFiles.find(f => f.includes("add-route"))
