@@ -128,7 +128,6 @@ sync_dir "$PROJECT_DIR/templates/adapters/qoder/hooks" "$PROJECT_DIR/.qoder/hook
 sync_qodercn_hooks() {
   local project_dir="$1"
   local qodercn_settings="$HOME/.qoder-cn/settings.json"
-  local src_settings="$project_dir/.qoder/settings.json"
 
   if [ ! -f "$qodercn_settings" ]; then
     echo "⚠️  Qoder CN: ~/.qoder-cn/settings.json 不存在，跳过（非 Qoder CN 环境或未初始化）"
@@ -136,25 +135,7 @@ sync_qodercn_hooks() {
   fi
 
   echo "🏷️  Qoder CN: 检测到现有配置，更新 hooks 段..."
-  python3 -c "
-import json
-src = json.load(open('$src_settings'))
-project_dir = '$project_dir'
-hooks = {}
-for event, groups in src.get('hooks', {}).items():
-    new_groups = []
-    for g in groups:
-        new_hooks = []
-        for h in g.get('hooks', []):
-            cmd = h.get('command', '').replace('bash .qoder/', 'bash ' + project_dir + '/.qoder/')
-            new_hooks.append({**h, 'command': cmd})
-        new_groups.append({**g, 'hooks': new_hooks})
-    hooks[event] = new_groups
-config = json.load(open('$qodercn_settings'))
-config['hooks'] = hooks
-json.dump(config, open('$qodercn_settings', 'w'), indent=2, ensure_ascii=False)
-print('✅ ~/.qoder-cn/settings.json 已更新（{} 个事件）'.format(len(hooks)))
-" 2>/dev/null || echo "⚠️  python3 不可用，跳过 Qoder CN 配置同步"
+  tsx "$SCRIPT_DIR/patch-qoder-cn-hook-setting.ts" "$project_dir" 2>/dev/null || echo "⚠️  tsx 不可用，跳过 Qoder CN 配置同步"
 }
 sync_qodercn_hooks "$PROJECT_DIR"
 
