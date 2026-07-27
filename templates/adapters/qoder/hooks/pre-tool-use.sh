@@ -9,6 +9,7 @@ export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 export PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
 source "$HOOK_DIR/lib/common.sh" 2>/dev/null || true
 source "$HOOK_DIR/lib/notify.sh" 2>/dev/null || true
+MAGIC_DIR="$CURRENT_MAGIC"
 
 # ── Hook 通知: 提前计算 Plan 关联信息 ──
 ACTIVE_PLAN=$(detect_active_add 2>/dev/null || true)
@@ -59,7 +60,7 @@ if [ "$tool_name" = "Bash" ]; then
 fi
 
 # ── ② Write/Edit matcher: 文件写入前置守卫 ──
-if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
+if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "SearchReplace" ]; then
   file_path=$(echo "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/' || echo "")
   [ -z "$file_path" ] && exit 0
 
@@ -105,8 +106,9 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
         echo "⛔ [ADD PreToolUse §C] HITL 未 tongyi: $file_path" >&2
         echo "   原因: 哨兵文件 $_tongyi_marker 不存在" >&2
         echo "   操作: 请先调用 create_hitl 创建审批，再 update_hitl({ status: \"TONGYI\" })" >&2
-        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"HITL 未 tongyi: $_tongyi_marker 不存在\"}}"
-        write_hook_event "pre-tool-use" "deny" "$file_path" "HITL 未 tongyi: $_tongyi_marker" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
+        _msg="⛔ HITL 未 tongyi: 哨兵 ${_tongyi_marker} 不存在。请先 create_hitl → 人工 tongyi → update_hitl 后再写入"
+        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"${_msg}\",\"additionalContext\":\"${_msg}\"}}"
+        write_hook_event "pre-tool-use" "ask" "$file_path" "HITL 未 tongyi: $_tongyi_marker" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
         exit 2
       fi
     fi

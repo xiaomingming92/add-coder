@@ -30,6 +30,7 @@ export function registerPlanTools(server: McpServer) {
       if (!existsSync(plansDir)) return errorResponse(`plans 目录不存在: ${plansDir}`)
 
       let targets: { name: string; path: string; keyword: string }[] = []
+      const newPlans: string[] = []
       const allFiles = await readdirRecursive(plansDir)
       const planFiles = allFiles.filter(f => f.endsWith(".md") && f.includes("-plan-v"))
 
@@ -88,7 +89,13 @@ export function registerPlanTools(server: McpServer) {
         } else {
           await db.plan.create({ data: { ...data, planName: t.name, planPath: t.path } })
           results.push(`  ✅ 已创建 (totalTasks=${totalTasks}, done=${doneTasks})`)
+          newPlans.push(t.name.replace(/-plan-v\d+$/, ""))
         }
+      }
+      // scanAll 完成后提示用户调用 review_track 填充缺陷指标
+      if (newPlans.length > 0) {
+        results.push(``, `💡 以下 Plan 为新创建，ReviewRecord 暂无 P0/P1 指标：`)
+        for (const pn of newPlans) results.push(`   review_track({ planName: "${pn}" })`)
       }
       return textResponse(results.join("\n") || "无匹配 Plan")
     } catch (e) {
