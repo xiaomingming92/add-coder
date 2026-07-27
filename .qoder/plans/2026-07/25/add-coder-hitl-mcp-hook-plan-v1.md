@@ -22,16 +22,16 @@
 | ~~src/mcp/hitl-tools.ts~~ → templates/core/scripts/mcp-server/tools/hitl.ts | COMPONENT | COMPONENT_CREATED | 不存在 | 3 个 HITL MCP 工具可调用 | ~~待实施~~ → ✅ 已完成 ~~[2026-07-27 修订: 轮次2完成，路径修正]~~ → ✅ 已完成 [2026-07-27 修订: 轮次2完成，路径修正；新增 inputRequired 交互式确认 + _fallback 降级模式] |
 | ~~src/mcp/plan-tools.ts~~ → templates/core/scripts/mcp-server/tools/plan.ts | COMPONENT | COMPONENT_CREATED | 不存在 | 3 个 Plan MCP 工具可调用 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次2完成，路径修正] |
 | ~~src/mcp/review-tools.ts~~ → templates/core/scripts/mcp-server/tools/review.ts | COMPONENT | COMPONENT_CREATED | 不存在 | 3 个 Review MCP 工具可调用 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次2完成，路径修正] |
-| templates/core/hooks/pre-tool-use.sh | CONFIG | CONFIG_MODIFIED | 无 HITL 拦截 | plans/reviews 写入拦截 + tongyi 检查 | 待实施 |
+| templates/core/hooks/pre-tool-use.sh | CONFIG | CONFIG_MODIFIED | 无 HITL 拦截 | §C plans/reviews 写入拦截 + MAGIC_DIR/hitl/.tongyi-{planName} 哨兵检查 + 6 adapter 统一 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: §C 实现 + 哨兵路径迁移 .qoder/hitl/] |
 | templates/core/skills/add-paradigm/SKILL.md | DOC | DOC_UPDATED | 无 HITL 流程 | ~~Plan/Review 流程含 create_hitl + status_hitl~~ → §0.0 跨轮上下文 + §A.0 增量修订 + DEVELOPMENT.md 引用 + HITL MCP 工具流 + devlog 操作细则 ~~[2026-07-27 修订: SKILL 三重更新]~~ → + inputRequired 交互/降级双轨文档 [2026-07-27 修订: SKILL 三重更新 + 交互降级文档] | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3 SKILL部分完成；inputRequired 交互/降级文档] |
 | templates/core/rules/project_rules.md | DOC | DOC_UPDATED | 无 devlog 双层记录 | ~~新增 ADD-13 HITL 人机审核规则~~ → ADD-7 新增 devlog 双层记录与轮次闭合子章节 [2026-07-27 修订: 不新建 ADD-13，在 ADD-7 扩展现有规则] | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3 rules部分完成] |
 | templates/core/templates/hitl-template.md | TEMPLATE | TEMPLATE_CREATED | 不存在 | HITL 提案模板可用 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3完成] |
 | templates/core/templates/hitl-template.schema.json | CONFIG | CONFIG_CREATED | 不存在 → JSON Schema 格式 | doc-format-guard 兼容格式（sections/placeholders/forbidden_terms） | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3完成，格式修正为 doc-format-guard 兼容] |
 | templates/core/hooks/doc-format-guard.sh | CONFIG | CONFIG_MODIFIED | 无 hitl schema | 新增 *hitl* → hitl-template.md 匹配规则 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3完成] |
-| tests/hitl.test.ts | TEST | TEST_CREATED | 不存在 | HITL 三表 CRUD + hook 拦截测试 | 待实施 |
+| tests/hitl.test.ts | TEST | TEST_CREATED | 不存在 | HITL 三表 CRUD + hook 拦截测试（7 case, 53/53 all pass） | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 7/7 passed] |
 | PLAN::round1 | PLAN | ROUND_CLOSED | 轮次 1 未开始 | 轮次 1 闭合: Prisma 模型 + migrate + power | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次1闭合] |
 | PLAN::round2 | PLAN | ROUND_CLOSED | 轮次 2 未开始 | 轮次 2 闭合: MCP 工具（9个）+ index 注册 + sync | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次2闭合] |
-| PLAN::round3 | PLAN | ROUND_CLOSED | 轮次 3 未开始 | 轮次 3 闭合: SKILL/Rules（devlog已就位，Templates待完成）+ HITL 工具 inputRequired 交互升级 | → 进行中 [2026-07-27 修订: SKILL+Rules+Tools 已完成，Templates 待 Task 3.3-3.4] |
+| PLAN::round3 | PLAN | ROUND_CLOSED | 轮次 3 未开始 | 轮次 3 闭合: SKILL+Rules+Templates+doc-format-guard+验证全部完成 + Qoder CN sync | → ✅ 已完成 [2026-07-27 修订: 全部完成，仅剩测试] |
 
 ---
 
