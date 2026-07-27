@@ -43,3 +43,5 @@ jobs:
 
       - name: Publish preview
         run: pnpm publish --no-git-checks --tag=preview
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
