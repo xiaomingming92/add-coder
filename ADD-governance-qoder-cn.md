@@ -127,8 +127,7 @@ UserPromptSubmit hook additional context: ADD workflow active. ...
             （仅替换 MAGIC_DIR，保留 HOOK_DIR/PARENT_DIR，notify.sh crash-safe 日志不丢）
          └→ chmod +x *.sh（自动）
 
-② ~/.qoder-cn/settings.json 写入 hook 配置
-   （command 必须用绝对路径。TODO：sync/init 自动合并）
+② ~/.qoder-cn/settings.json 写入 hook 配置（command 使用绝对路径，`npm run sync` 自动合并）
 
 ③ 重启 Qoder CN IDE
    （hook 配置不支持热加载）
