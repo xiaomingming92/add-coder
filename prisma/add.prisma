@@ -62,8 +62,7 @@ enum ReviewType {
 
 model HitlRecord {
   id           String      @id @default(cuid())
-  planName     String
-  plan         PlanRecord  @relation(fields: [planName], references: [planName])
+  planName     String      // 自然键关联 PlanRecord.planName（非 FK，因 @@unique([planName, round]) 不唯一）
   round        Int         @default(1)
   type         HitlType    @default(PLAN)
   status       HitlStatus  @default(DRAFT)
@@ -93,7 +92,6 @@ model PlanRecord {
   checklistTDone Int           @default(0)
   checklistR     Int           @default(0)
   planKeyword    String?
-  hitls          HitlRecord[]
   reviews        ReviewRecord[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
