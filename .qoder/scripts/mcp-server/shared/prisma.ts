@@ -2,6 +2,9 @@ import { DATABASE_URL, PROJECT_ROOT } from "./env.js"
 import { join, dirname, resolve as pathResolve } from "path"
 import { existsSync } from "fs"
 import { fileURLToPath } from "url"
+import { createRequire } from "module"
+
+const require = createRequire(import.meta.url)
 
 // 多路径回退：PROJECT_ROOT 可能因 cwd/沙箱环境算错
 const candidates = [
@@ -15,7 +18,8 @@ const candidates = [
 ]
 let prismaClientPath = candidates[0]
 for (const p of candidates) { if (existsSync(p)) { prismaClientPath = p; break } }
-const prismaModule: Record<string, unknown> = await import(prismaClientPath) as Record<string, unknown>
+// 用 createRequire 同步加载，避免 tsx CJS 模式下 top-level await 报错
+const prismaModule: Record<string, unknown> = require(prismaClientPath) as Record<string, unknown>
 const PrismaClient = (prismaModule.PrismaClient || prismaModule.default) as new (opts?: Record<string, unknown>) => Record<string, unknown>
 
 let adapter: Record<string, unknown> | undefined
@@ -23,7 +27,7 @@ if (!DATABASE_URL) throw new Error("DATABASE_URL required")
 const url: string = DATABASE_URL
 if (url.startsWith("postgresql://") || url.startsWith("postgres://")) {
   try {
-    const pg = await import("@prisma/adapter-pg") as Record<string, unknown>
+    const pg = require("@prisma/adapter-pg") as Record<string, unknown>
     const Pg = pg.PrismaPg as new (opts: Record<string, unknown>) => Record<string, unknown>
     adapter = new Pg({ connectionString: url })
   } catch { /* optional dep */ }
