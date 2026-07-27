@@ -119,6 +119,7 @@ if [ -z "$TEMPLATE_NAME" ]; then
       *report*runtime*)  TEMPLATE_NAME="runtime-report-template.md" ;;
       *report*)          TEMPLATE_NAME="report-template.md" ;;
       *fix-verif*)       TEMPLATE_NAME="fix-verification-template.md" ;;
+      *hitl*)           TEMPLATE_NAME="hitl-template.md" ;;
       *) 
         # 增量修订识别：包含 ~~删除线~~ / → 新增标记 / [修订日期] 任意一个 → 视为增量更新，放行
         if echo "$CONTENT" | grep -qE '~~.+~~|→|\[[0-9]{4}-[0-9]{2}-[0-9]{2}\s+修订'; then

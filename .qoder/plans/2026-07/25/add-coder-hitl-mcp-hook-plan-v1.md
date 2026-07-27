@@ -25,9 +25,9 @@
 | templates/core/hooks/pre-tool-use.sh | CONFIG | CONFIG_MODIFIED | 无 HITL 拦截 | plans/reviews 写入拦截 + tongyi 检查 | 待实施 |
 | templates/core/skills/add-paradigm/SKILL.md | DOC | DOC_UPDATED | 无 HITL 流程 | ~~Plan/Review 流程含 create_hitl + status_hitl~~ → §0.0 跨轮上下文 + §A.0 增量修订 + DEVELOPMENT.md 引用 + HITL MCP 工具流 + devlog 操作细则 ~~[2026-07-27 修订: SKILL 三重更新]~~ → + inputRequired 交互/降级双轨文档 [2026-07-27 修订: SKILL 三重更新 + 交互降级文档] | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3 SKILL部分完成；inputRequired 交互/降级文档] |
 | templates/core/rules/project_rules.md | DOC | DOC_UPDATED | 无 devlog 双层记录 | ~~新增 ADD-13 HITL 人机审核规则~~ → ADD-7 新增 devlog 双层记录与轮次闭合子章节 [2026-07-27 修订: 不新建 ADD-13，在 ADD-7 扩展现有规则] | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3 rules部分完成] |
-| templates/core/templates/hitl-template.md | TEMPLATE | TEMPLATE_CREATED | 不存在 | HITL 提案模板可用 | 待实施 |
-| templates/core/templates/hitl-template.schema.json | CONFIG | CONFIG_CREATED | 不存在 | 提案文件 schema 校验生效 | 待实施 |
-| templates/core/hooks/doc-format-guard.sh | CONFIG | CONFIG_MODIFIED | 无 hitl schema | 扩展 schema 校验路径 | 待实施 |
+| templates/core/templates/hitl-template.md | TEMPLATE | TEMPLATE_CREATED | 不存在 | HITL 提案模板可用 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3完成] |
+| templates/core/templates/hitl-template.schema.json | CONFIG | CONFIG_CREATED | 不存在 → JSON Schema 格式 | doc-format-guard 兼容格式（sections/placeholders/forbidden_terms） | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3完成，格式修正为 doc-format-guard 兼容] |
+| templates/core/hooks/doc-format-guard.sh | CONFIG | CONFIG_MODIFIED | 无 hitl schema | 新增 *hitl* → hitl-template.md 匹配规则 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次3完成] |
 | tests/hitl.test.ts | TEST | TEST_CREATED | 不存在 | HITL 三表 CRUD + hook 拦截测试 | 待实施 |
 | PLAN::round1 | PLAN | ROUND_CLOSED | 轮次 1 未开始 | 轮次 1 闭合: Prisma 模型 + migrate + power | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次1闭合] |
 | PLAN::round2 | PLAN | ROUND_CLOSED | 轮次 2 未开始 | 轮次 2 闭合: MCP 工具（9个）+ index 注册 + sync | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次2闭合] |
@@ -273,7 +273,7 @@ enum ReviewType { PLAN_REVIEW IMPLEMENTATION RUNTIME }
 
 model HitlRecord  { id String @id; planName String; round Int @default(1); type HitlType; status HitlStatus; ...
   @@unique([planName, round]) } [回流: Review P1 #3 外键+round]
-model PlanRecord  { id String @id; planName String @unique; ~~hitl HitlRecord? @relation(fields: [planName], references: [planName])~~  → 无 FK（HitlRecord.planName 不唯一） [2026-07-27 修订] totalTasks Int; doneTasks Int; ... }
+model PlanRecord  { id String @id; planName String @unique; totalTasks Int; doneTasks Int; ... }
 model ReviewRecord { id String @id; planName String; plan PlanRecord @relation(fields: [planName], references: [planName]); type ReviewType; reviewPath String; ... }
 ```
 
