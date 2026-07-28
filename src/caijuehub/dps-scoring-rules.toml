@@ -1,0 +1,58 @@
+# DPS 评分全参数 —— caijuehub 驱动，后续调优只需改此 TOML
+
+# ═══════════════ 维度一：语义相关性 ═══════════════
+[semantic]
+# 子权重：Jaccard Plan↔Specs / Cosine Plan↔Specs / Jaccard Plan↔Review / Cosine Plan↔Review
+weights = [0.35, 0.45, 0.08, 0.12]
+# Review 缺失时的惩罚系数（0.0=不惩罚，0.4=打六折，即得分×0.6）
+missing_review_penalty = 0.0
+
+# ═══════════════ 维度二：信息熵匹配 ═══════════════
+[entropy]
+# 熵差距乘数（entropyGap × multiplier，越小越不敏感）
+gap_multiplier = 10
+# Deng 不确定性惩罚：每个标记扣分，上限
+deng_per_marker = 0.05
+deng_max_penalty = 0.3
+# Specs 缺失时的熵差距（无 Specs 时 gap 设为此值）
+missing_specs_gap = 10
+
+# ═══════════════ 维度三：CPM 关键路径 ═══════════════
+[cpm]
+# 子权重：原子化 / 注意力匹配 / 依赖完整性
+sub_weights = [0.4, 0.35, 0.25]
+# 业务原子化：Jaccard 重叠乘数（overlap × multiplier → penalty）
+overlap_multiplier = 2
+# Task 数超过此阈值时随机采样配对（避免 O(N²) 爆炸，0 = 不限制）
+max_task_pairs = 200
+# 注意力匹配：文件/Task 阈值
+file_per_task_low = 3    # ≤3 → 100
+file_per_task_mid = 5    # 3~5 → 70，>5 → 40
+# 注意力匹配：描述熵阈值（bits）
+entropy_low = 6          # <6 → 100
+entropy_mid = 8          # 6~8 → 75，>8 → 50
+# 注意力匹配：子权重（文件耦合 / 描述熵）
+attention_weights = [0.5, 0.5]
+# 依赖完整性：子权重（覆盖率 / Task Dependencies 章节存在）
+dep_weights = [0.6, 0.4]
+
+# ═══════════════ 维度四：结构完整度 ═══════════════
+[structure]
+# 扣分项
+placeholder_penalty = 15
+missing_specs_penalty = 30
+missing_tasks_penalty = 15
+missing_checklist_penalty = 15
+# 子权重：结构分 / 回流分
+sub_weights = [0.6, 0.4]
+
+# ═══════════════ FFT 自适应权重 ═══════════════
+[fft]
+cold_start_threshold = 5
+history_limit = 50
+default_weights = [0.25, 0.25, 0.25, 0.25]
+
+# ═══════════════ DPS 阈值 ═══════════════
+[thresholds]
+pass = 85
+warn = 70

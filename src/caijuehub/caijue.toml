@@ -53,6 +53,13 @@ description = "HITL 人机交互策略：每个 IDE 独立声明审批交互模�
 rules = "hitl-interaction-rules.toml"
 implementation = "templates/core/scripts/mcp-server/shared/hitl-interaction.strategy.ts"
 
+[[caijue]]
+id = "dps-scoring"
+type = "strategy"
+description = "DPS 评分全参数：四维权重 + 阈值 + FFT，调优只改此 TOML"
+rules = "dps-scoring-rules.toml"
+implementation = "templates/core/scripts/mcp-server/shared/dps-scoring.strategy.ts"
+
 # ──── Runtime 环境策略 ────────────────────────────────────────
 
 [[caijue]]

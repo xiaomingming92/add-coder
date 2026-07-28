@@ -140,6 +140,54 @@ function genHitlInteractionRules(rules: TomlData): string {
     return `export const HITL_INTERACTION_CONFIG = {\n${entries.join(",\n")}\n} as const;\n\nexport type HitlInteractionMode = (typeof HITL_INTERACTION_CONFIG)[keyof typeof HITL_INTERACTION_CONFIG]["mode"];`;
 }
 
+// ── DPS 评分全参数生成器 ──
+function genDpsScoringRules(rules: TomlData): string {
+    const d = rules as Record<string, Record<string, unknown>>;
+    const required = (section: string, key: string) => {
+        const v = d[section]?.[key];
+        if (v === undefined) throw new Error(`dps-scoring-rules.toml: [${section}] ${key} 未配置`);
+        return v;
+    };
+    const arr = (section: string, key: string): number[] => {
+        const v = required(section, key);
+        if (!Array.isArray(v)) throw new Error(`dps-scoring-rules.toml: [${section}] ${key} 必须是数组`);
+        return v as number[];
+    };
+    const num = (section: string, key: string): number => {
+        const v = required(section, key);
+        if (typeof v !== "number") throw new Error(`dps-scoring-rules.toml: [${section}] ${key} 必须是数字`);
+        return v;
+    };
+
+    return `export const DPS_SCORING_CONFIG = {
+    SEMANTIC_WEIGHTS: [${arr("semantic", "weights").join(", ")}],
+    SEMANTIC_MISSING_REVIEW_PENALTY: ${num("semantic", "missing_review_penalty")},
+    ENTROPY_GAP_MULT: ${num("entropy", "gap_multiplier")},
+    DENG_PER_MARKER: ${num("entropy", "deng_per_marker")},
+    DENG_MAX_PENALTY: ${num("entropy", "deng_max_penalty")},
+    MISSING_SPECS_GAP: ${num("entropy", "missing_specs_gap")},
+    CPM_SUB_WEIGHTS: [${arr("cpm", "sub_weights").join(", ")}],
+    CPM_OVERLAP_MULT: ${num("cpm", "overlap_multiplier")},
+    CPM_MAX_TASK_PAIRS: ${num("cpm", "max_task_pairs")},
+    CPM_FILE_LOW: ${num("cpm", "file_per_task_low")},
+    CPM_FILE_MID: ${num("cpm", "file_per_task_mid")},
+    CPM_ENTROPY_LOW: ${num("cpm", "entropy_low")},
+    CPM_ENTROPY_MID: ${num("cpm", "entropy_mid")},
+    CPM_ATTENTION_WEIGHTS: [${arr("cpm", "attention_weights").join(", ")}],
+    CPM_DEP_WEIGHTS: [${arr("cpm", "dep_weights").join(", ")}],
+    STRUCT_PLACEHOLDER: ${num("structure", "placeholder_penalty")},
+    STRUCT_MISSING_SPECS: ${num("structure", "missing_specs_penalty")},
+    STRUCT_MISSING_TASKS: ${num("structure", "missing_tasks_penalty")},
+    STRUCT_MISSING_CHECKLIST: ${num("structure", "missing_checklist_penalty")},
+    STRUCT_SUB_WEIGHTS: [${arr("structure", "sub_weights").join(", ")}],
+    FFT_COLD_START: ${num("fft", "cold_start_threshold")},
+    FFT_HISTORY_LIMIT: ${num("fft", "history_limit")},
+    FFT_DEFAULT_WEIGHTS: [${arr("fft", "default_weights").join(", ")}],
+    THRESHOLD_PASS: ${num("thresholds", "pass")},
+    THRESHOLD_WARN: ${num("thresholds", "warn")},
+} as const;`;
+}
+
 const GENERATORS: Record<string, RuleGenerator> = {
     "detect-ide": genDetectRules,
     "resolve-adapters": genAdapterRules,
@@ -149,6 +197,7 @@ const GENERATORS: Record<string, RuleGenerator> = {
     "project-root-resolution": genProjectRootRules,
     "sync-prisma-schema": genPrismaSyncRules,
     "hitl-interaction": genHitlInteractionRules,
+    "dps-scoring": genDpsScoringRules,
 };
 
 function readExistingUserCode(filePath: string): string {

@@ -6,6 +6,7 @@ import { textResponse, errorResponse } from "../shared/response.js"
 import { readFileSafe, readdirRecursive, PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
 import { cosineSimilarity } from "vector-cosine-similarity"
+import { DPS_SCORING_CONFIG as CFG } from "../shared/dps-scoring.strategy.js"
 
 export function registerGatewayTools(server: McpServer) {
 
@@ -140,7 +141,7 @@ export function registerGatewayTools(server: McpServer) {
 
   function fftWeights(scores: number[][]): number[] {
     const N = scores.length
-    if (N < 5) return [0.25, 0.25, 0.25, 0.25]
+    if (N < CFG.FFT_COLD_START) return [...CFG.FFT_DEFAULT_WEIGHTS]
     const weights = [0, 1, 2, 3].map(dim => {
       const signal = scores.map(s => s[dim])
       const X = signal.map((_, k) => {
@@ -188,7 +189,9 @@ export function registerGatewayTools(server: McpServer) {
       const cosPS = cosineSimilarity(vecP, vecS)
       const jacPR = rc ? jaccard(planTerms, reviewTerms) : 0
       const cosPR = rc ? cosineSimilarity(vecP, tfVector(reviewTerms, [planTerms, specTerms, reviewTerms])) : 0
-      const semScore = Math.round(((jacPS * 0.35 + cosPS * 0.45 + jacPR * 0.08 + cosPR * 0.12) * (rc ? 100 : 60)))
+      const semScore = rc
+        ? Math.round((jacPS * CFG.SEMANTIC_WEIGHTS[0] + cosPS * CFG.SEMANTIC_WEIGHTS[1] + jacPR * CFG.SEMANTIC_WEIGHTS[2] + cosPR * CFG.SEMANTIC_WEIGHTS[3]) * 100)
+        : Math.round(((jacPS * CFG.SEMANTIC_WEIGHTS[0] + cosPS * CFG.SEMANTIC_WEIGHTS[1]) / (CFG.SEMANTIC_WEIGHTS[0] + CFG.SEMANTIC_WEIGHTS[1]) * 100) * (1 - CFG.SEMANTIC_MISSING_REVIEW_PENALTY))
       parts.push("=== 维度一：语义相关性（TF-IDF/Jaccard + Cosine）===",
         `  Jaccard(Plan↔Specs):  ${jacPS.toFixed(3)}`, `  Cosine(Plan↔Specs):  ${cosPS.toFixed(3)}`,
         `  Jaccard(Plan↔Review): ${jacPR.toFixed(3)}`, `  Cosine(Plan↔Review): ${cosPR.toFixed(3)}`,
@@ -199,8 +202,8 @@ export function registerGatewayTools(server: McpServer) {
       const sfreq = new Map<string, number>(); for (const t of tokenize(sc)) sfreq.set(t, (sfreq.get(t) || 0) + 1)
       const pEntropy = shannonEntropy(pfreq), sEntropy = shannonEntropy(sfreq)
       const dPenalty = dengPenalty(pc)
-      const entropyGap = sc ? Math.abs(pEntropy - sEntropy) : 10
-      const entropyScore = sc ? Math.round(Math.max(0, 100 - entropyGap * 10 - dPenalty * 100)) : 0
+      const entropyGap = sc ? Math.abs(pEntropy - sEntropy) : CFG.MISSING_SPECS_GAP
+      const entropyScore = sc ? Math.round(Math.max(0, 100 - entropyGap * CFG.ENTROPY_GAP_MULT - dPenalty * 100)) : 0
       parts.push("=== 维度二：信息熵匹配（香农熵 + Deng 熵）===",
         `  Plan 香农熵: ${pEntropy.toFixed(2)} bits`, sc ? `  Specs 香农熵: ${sEntropy.toFixed(2)} bits` : "  Specs 缺失",
         `  Deng 熵惩罚: ${(dPenalty * 100).toFixed(0)}%`, `  熵差距: ${entropyGap.toFixed(2)}`,
@@ -214,24 +217,45 @@ export function registerGatewayTools(server: McpServer) {
         const taskRe = /- \[[ x]\] Task \d+(?:\.\d+)?: ([^\n]+)([\s\S]*?)(?=- \[[ x]\] Task \d+(?:\.\d+)?:|$)/g
         const taskDescs: string[] = []; let tm: RegExpExecArray | null
         while ((tm = taskRe.exec(tasksContent)) !== null) taskDescs.push(tm[1] + (tm[2] || ""))
-        // 业务原子化：Jaccard 计算 Task 间语义重叠，重叠越低越独立（0=完全独立，1=完全相同）
+        // 业务原子化：Jaccard 计算 Task 间语义重叠，重叠越低越独立
+        const totalPairs = taskDescs.length * (taskDescs.length - 1) / 2
+        const maxPairs = CFG.CPM_MAX_TASK_PAIRS
         let totalOverlap = 0, pairs = 0
-        for (let i = 0; i < taskDescs.length; i++) {
-          for (let j = i + 1; j < taskDescs.length; j++) {
-            totalOverlap += jaccard(tokenize(taskDescs[i]), tokenize(taskDescs[j]))
+        if (maxPairs > 0 && totalPairs > maxPairs) {
+          // 随机采样避免 O(N²) 爆炸
+          const sampled = new Set<number>()
+          while (sampled.size < Math.min(maxPairs, totalPairs)) {
+            sampled.add(Math.floor(Math.random() * totalPairs))
+          }
+          const allPairs: [number, number][] = []
+          for (let i = 0; i < taskDescs.length; i++) {
+            for (let j = i + 1; j < taskDescs.length; j++) {
+              allPairs.push([i, j])
+            }
+          }
+          for (const idx of sampled) {
+            const [a, b] = allPairs[idx]
+            totalOverlap += jaccard(tokenize(taskDescs[a]), tokenize(taskDescs[b]))
             pairs++
+          }
+        } else {
+          for (let i = 0; i < taskDescs.length; i++) {
+            for (let j = i + 1; j < taskDescs.length; j++) {
+              totalOverlap += jaccard(tokenize(taskDescs[i]), tokenize(taskDescs[j]))
+              pairs++
+            }
           }
         }
         const avgOverlap = pairs > 0 ? totalOverlap / pairs : 0
-        const atomicScore = Math.round((1 - Math.min(avgOverlap * 2, 1)) * 100) // overlap×2→penalty
+        const atomicScore = Math.round((1 - Math.min(avgOverlap * CFG.CPM_OVERLAP_MULT, 1)) * 100)
         // 注意力匹配：任务范围——文件耦合度 + 描述熵，衡量单次 AI 会话负担
         const fileRefs = (arContent.match(/`[^`]+\.(ts|js|sh|md)`/g) || []).length
         const filePerTask = taskDescs.length > 0 ? fileRefs / taskDescs.length : 99
-        const fileScore = filePerTask <= 3 ? 100 : filePerTask <= 5 ? 70 : 40
+        const fileScore = filePerTask <= CFG.CPM_FILE_LOW ? 100 : filePerTask <= CFG.CPM_FILE_MID ? 70 : 40
         const taskEntropies = taskDescs.map(d => shannonEntropy(new Map([...tokenize(d)].map(t => [t, 1]))))
         const avgTaskEntropy = taskEntropies.reduce((a, b) => a + b, 0) / (taskEntropies.length || 1)
-        const entropyScore = avgTaskEntropy < 6 ? 100 : avgTaskEntropy < 8 ? 75 : 50
-        const attentionScore = Math.round(fileScore * 0.5 + entropyScore * 0.5)
+        const entropyScore = avgTaskEntropy < CFG.CPM_ENTROPY_LOW ? 100 : avgTaskEntropy < CFG.CPM_ENTROPY_MID ? 75 : 50
+        const attentionScore = Math.round(fileScore * CFG.CPM_ATTENTION_WEIGHTS[0] + entropyScore * CFG.CPM_ATTENTION_WEIGHTS[1])
         // 跨 Task 文件隔离: 检测同一文件是否被多个 Task 引用
         const fileTaskMap = new Map<string, number[]>(); let taskIdx = 0
         for (const d of taskDescs) { taskIdx++; const files = d.match(/`[^`]+\.(ts|js|sh|md)`/g) || []; for (const f of files) { const k = f.toLowerCase(); if (!fileTaskMap.has(k)) fileTaskMap.set(k, []); fileTaskMap.get(k)!.push(taskIdx) } }
@@ -268,8 +292,8 @@ export function registerGatewayTools(server: McpServer) {
           }
         }
         const depCoverage = taskDescs.length > 0 ? Math.min(depDeclared / taskDescs.length, 1) : 0
-        const depScore = Math.round((depCoverage * 0.6 + (arContent.includes("Task Dependencies") ? 0.4 : 0)) * 100)
-        cpmScore = Math.round(atomicScore * 0.4 + attentionScore * 0.35 + depScore * 0.25)
+        const depScore = Math.round((depCoverage * CFG.CPM_DEP_WEIGHTS[0] + (arContent.includes("Task Dependencies") ? CFG.CPM_DEP_WEIGHTS[1] : 0)) * 100)
+        cpmScore = Math.round(atomicScore * CFG.CPM_SUB_WEIGHTS[0] + attentionScore * CFG.CPM_SUB_WEIGHTS[1] + depScore * CFG.CPM_SUB_WEIGHTS[2])
         parts.push("=== 维度三：CPM 任务拆分质量 ===",
           `  add-route: ${arFile}`, `  Task 数: ${taskDescs.length}`,
           `  业务原子化: Jaccard 平均重叠 ${avgOverlap.toFixed(3)} (独立度 ${atomicScore}%)`,
@@ -285,11 +309,11 @@ export function registerGatewayTools(server: McpServer) {
       const hasSpecs = !!sc; const hasTasks = existsSync(join(specsDir, sn, "tasks.md"))
       const hasChecklist = existsSync(join(specsDir, sn, "checklist.md"))
       let structScore = 100
-      if (hasPlaceholders && hasPlaceholders.length > 0) structScore -= 15
-      if (!hasSpecs) structScore -= 30; if (!hasTasks) structScore -= 15; if (!hasChecklist) structScore -= 15
+      if (hasPlaceholders && hasPlaceholders.length > 0) structScore -= CFG.STRUCT_PLACEHOLDER
+      if (!hasSpecs) structScore -= CFG.STRUCT_MISSING_SPECS; if (!hasTasks) structScore -= CFG.STRUCT_MISSING_TASKS; if (!hasChecklist) structScore -= CFG.STRUCT_MISSING_CHECKLIST
       let backflowScore = 100
       if (rc) { const rp0p1 = rc.split("\n").filter(l => /^\|\s*\d+\s*\|\s*(P0|P1)\s*\|/.test(l)).length; const pb = (pc.match(/\[回流\s*[:：]/g) || []).length; if (rp0p1 > 0 && pb < rp0p1) backflowScore = Math.round((pb / rp0p1) * 100) }
-      const structFinal = Math.round(structScore * 0.6 + backflowScore * 0.4)
+      const structFinal = Math.round(structScore * CFG.STRUCT_SUB_WEIGHTS[0] + backflowScore * CFG.STRUCT_SUB_WEIGHTS[1])
       parts.push("=== 维度四：结构完整度 ===",
         `  三元组: ${[hasSpecs && "Specs", hasTasks && "Tasks", hasChecklist && "Checklist"].filter(Boolean).join("+") || "缺失"}`,
         `  占位符: ${hasPlaceholders?.length || 0} 个`, `  回流: ${backflowScore}/100`, `  分数: ${structFinal}/100`)
@@ -301,7 +325,7 @@ export function registerGatewayTools(server: McpServer) {
         const history = await (prisma.planRecord as Record<string, (...a: unknown[]) => unknown>).findMany({
           where: { dpsComposite: { not: null } },
           orderBy: { updatedAt: "desc" },
-          take: 50,
+          take: CFG.FFT_HISTORY_LIMIT,
         }) as { dpsSemScore: number | null; dpsEntropyScore: number | null; dpsCpmScore: number | null; dpsStructScore: number | null }[]
         for (const h of history) {
           if (h.dpsSemScore != null && h.dpsEntropyScore != null && h.dpsCpmScore != null && h.dpsStructScore != null) {
@@ -313,16 +337,16 @@ export function registerGatewayTools(server: McpServer) {
       const weightLabels = ["语义", "熵", "CPM", "结构"]
       parts.push("=== FFT 自适应权重 ===",
         weightLabels.map((l, i) => `  ${l}: ${(weights[i] * 100).toFixed(1)}%`).join("\n"),
-        histMatrix.length < 5 ? "  (冷启动: N<5, 均权降级)" : `  (基于 ${histMatrix.length} 条历史数据)`)
+        histMatrix.length < CFG.FFT_COLD_START ? `  (冷启动: N<${CFG.FFT_COLD_START}, 均权降级)` : `  (基于 ${histMatrix.length} 条历史数据)`)
 
       // DPS 复合
       const dps = Math.round(fourScores.reduce((s, v, i) => s + v * weights[i], 0))
-      const dpsLabel = dps >= 85 ? "🟢 PASS" : dps >= 70 ? "🟡 WARN" : "🔴 BLOCKED"
+      const dpsLabel = dps >= CFG.THRESHOLD_PASS ? "🟢 PASS" : dps >= CFG.THRESHOLD_WARN ? "🟡 WARN" : "🔴 BLOCKED"
       parts.push("", "=== DPS 复合计算 ===",
         ...weightLabels.map((l, i) => `  ${l}: ${fourScores[i]} × ${(weights[i] * 100).toFixed(1)}% = ${(fourScores[i] * weights[i]).toFixed(1)}`),
         "  ─────────────────────────────────", `  DPS = ${dps}  ${dpsLabel}`)
       parts.push("", `=== 判定 ===`, `  结果: ${dpsLabel}`,
-        `  动作: ${dps >= 85 ? "可进入 Step 1" : dps >= 70 ? "回退补齐短板" : "回退细化 Plan 本身"}`)
+        `  动作: ${dps >= CFG.THRESHOLD_PASS ? "可进入 Step 1" : dps >= CFG.THRESHOLD_WARN ? "回退补齐短板" : "回退细化 Plan 本身"}`)
 
       // 回写 DPS 四维分到 PlanRecord，供后续 FFT 自适应权重消费
       try {
