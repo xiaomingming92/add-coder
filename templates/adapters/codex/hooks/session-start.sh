@@ -33,4 +33,21 @@ if [ -f "$TPL_SCRIPT" ]; then
   bash "$TPL_SCRIPT" --index
 fi
 
+# ── ③ §代办刷新：活跃 Plan 时提醒加载 IDE 代办 ──
+# session-init Step 2.6 依赖 IDE resume invoke SKILL，本段作为兜底
+if [ -n "$state" ]; then
+  IFS='::' read -r plan step rounds handoff add_route <<< "$state"
+  cat <<EOF
+[代办] 检测到活跃 Plan: ${plan}。如有未加载的 IDE 代办清单，请从 tasks.md §IDE JSON 刷新 TodoWrite。
+EOF
+fi
+
+# ── ④ §HITL 待审批检测 ──
+if [ -d "$PLANS_DIR" ]; then
+  hitl_count=$(find "$PLANS_DIR" -name "*.hitl.md" -mtime -7 -type f 2>/dev/null | wc -l)
+  if [ "$hitl_count" -gt 0 ] 2>/dev/null; then
+    echo "[HITL 待审批] 检测到 ${hitl_count} 个待审批 HITL 提案，请检查并处理"
+  fi
+fi
+
 exit 0

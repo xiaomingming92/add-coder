@@ -70,13 +70,35 @@ sync_dir() {
         fi
         
         # 同步内容（排除 .gitkeep、保留特定文件）
-        rsync -av --delete \
-            --exclude='.gitkeep' \
-            --exclude='.DS_Store' \
-            --exclude='*/.DS_Store' \
-            --exclude='debug-dump/' \
-            --exclude='*.log' \
-            "$src/" "$dest/"
+        if command -v rsync &>/dev/null; then
+            rsync -av --delete \
+                --exclude='.gitkeep' \
+                --exclude='.DS_Store' \
+                --exclude='*/.DS_Store' \
+                --exclude='debug-dump/' \
+                --exclude='*.log' \
+                "$src/" "$dest/"
+        else
+            # Windows / 无 rsync 降级：Node.js cpSync（递归覆盖）
+            echo "   ⚠️  rsync 不可用，使用 Node.js cpSync 降级同步"
+            node -e "
+                const fs = require('fs');
+                const path = require('path');
+                const src = process.argv[1];
+                const dest = process.argv[2];
+                const exclude = new Set(['.gitkeep','.DS_Store','debug-dump']);
+                fs.rmSync(dest, { recursive: true, force: true });
+                fs.cpSync(src, dest, {
+                    recursive: true,
+                    filter: (s) => {
+                        const base = path.basename(s);
+                        if (exclude.has(base)) return false;
+                        if (base.endsWith('.log')) return false;
+                        return true;
+                    }
+                });
+            " "$src" "$dest"
+        fi
         
         # 确定性替换：将动态 $MAGIC_DIR 替换为具体值，修复 grep 单引号 bug
         if [ -n "$magic_dir" ]; then

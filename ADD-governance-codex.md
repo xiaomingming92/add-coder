@@ -3,6 +3,15 @@
 > **定位**：描述 ADD 范式如何通过 Codex 的 Hook 机制在 agent 生命周期中确定性运行。
 > **关联文档**：[add-coder-hook-full-alignment-plan-v1](../.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md)
 > **Hook 参考**: https://www.runoob.com/codex/codex-hooks.html | Codex 设置 → 导入其他 agent 配置
+> **目录**: Hook 事件模型 · ADD 治理卡位 · 注入通道 · HITL 人机审核交互 · 端差异汇总
+
+| 章节 | 内容 |
+|------|------|
+| [Codex Hook 事件模型](#codex-hook-事件模型) | 6 种事件及频率 |
+| [ADD 治理卡位映射](#add-治理卡位映射) | agent 生命周期 → ADD 卡位 |
+| [注入通道](#注入通道) | stdout / stderr 输出格式 |
+| [HITL 人机审核交互](#hitl-人机审核交互) | caijuehub 配置驱动的 inputRequired 弹框 |
+| [端差异汇总](#端差异汇总) | Codex vs Claude Code 差异 |
 
 ---
 
@@ -72,4 +81,12 @@ npx add-coder init --adapter=codex
 | 全局 Hook | `~/.codex/hooks.json` | `~/.claude/settings.json` |
 | SessionEnd | ❌ | ✅ |
 | PreCompact | ❌ | ✅ |
-| 权限系统 | PreToolUse 可阻断 | PermissionRequest/Denied |
+- 权限系统 | PreToolUse 可阻断 | PermissionRequest/Denied |
+
+---
+
+## HITL 人机审核交互
+
+Codex 使用 MCP 标准 **inputRequired.elicit()** 弹框完成 HITL 审批。
+
+交互模式由 caijuehub 统一管理：`hitl-interaction-rules.toml` 中 `[codex] mode = "inputRequired"`。Qoder CN 使用 genui widget（详见 [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md)）。
