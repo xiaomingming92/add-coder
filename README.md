@@ -2,7 +2,11 @@
 
 Make 0.75 into one.
 
- ![npm downloads](https://img.shields.io/npm/dm/add-coder) 
+<p align="left" style="width: 100%;  background: linear-gradient(135deg, #b8a0a0ff 0%, #ce9674ff 100%); display: flex; justify-content: space-between; align-items: center; padding: 6px">
+   <img src="https://img.shields.io/npm/dm/add-coder" alt="npm downloads">
+   <img src="https://img.shields.io/badge/npmcharts-4.9k%2Fmonth-blue" alt="npmcharts">
+   <a href="https://www.npmcharts.com/compare/add-coder?interval=30" style="color:#c41a16;font-weight:700">📈 趋势</a>
+ </p>
 
 > 🀄中文 | 🔤[English](#-english-readme)
 
@@ -328,6 +332,12 @@ Tasks (实验性)     双向              ✅ 已实现      长任务持久化 
 ```bash
 npx add-coder init
 ```
+
+<p align="left" style="width:100%;background:linear-gradient(135deg,#a0b8a0 0%,#74ce74 100%);display:flex;justify-content:space-between;align-items:center;padding:6px">
+  <img src="https://img.shields.io/npm/dm/add-coder" alt="npm downloads">
+  <img src="https://img.shields.io/badge/npmcharts-4.9k%2Fmonth-blue" alt="npmcharts">
+  <a href="https://www.npmcharts.com/compare/add-coder?interval=30" style="color:#1a6b1a;font-weight:700">📈 Trend</a>
+</p>
 
 ---
 
