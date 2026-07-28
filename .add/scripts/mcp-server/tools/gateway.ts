@@ -298,11 +298,15 @@ export function registerGatewayTools(server: McpServer) {
       const fourScores = [semScore, entropyScore, cpmScore, structFinal]
       let histMatrix: number[][] = []
       try {
-        const history = await (prisma.planRecord as Record<string, (...a: unknown[]) => unknown>).findMany({ where: {}, take: 50 }) as { totalTasks: number; doneTasks: number; checklistT: number; checklistTDone: number }[]
+        const history = await (prisma.planRecord as Record<string, (...a: unknown[]) => unknown>).findMany({
+          where: { dpsComposite: { not: null } },
+          orderBy: { updatedAt: "desc" },
+          take: 50,
+        }) as { dpsSemScore: number | null; dpsEntropyScore: number | null; dpsCpmScore: number | null; dpsStructScore: number | null }[]
         for (const h of history) {
-          const taskPct = h.totalTasks > 0 ? Math.round((h.doneTasks / h.totalTasks) * 100) : 50
-          const clPct = h.checklistT > 0 ? Math.round((h.checklistTDone / h.checklistT) * 100) : 50
-          histMatrix.push([taskPct, 50, 50, clPct])
+          if (h.dpsSemScore != null && h.dpsEntropyScore != null && h.dpsCpmScore != null && h.dpsStructScore != null) {
+            histMatrix.push([h.dpsSemScore, h.dpsEntropyScore, h.dpsCpmScore, h.dpsStructScore])
+          }
         }
       } catch { /* no history */ }
       const weights = fftWeights(histMatrix)
@@ -319,6 +323,22 @@ export function registerGatewayTools(server: McpServer) {
         "  ─────────────────────────────────", `  DPS = ${dps}  ${dpsLabel}`)
       parts.push("", `=== 判定 ===`, `  结果: ${dpsLabel}`,
         `  动作: ${dps >= 85 ? "可进入 Step 1" : dps >= 70 ? "回退补齐短板" : "回退细化 Plan 本身"}`)
+
+      // 回写 DPS 四维分到 PlanRecord，供后续 FFT 自适应权重消费
+      try {
+        const planRec = prisma.planRecord as Record<string, (...a: unknown[]) => unknown>
+        await planRec.updateMany({
+          where: { planName: { contains: pp } },
+          data: {
+            dpsSemScore: semScore,
+            dpsEntropyScore: entropyScore,
+            dpsCpmScore: cpmScore,
+            dpsStructScore: structFinal,
+            dpsComposite: dps,
+          },
+        })
+      } catch { /* 非阻塞：回写失败不影响 DPS 判定 */ }
+
       return textResponse(parts.join("\n"))
     } catch (e) { return errorResponse(`check_dps 失败: ${e instanceof Error ? e.message : String(e)}`) }
   })
