@@ -35,7 +35,7 @@ npx add-coder init
 | 审计靠开发者自觉记录 | **MCP 审计工具链** 自动记录每次操作，系统闸门强制检查 |
 | 无关联性 | 审计事件天然关联 Plan → Spec → Task → Step → Tool Call，形成完整证据链 |
 
-### ② Caijuehub 规则引擎：业务规则直驱代码
+### ② Caijuehub 集中裁决层：业务规则直驱代码
 
 Caijuehub 是 add-coder 历史上第一个实现 **TOML 规则声明 → 自动生成策略 → 业务代码消费** 的裁决引擎。以 sync --patch 为例：
 

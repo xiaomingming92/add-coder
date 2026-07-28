@@ -31,11 +31,23 @@
   - **过滤**：Plan 搜索排除 `.hitl.md` 文件，add-route 匹配统一小写。
 - **原则**: MCP签名不变，~~零外部依赖~~ → 仅 `vector-cosine-similarity`（0 deps, 14KB, ISC license）[回流: Review #1 实施修正]，不需要 LLM 调用。
 
+### 2026-07-28 增量回流（caijuehub 配置化 + 数据持久化）
+
+- **#D1 PlanRecord DPS 字段**：`add.prisma` 新增 5 个 `Int?` 字段（dpsSemScore/Entropy/Cpm/Struct/Composite），幂等 migration（`ADD COLUMN IF NOT EXISTS`），`check_dps` 计算完毕后回写供 FFT 历史矩阵消费。[回流: 2026-07-28]
+- **#D2 FFT 真实历史矩阵**：修复 FFT 权重数据源——从占位符 `[taskPct, 50, 50, clPct]` 改为真实 `dps*Score` 四维分，仅 `dpsComposite != null` 的记录参与计算，冷启动均权降级。[回流: 2026-07-28]
+- **#D3 caijuehub 全参数配置化**：`gateway.ts` 全部硬编码（四维权重/子权重/阈值/扣分值/FFT 参数）抽离为 `dps-scoring-rules.toml`，通过 `transcribe.ts` 生成 `DPS_SCORING_CONFIG` 常量。配置缺失时报错不兜底。新增 `CPM_MAX_TASK_PAIRS` 避免 O(N²) 爆炸，`SEMANTIC_MISSING_REVIEW_PENALTY` 精准控制 Review 缺失惩罚（仅作用于 Plan↔Specs 的 80% 子项）。[回流: 2026-07-28]
+
 ## 二、变更范围
 
 | 文件 | 操作 |
 |------|------|
 | `templates/core/scripts/mcp-server/tools/gateway.ts` | 修改 |
+| `prisma/add.prisma` | 修改（+5 字段） |
+| `prisma/migrations/202607280000_add_dps_scores/migration.sql` | 新建 |
+| `src/caijuehub/dps-scoring-rules.toml` | 新建 |
+| `src/caijuehub/transcribe.ts` | 修改（+生成器） |
+| `src/caijuehub/caijue.toml` | 修改（+注册） |
+| `templates/core/scripts/mcp-server/shared/dps-scoring.strategy.ts` | 新建 |
 
 ## 三、Tasks
 
@@ -51,7 +63,7 @@
 `gateway.ts` L82-112：四维各25%存在性检查。
 
 ### 4.2 目标
-语义+熵+CPM+FFT权重，`check_dps` 签名不变。
+语义+熵+CPM+FFT权重，`check_dps` 签名不变。全部参数由 `dps-scoring-rules.toml` caijuehub 驱动，零硬编码。DPS 四维分回写 PlanRecord 供历史自适应。[回流: 2026-07-28 #D1,#D2,#D3]
 
 ### 4.3 回滚
 ```bash
