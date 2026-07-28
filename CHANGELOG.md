@@ -7,13 +7,13 @@
 ---
 ## [0.3.0] - 2026-07-24
 
-### Caijuehub 规则引擎 — 首次 TOML 直驱业务代码
+### Caijuehub 集中裁决层 — 首次 TOML 直驱业务代码
 
 - **sync-rules.toml**：`[guard]` 管⑥ / `[patch]` 管①②④⑤（3 行为参数）/ `[version]` 管 3 边界
 - **transcribe.ts**：新增 genSyncRules 生成器 + GENERATORS 注册 → 产出 sync.strategy.ts
 - **sync.ts 薄壳化**：`import { SYNC_CONFIG }` 替代所有硬编码，改规则不改代码
 - **这是 codein2027 集中裁决层理论的第一个工程落地**：人类从"追踪散落的 if"升级为"读一张决策表"，O(N×M)→O(1)。AI Agent 可大规模索引、检索、修改规则
-- **docs/caijuehub.md**：规则引擎架构文档，联动 README/GUIDE/DEVELOPMENT
+- **docs/caijuehub.md**：集中裁决层架构文档，联动 README/GUIDE/DEVELOPMENT
 
 ### sync --patch 热更新（核心）
 
@@ -26,7 +26,7 @@
 
 ### 文档体系
 
-- **README**：新增 ⑦ Caijuehub 规则引擎 + sync-patch 升级入口
+- **README**：新增 ⑦ Caijuehub 集中裁决层 + sync-patch 升级入口
 - **GUIDE.md §七**：add-coder 升级实操（旧三步 vs 新一条命令）
 - **DEVELOPMENT.md §八**：双 hash 架构图 + 六场景矩阵 + 版本边界保护 + caijuehub TOML 驱动
 - **docs/interaction-spec.md**：CLI 交互规范文档（`[a]/[A]` 键盘语义统一标准）
@@ -214,7 +214,7 @@
 ### 变更
 
 - **Prisma 7 架构升级**：全域迁移至 Prisma 7，AddUser 改为自包含模型
-- **策略层集成**：Caijuehub TOML 规则引擎与 Prisma 适配层打通
+- **策略层集成**：Caijuehub TOML 集中裁决层与 Prisma 适配层打通
 - **仓库清理**：移除 farm-agent 残留引用，同步所有已部署目录
 - **文档补链**：GUIDE.md 补充缺失链接
 
@@ -273,6 +273,6 @@
 
 ### 首次发布
 
-- 核心 CLI、Renderer、Caijuehub 规则引擎
+- 核心 CLI、Renderer、Caijuehub 集中裁决层
 - Claude / Qoder / VS Code 三 IDE 适配模板
 - 完整架构与使用指南文档
