@@ -1,4 +1,4 @@
-# Caijuehub 规则引擎
+# Caijuehub 集中裁决层
 
 > add-coder CLI 的配置驱动层——TOML 声明规则 → `transcribe.ts` 生成策略 → 业务代码消费。
 

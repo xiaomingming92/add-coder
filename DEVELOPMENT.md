@@ -2,7 +2,7 @@
 
 > 给 add-coder 贡献者的开发手册 — 目录结构、sync 机制、init 流程、唯一真源原则。
 
-📦 **用户使用文档** → [README.md](./README.md) | **实践指南** → [GUIDE.md](./GUIDE.md) | **能力清单&调试** → [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md) | **交互规范** → [docs/interaction-spec.md](./docs/interaction-spec.md) | **规则引擎** → [docs/caijuehub.md](./docs/caijuehub.md)
+📦 **用户使用文档** → [README.md](./README.md) | **实践指南** → [GUIDE.md](./GUIDE.md) | **能力清单&调试** → [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md) | **交互规范** → [docs/interaction-spec.md](./docs/interaction-spec.md) | **集中裁决层** → [docs/caijuehub.md](./docs/caijuehub.md)
 
 ---
 
@@ -636,7 +636,7 @@ npx add-coder init --adapter claude --force --dry-run
 | [GUIDE.md](./GUIDE.md) | 实践指南：从零上手 ADD 工作流 |
 | [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md) | 能力清单 & 调试指南 |
 | [docs/interaction-spec.md](./docs/interaction-spec.md) | CLI 交互规范（键盘命令统一标准） |
-| [docs/caijuehub.md](./docs/caijuehub.md) | Caijuehub 规则引擎（TOML 驱动策略） |
+| [docs/caijuehub.md](./docs/caijuehub.md) | Caijuehub 集中裁决层（TOML 驱动策略） |
 | [scripts/sync-magic-dirs.sh](./scripts/sync-magic-dirs.sh) | 自举同步脚本 |
 | [.qoder/plans/.../add-coder-selfhost-sync-plan-v1.md](./.qoder/plans/2026-07/23/add-coder-selfhost-sync-plan-v1.md) | 同步方案 Plan |
 | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | Qoder 治理文档（hooks 覆盖说明） |
