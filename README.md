@@ -35,20 +35,17 @@ npx add-coder init
 | 审计靠开发者自觉记录 | **MCP 审计工具链** 自动记录每次操作，系统闸门强制检查 |
 | 无关联性 | 审计事件天然关联 Plan → Spec → Task → Step → Tool Call，形成完整证据链 |
 
-### ② Caijuehub 集中裁决层：业务规则直驱代码
+### ② Caijuehub 集中裁决层：AI 可操作的决策表
 
-Caijuehub 是 add-coder 历史上第一个实现 **TOML 规则声明 → 自动生成策略 → 业务代码消费** 的裁决引擎。以 sync --patch 为例：
+Caijuehub 将易变规则从代码中抽离为 TOML 声明，通过 `npm run generate` 自动生成策略常量，业务代码薄壳消费。**改规则不改代码**——这是 [codein2027 集中裁决层理论](https://github.com/xiaomingming92/codein2027) 的工程落地。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
 
-```toml
-# sync-rules.toml — 改这里，不改代码
-[patch]
-on_conflict = "interactive"   # 内容冲突时：交互勾选
-on_missing = "write"          # 文件缺失时：静默写入
-[version]
-on_upgrade = "baseline"       # 版本升级时：自动覆盖
-```
+当前已覆盖三个业务域：
 
-`npm run generate` 后，策略直驱 sync.ts 行为。**人类从"追踪散落的 if"升级为"读一张决策表"**——认知负担从 O(N×M) 降为 O(1)。产品经理、市场人员改 TOML 即可把控软件能力，决策权集中、单一入口绕不过去。更进一步：当业务规则以声明式集中管理，**AI Agent 可大规模索引、检索、修改规则**——人机协作不再局限于对话生成代码，而是共同操作同一张决策表。这是 [codein2027 集中裁决层理论](https://github.com/xiaomingming92/codein2027) 的第一个工程落地。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
+| 裁决域 | 规则文件 | 消费者 | 说明 |
+|--------|---------|--------|------|
+| sync --patch | `sync-rules.toml` | `sync.ts` | 首个案例：冲突/缺失/覆盖策略 |
+| HITL 审批 | `hitl-interaction-rules.toml` | `hitl.ts` | 每 IDE 独立声明交互模式（genui/inputRequired） |
+| DPS 评分 | `dps-scoring-rules.toml` | `gateway.ts` | 30+ 参数全覆盖，AI 可自助调优 |
 
 ### ③ Prompt Cache 原生友好 — 月费 ¥218，节省 98%
 
@@ -71,14 +68,16 @@ ADD 范式 + Qoder:     cache 命中率 99.31%, 每次请求 MISS 仅 2,426 toke
 
 ### ④ 门禁驱动，而非自由对话
 
-传统 AI coding 是「你说我做」，质量完全依赖 LLM 当天状态。add-coder 在架构中嵌入了 **双质量闸门**：
+传统 AI coding 是「你说我做」，质量完全依赖 LLM 当天状态。add-coder 在架构中嵌入了 **双质量闸门**，不是「建议」，是**架构阻断**：
 
 ```
-DPS (Design-Process Symmetry)  — 设计/实现/文档/审计 四维各 25%，< 85% BLOCKED
-RAHS (Runtime Architecture Health Score) — 运行时架构健康度，< 90% BLOCKED
+DPS (Documentation Precision Score) — TF-IDF/Jaccard 语义 + 香农/Deng 熵 + CPM 关键路径 + 结构完整度
+  → 四维复合评分 + FFT 自适应权重，≥ 85 进入 Step 1
+RAHS (Runtime Architecture Health Score) — 运行时架构健康度
+  → 五维判定：范围保真 + 类型安全 + 审计完整 + Spec 合规 + 阶段对称，≥ 90 通过
 ```
 
-这不是「建议」，是**架构阻断** — 不通过闸门的 Step 无法推进到下一步。
+DPS 全部参数由 caijuehub TOML 驱动——AI 可以跑分→看弱项→调参→再跑分，全程不改代码。
 
 ### ⑤ 跨轮记忆，而非每轮失忆
 
@@ -111,6 +110,25 @@ hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中
 | Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 (原生) / 14 (导入 Claude) | `.codex/hooks.json` |
 
 > 实施 Plan: [add-coder-hook-full-alignment-plan-v1](./.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | 触发源: [GitHub Issue #6](https://github.com/xiaomingming92/add-coder/issues/6)
+
+### ⑧ HITL 人机审核：审批即基础设施
+
+AI 写代码绕过人类决策是 AI coding 最大的结构性风险。add-coder 的 HITL 不是"弹个框问一下"，而是**架构级强制审批**：
+
+| 能力 | 实现 |
+|------|------|
+| **8 维决策表** | 实施主体 / 数据模型 / MCP 工具 / 文件命名 / 模板 / 依赖 / 文件数 / 轮次——每行独立同意/调整 |
+| **双轨制交互** | Qoder → genui widget 聊天内嵌审批面板；其他 IDE → MCP inputRequired 弹框降级 |
+| **caijuehub 驱动** | 交互模式由 TOML 声明，新增 IDE 只加一行配置 |
+| **hook 强制拦截** | 无 `.hitl-tongyi` 哨兵 → 禁止写入正式 Plan/Review 文件 |
+
+### ⑨ IDE 代办清单：Plan 任务直通编码面板
+
+Plan 里的 Task 不应该停留在文档里。add-coder 将 tasks.md 末尾的 JSON 任务清单直接加载到 IDE 代办面板，完成一个勾一个，进度实时可见。session-init 两场景分流——新对话让用户选 Plan，编码阶段自动定位当前 Plan 加载。
+
+```
+tasks.md §IDE JSON → TodoWrite → IDE 面板
+```
 
 
 
