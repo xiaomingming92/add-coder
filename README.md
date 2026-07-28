@@ -35,17 +35,17 @@ npx add-coder init
 | 审计靠开发者自觉记录 | **MCP 审计工具链** 自动记录每次操作，系统闸门强制检查 |
 | 无关联性 | 审计事件天然关联 Plan → Spec → Task → Step → Tool Call，形成完整证据链 |
 
-### ② Caijuehub 集中裁决层：AI 可操作的决策表
+### ② Caijuehub 集中裁决层：从 sync 到三域覆盖
 
-Caijuehub 将易变规则从代码中抽离为 TOML 声明，通过 `npm run generate` 自动生成策略常量，业务代码薄壳消费。**改规则不改代码**——这是 [codein2027 集中裁决层理论](https://github.com/xiaomingming92/codein2027) 的工程落地。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
-
-当前已覆盖三个业务域：
+Caijuehub 是 add-coder 历史上第一个实现 **TOML 规则声明 → 自动生成策略 → 业务代码消费** 的裁决引擎。从最初 sync --patch 的单域实验，到今天覆盖 HITL 审批和 DPS 评分的三域体系，演进路径本身证明了集中裁决层的扩展性。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
 
 | 裁决域 | 规则文件 | 消费者 | 说明 |
 |--------|---------|--------|------|
-| sync --patch | `sync-rules.toml` | `sync.ts` | 首个案例：冲突/缺失/覆盖策略 |
-| HITL 审批 | `hitl-interaction-rules.toml` | `hitl.ts` | 每 IDE 独立声明交互模式（genui/inputRequired） |
-| DPS 评分 | `dps-scoring-rules.toml` | `gateway.ts` | 30+ 参数全覆盖，AI 可自助调优 |
+| add-coder run sync --patch | `sync-rules.toml` | `sync.ts` | **npm 包史上首个集中裁决热更新案例**（eating my own dog food：add-coder 用 caijuehub 管理自己的模板同步） |
+| HITL 审批 | `hitl-interaction-rules.toml` | `hitl.ts` | 每 IDE 独立声明交互模式 |
+| DPS 评分 | `dps-scoring-rules.toml` | `gateway.ts` | 文档质量闸门：语义/熵/CPM/结构 四维权重+阈值，AI 调参不碰代码 |
+
+**改规则不改代码**——产品经理读 TOML 即可理解软件行为，市场人员改 TOML 即可调整策略参数。AI Agent 大规模索引、检索、修改规则时，操作的是同一张决策表。认知负担从 O(N×M) 降为 O(1)。
 
 ### ③ Prompt Cache 原生友好 — 月费 ¥218，节省 98%
 
@@ -345,20 +345,17 @@ Traditional AI development: Chat → Generate code → Dig through chat history 
 | Auditing relies on developer discipline | The **MCP audit toolchain** automatically records every operation; system gateways enforce checks |
 | No traceability | Audit events are naturally linked: Plan → Spec → Task → Step → Tool Call, forming a complete evidence chain |
 
-### ② Caijuehub Rule Engine: Business Rules Drive Code
+### ② Caijuehub Rule Engine: From Sync to Three Domains
 
-Caijuehub is add-coder's first implementation of **TOML declaration → auto-generated strategy → business code consumption**. Using sync --patch as an example:
+Caijuehub is add-coder's first implementation of **TOML declaration → auto-generated strategy → business code consumption**. From the initial sync --patch experiment to today's three-domain coverage spanning HITL and DPS, the evolution proves the extensibility of centralized decision layers. Details: [docs/caijuehub.md](./docs/caijuehub.md).
 
-```toml
-# sync-rules.toml — edit here, not code
-[patch]
-on_conflict = "interactive"   # content conflict → interactive checkbox
-on_missing = "write"          # file missing → silent write
-[version]
-on_upgrade = "baseline"       # version upgrade → auto overwrite
-```
+| Domain | Rules File | Consumer | Description |
+|--------|---------|--------|------|
+| sync --patch | `sync-rules.toml` | `sync.ts` | **First centralized decision hot-update in npm history** (eating my own dog food: add-coder manages its own template sync via caijuehub) |
+| HITL Approval | `hitl-interaction-rules.toml` | `hitl.ts` | Per-IDE interaction mode declaration |
+| DPS Scoring | `dps-scoring-rules.toml` | `gateway.ts` | Doc quality gateway: semantic/entropy/CPM/structure 4D weights+thresholds, AI self-tuning without touching code |
 
-After `npm run generate`, the strategy directly drives sync.ts behavior. **Humans upgrade from "hunting scattered if-statements" to "reading a decision table"** — cognitive load drops from O(N×M) to O(1). Product managers and marketers edit TOML to control software capabilities, with decisions centralized at a single entry point that cannot be bypassed. Furthermore: when business rules are declaratively centralized, **AI Agents can index, search, and modify rules at scale** — human-AI collaboration extends beyond conversation-driven code generation to jointly operating the same decision table. This is the first engineering implementation of [codein2027's Centralized Decision Layer theory](https://github.com/xiaomingming92/codein2027). Details: [docs/caijuehub.md](./docs/caijuehub.md).
+**Edit rules, not code** — product managers read TOML to understand software behavior, marketers modify TOML to adjust strategy parameters. When AI agents index, search, and modify rules at scale, they operate on the same decision table. Cognitive load drops from O(N×M) to O(1).
 
 ### ③ Prompt Cache Native — ¥218/mo, 98% Savings
 
@@ -381,14 +378,16 @@ ADD paradigm + Qoder:       cache hit rate 99.31%, only 2,426 MISS tokens/req
 
 ### ④ Gateway-Driven, Not Free-Form Conversation
 
-Traditional AI coding is "you say, I do" — quality depends entirely on the LLM's state that day. add-coder embeds **dual quality gateways** into the architecture:
+Traditional AI coding is "you say, I do" — quality depends entirely on the LLM's state that day. add-coder embeds **dual quality gateways** into the architecture. These are not "suggestions" — they are **architectural blocks**:
 
 ```
-DPS (Design-Process Symmetry)  — Design / Implementation / Docs / Audit, each weighted 25%, < 85% BLOCKED
-RAHS (Runtime Architecture Health Score) — Runtime architecture health, < 90% BLOCKED
+DPS (Documentation Precision Score) — TF-IDF/Jaccard semantics + Shannon/Deng entropy + CPM critical path + structural completeness
+  → 4D composite scoring + FFT adaptive weights, ≥ 85 to enter Step 1
+RAHS (Runtime Architecture Health Score) — runtime architecture health
+  → 5D assessment: scope fidelity + type safety + audit completeness + spec compliance + phase symmetry, ≥ 90 to pass
 ```
 
-These are not "suggestions" — they are **architectural blocks**. A Step cannot advance without passing its gateway.
+All DPS parameters are driven by caijuehub TOML — AI can run→analyze weak spots→tune→rerun, all without touching code.
 
 ### ⑤ Cross-Session Memory, Not Per-Session Amnesia
 
@@ -428,6 +427,25 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 | VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
 | Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
 | Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
+
+### ⑧ HITL Human-in-the-Loop: Approval as Infrastructure
+
+AI generating code without human oversight is the greatest structural risk in AI coding. add-coder's HITL is not "a popup checkbox" — it is **architecture-level mandatory approval**:
+
+| Capability | Implementation |
+|------|------|
+| **8-dimension decision table** | Implementer / Data Model / MCP Tools / File Naming / Templates / Dependencies / File Count / Rounds — per-row agree/adjust |
+| **Dual-track interaction** | Qoder → genui widget inline approval panel; Other IDEs → MCP inputRequired dialog fallback |
+| **caijuehub-driven** | Interaction mode declared in TOML; adding a new IDE = one line of config |
+| **Hook enforcement** | No `.hitl-tongyi` sentinel → blocked from writing formal Plan/Review files |
+
+### ⑨ IDE Task Panel: Plan Tasks Directly in Your Editor
+
+Tasks in Plan docs shouldn't stay in docs. add-coder loads the JSON task list from tasks.md directly into the IDE task panel — check off as you go, progress visible in real time. session-init dual-scenario dispatch — new thread lets user pick a Plan; coding phase auto-locates the current Plan and loads.
+
+```
+tasks.md §IDE JSON → TodoWrite → IDE panel
+```
 
 ---
 
