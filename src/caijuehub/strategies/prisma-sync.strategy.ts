@@ -7,7 +7,7 @@ export const SYNC_PRISMA_CONFIG = {
     TARGET_PATTERN: "prisma/add.prisma",
     SYNC_ITEMS: ["model", "enum"],
     ON_MISSING_MODEL: "interactive",
-    ON_FIELD_CONFLICT: "skip",
+    ON_FIELD_CONFLICT: "interactive",
     ON_MISSING_FIELD: "interactive",
     ON_EXTRA_FIELD: "ignore",
     PROMPT: "add-coder 标准 add.prisma 与消费方 schema 存在差异。",

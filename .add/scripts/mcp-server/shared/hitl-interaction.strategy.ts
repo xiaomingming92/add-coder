@@ -1,5 +1,5 @@
 // ⚠️ 由 caijuehub/transcribe.ts 自动生成，不要手动编辑！
-// 改 hitl-interaction-rules.toml 后重新运行: add-coder generate
+// 改 *-rules.toml 后重新运行: add-coder generate
 
 // >>> CAIJUE GENERATED START >>>
 export const HITL_INTERACTION_CONFIG = {
@@ -13,7 +13,6 @@ export const HITL_INTERACTION_CONFIG = {
 
 export type HitlInteractionMode = (typeof HITL_INTERACTION_CONFIG)[keyof typeof HITL_INTERACTION_CONFIG]["mode"];
 // <<< CAIJUE GENERATED END <<<
-
 // >>> USER CODE >>>
 // 在此添加自定义配置覆盖
 // <<< USER CODE <<<
