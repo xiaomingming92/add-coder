@@ -8,12 +8,30 @@
 | 章节 | 内容 |
 |------|------|
 | [Qoder CN Hook 事件模型](#qoder-cn-hook-事件模型) | 10 个核心事件及频率 |
+| [Qoder vs Qoder CN 配置差异](#qoder-vs-qoder-cn-配置差异) | settings.json 识别位置与 patch 机制 |
 | [ADD 治理卡位映射](#add-治理卡位映射) | agent 生命周期 → ADD 卡位 |
 | [注入通道](#注入通道) | hookSpecificOutput JSON / 纯文本 |
 | [HITL 人机审核交互](#hitl-人机审核交互) | **genui widget 聊天内嵌审批**（Qoder 专属） |
 | [调试与排错](#调试与排错) | 日志路径 + 常见问题 |
 
 ---
+
+### Qoder vs Qoder CN 配置差异
+
+Qoder（开源版）和 Qoder CN（阿里云版）的 **hook 配置识别路径不同**：
+
+| 版本 | settings.json 位置 | hook 命令路径 |
+|------|-------------------|-------------|
+| **Qoder 开源版** | 项目级 `.qoder/settings.json` | `bash .qoder/hooks/xxx.sh`（相对路径） |
+| **Qoder CN** | 用户级 `~/.qoder-cn/settings.json` | `bash {projectDir}/.qoder/hooks/xxx.sh`（绝对路径） |
+
+Qoder CN 读取的是用户目录下的全局配置，而非项目目录的 `.qoder/settings.json`。因此 `npx add-coder init --adapter=qoder` 后需要额外执行：
+
+```bash
+tsx scripts/patch-qoder-cn-hook-setting.ts
+```
+
+该脚本将项目级 `.qoder/settings.json` 的 hook 配置同步到 `~/.qoder-cn/settings.json`，并将 hook 命令路径从相对路径 `bash .qoder/` 替换为绝对路径 `bash {projectDir}/.qoder/`。
 
 ## Qoder CN Hook 事件模型
 
@@ -29,6 +47,7 @@ Qoder CN v1.7.0（2026-07-15）升级至 30+ 事件。以下为 ADD 治理覆盖
 配置位置：`.qoder/hooks/*.sh` + `.qoder/settings.json`
 
 **关键差异**：Qoder CN 不支持 PreCompact / PermissionRequest / PermissionDenied / StopFailure / ConfigChange / Worktree——这些 Claude Code 独有事件在 Qoder 端无对应 hookpoint，相关脚本不编译到 Qoder adapter。
+
 
 ---
 
