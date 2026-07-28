@@ -5,6 +5,7 @@ import { join } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
+import { HITL_INTERACTION_CONFIG } from "../shared/hitl-interaction.strategy.js"
 
 const db = {
   get hitl() { return prisma.hitlRecord as unknown as Record<string, (...a: unknown[]) => unknown> },
@@ -72,6 +73,7 @@ export function registerHitlTools(server: McpServer) {
     description: "HITL 审批：创建提案。写入 HitlRecord（status=DRAFT，自动递增 round），并生成 hitl.md 提案文件供人工审核。\n" +
       "支持 inputRequired 交互式确认，含逐项决策（LLM 传 dimensions）或简单弹框两种模式。\n" +
       "降级模式（_fallback=true）：跳过弹框，按原始代码行为直接创建。\n" +
+      "_use_genui=true：genui widget 回调后使用，跳过所有弹框，直接以传入的 dimensions 创建 DB+文件。\n" +
       "planName 示例: add-coder-hitl-mcp-hook-plan-v1\n" +
       "type: PLAN=计划审批, PLAN_REVIEW=方案评审",
     inputSchema: z.object({
@@ -82,16 +84,22 @@ export function registerHitlTools(server: McpServer) {
         content: z.string().optional().describe("LLM 建议的方案内容"),
       })).optional().describe("决策维度列表（LLM 根据对话生成）。不传则按模板默认 8 维度"),
       _fallback: z.boolean().optional().default(false).describe("降级模式：跳过 inputRequired，按原始代码行为直接创建 DB 记录+hitl.md"),
+      _use_genui: z.boolean().optional().default(false).describe("genui 模式：genui widget 回调后使用，跳过所有弹框直接创建（dimensions 需传最终确认值）"),
     }),
   }, async (args: Record<string, unknown>, ctx: Record<string, unknown>) => {
     try {
-      const { planName, type, dimensions, _fallback } = args as { planName: string; type: string; dimensions?: { name: string; content?: string }[]; _fallback?: boolean }
+      const { planName, type, dimensions, _fallback, _use_genui } = args as { planName: string; type: string; dimensions?: { name: string; content?: string }[]; _fallback?: boolean; _use_genui?: boolean }
 
       // ── 最终维度内容（从弹框结果合并） ──
       let finalDims: { name: string; content: string }[] = []
 
-      // ── 交互式确认（非降级模式） ──
-      if (!_fallback) {
+      // ── genui 模式：widget 回调已完成决策，直接跳过所有弹框 ──
+      if (_use_genui) {
+        finalDims = (dimensions || []).map(d => ({ name: d.name, content: d.content || "" }))
+      }
+
+      // ── 交互式确认（非降级模式且非 genui 模式） ──
+      if (!_fallback && !_use_genui) {
         const hasDims = dimensions && dimensions.length > 0
 
         if (hasDims) {
@@ -241,22 +249,24 @@ export function registerHitlTools(server: McpServer) {
     description: "HITL 审批：更新状态。SUBMITTED→TONGYI/BOHUI。\n" +
       "交互模式（默认）：返回 inputRequired 弹框让用户确认→确认后写哨兵+更新 DB。\n" +
       "降级模式（_fallback=true）：跳过弹框，直接写哨兵+更新 DB（原代码行为降级）。\n" +
+      "_use_genui=true：genui widget 回调后使用，跳过弹框直接以传入的 status/reason 更新。\n" +
       "已终态（TONGYI/BOHUI）不可再更新，BOHUI 后需 create_hitl 新建 round。",
     inputSchema: z.object({
       planName: z.string().describe("Plan 名称"),
       type: z.enum(["PLAN", "PLAN_REVIEW"]).describe("审批类型"),
-      status: z.enum(["SUBMITTED", "TONGYI", "BOHUI"]).optional().describe("降级模式(_fallback)必填：目标状态。交互模式由用户弹框选择"),
-      reason: z.string().optional().describe("驳回原因（降级模式手动传，交互模式用户弹框不需要）"),
+      status: z.enum(["SUBMITTED", "TONGYI", "BOHUI"]).optional().describe("降级模式(_fallback)或 genui 模式(_use_genui)必填：目标状态"),
+      reason: z.string().optional().describe("驳回原因（降级模式手动传，genui 模式从 widget 回调获取）"),
       _fallback: z.boolean().optional().default(false).describe("降级模式：跳过 inputRequired，按原始代码行为直接写哨兵+更新 DB"),
+      _use_genui: z.boolean().optional().default(false).describe("genui 模式：genui widget 回调后使用，跳过弹框直接更新（status/reason 需传最终值）"),
     }),
   }, async (args: Record<string, unknown>, ctx: Record<string, unknown>) => {
     try {
-      const { planName, type, status, reason, _fallback } = args as Record<string, string | boolean | undefined>
+      const { planName, type, status, reason, _fallback, _use_genui } = args as Record<string, string | boolean | undefined>
 
-      // ── 交互式确认（非降级模式） ──
+      // ── 交互式确认（非降级模式且非 genui 模式） ──
       let effectiveStatus = status as string | undefined
 
-      if (!_fallback) {
+      if (!_fallback && !_use_genui) {
         // 尝试读取 hitl.md 文件解析维度
         const hitlPath = findHitlFile(planName as string)
         const dims = hitlPath ? parseHitlDimensions(hitlPath) : []

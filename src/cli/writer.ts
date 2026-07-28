@@ -1,7 +1,6 @@
 import { writeFiles as strategyFn } from "../caijuehub/strategies/writer.strategy";
 import { SYNC_PRISMA_CONFIG } from "../caijuehub/strategies/prisma-sync.strategy";
 import { existsSync, readFileSync } from "fs";
-import { join } from "path";
 
 export interface WriteOptions { yes?: boolean; force?: boolean; dryRun?: boolean; }
 
@@ -84,7 +83,7 @@ export function diffPrisma(basePath: string, targetPath: string): PrismaDiffResu
 
     const missing: { type: string; name: string; body: string; fields: string[] }[] = [];
     const fieldDiffs: FieldDiff[] = [];
-    const types = SYNC_PRISMA_CONFIG.SYNC_ITEMS as string[];
+    const types = SYNC_PRISMA_CONFIG.SYNC_ITEMS;
 
     for (const [key, block] of baseBlocks) {
         if (!types.includes(block.type)) continue;

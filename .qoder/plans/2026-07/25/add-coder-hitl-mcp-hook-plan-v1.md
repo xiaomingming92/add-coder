@@ -19,7 +19,7 @@
 | 文件 | targetType | action | beforeState | afterState | 状态 |
 |-----|-----------|--------|------------|-----------|------|
 | prisma/add.prisma | MODEL | MODEL_CREATED | 无三表 | 新增 HitlRecord + PlanRecord + ReviewRecord + 3 enum | ~~待实施~~ → ✅ 已完成（迁移 202607270147） [2026-07-27 修订: 轮次1完成] |
-| ~~src/mcp/hitl-tools.ts~~ → templates/core/scripts/mcp-server/tools/hitl.ts | COMPONENT | COMPONENT_CREATED | 不存在 | 3 个 HITL MCP 工具可调用 | ~~待实施~~ → ✅ 已完成 ~~[2026-07-27 修订: 轮次2完成，路径修正]~~ → ✅ 已完成 [2026-07-27 修订: 轮次2完成，路径修正；新增 inputRequired 交互式确认 + _fallback 降级模式] |
+| ~~src/mcp/hitl-tools.ts~~ → templates/core/scripts/mcp-server/tools/hitl.ts | COMPONENT | COMPONENT_CREATED | 不存在 | 3 个 HITL MCP 工具可调用 | ~~待实施~~ → ✅ 已完成 ~~[2026-07-27 修订: 轮次2完成，路径修正]~~ → ✅ 已完成 [2026-07-27 修订: 轮次2完成，路径修正；新增 inputRequired 交互式确认 + _fallback 降级模式] ~~→ 🔶 genui 双轨制交互增强待实施 [2026-07-28 修订: 回流 #10 genui widget 集成]~~ |
 | ~~src/mcp/plan-tools.ts~~ → templates/core/scripts/mcp-server/tools/plan.ts | COMPONENT | COMPONENT_CREATED | 不存在 | 3 个 Plan MCP 工具可调用 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次2完成，路径修正] |
 | ~~src/mcp/review-tools.ts~~ → templates/core/scripts/mcp-server/tools/review.ts | COMPONENT | COMPONENT_CREATED | 不存在 | 3 个 Review MCP 工具可调用 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次2完成，路径修正] |
 | templates/core/hooks/pre-tool-use.sh | CONFIG | CONFIG_MODIFIED | 无 HITL 拦截 | §C plans/reviews 写入拦截 + MAGIC_DIR/hitl/.tongyi-{planName} 哨兵检查 + 6 adapter 统一 | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: §C 实现 + 哨兵路径迁移 .qoder/hitl/] |
@@ -32,6 +32,8 @@
 | PLAN::round1 | PLAN | ROUND_CLOSED | 轮次 1 未开始 | 轮次 1 闭合: Prisma 模型 + migrate + power | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次1闭合] |
 | PLAN::round2 | PLAN | ROUND_CLOSED | 轮次 2 未开始 | 轮次 2 闭合: MCP 工具（9个）+ index 注册 + sync | ~~待实施~~ → ✅ 已完成 [2026-07-27 修订: 轮次2闭合] |
 | PLAN::round3 | PLAN | ROUND_CLOSED | 轮次 3 未开始 | 轮次 3 闭合: SKILL+Rules+Templates+doc-format-guard+验证全部完成 + Qoder CN sync | → ✅ 已完成 [2026-07-27 修订: 全部完成，仅剩测试] |
+| templates/core/skills/session-init/SKILL.md | DOC | DOC_UPDATED | 无 Step 2.6 | 新增 Step 2.6：tasks.md §IDE JSON → TodoWrite 加载 IDE 代办清单 | 🔶 待实施 [2026-07-28 修订: 回流 #13 架构重构] |
+| templates/core/rules/project_rules.md | DOC | DOC_UPDATED | 无 ADD-19 | 新增 ADD-19：tasks.md↔IDE 代办链规则（职责划分 + 数据流 + 约束） | 🔶 待实施 [2026-07-28 修订: 回流 #13 架构重构] |
 
 ---
 
@@ -40,6 +42,14 @@
 > **审议证据**：~~[add-coder-hitl-mcp-hook-plan-v1.temporary.md](./add-coder-hitl-mcp-hook-plan-v1.temporary.md) — 已 tongyi~~ [2026-07-27 修订: temporary.md 机制已被 create_hitl MCP 工具替代，见 SKILL.md §独立能力：生成 Plan]
 >
 > **Review 回流**：已按 [review-v1](../reviews/add-coder-hitl-mcp-hook-review-v1.md) 决策修正——#1 ReviewRecord 1:1→1:N，#2 Hook 区分 review 类型，#3 补充 @relation 外键，#4 保留 SUBMITTED，#5 BOHUI=软删除（无需独立 delete_hitl）+ 文件命名从临时 temporary.md 演进为 hitl-template.md 规范生成，#6 标记文件无 .md 后缀，#7 BOHUI 回环，#8 消费标签，#9 sync 验证 Task。[回流: Review P0 #1,#2 P1 #3,#4,#5,#6 P2 #7,#8,#9]
+>
+> **2026-07-28 增量回流（genui 交互增强）**：经实测发现——
+> - **#10 genui show_widget**：可在 Qoder 聊天面板中渲染 HITL 审批交互面板（表格+逐行同意/调整按钮+同意全部/驳回全部），体验优于 inputRequired OS 弹框。但 genui 仅 Qoder 支持，Claude/VS Code/Trae 不支持。**决策**：双轨制——Qoder 走 genui widget，其他 IDE 走 MCP inputRequired.elicit() 弹框降级。
+> - **#11 UserPromptSubmit 增强**：prompt-submit.sh 可检测待审批 HITL 并注入到 AI 上下文，使 HITL 审批可在聊天流中完成，无需弹框。**决策**：在 prompt-submit.sh §HITL 段新增待审批检测 + AI 上下文注入。[回流: 2026-07-28 genui测试 #10,#11]
+>
+> - **#13 IDE 代办清单职责重构**：IDE TodoWrite JSON 从 Plan §七 迁移至 tasks.md §IDE 代办清单，tasks-template.md 同步新增该段作为标准模板。session-init Step 2.6 两场景分流（新对话→用户选 Plan 后加载；编码阶段→直接加载当前 Plan 的 tasks.md），project_rules.md 新增 ADD-19。[回流: 2026-07-28 架构重构 #13]
+>
+> - **#14 HITL 交互策略 caijuehub 化**：将 hitl.ts 中的双轨制硬编码（genui vs inputRequired）抽离为 `hitl-interaction-rules.toml` 声明式配置 + caijuehub 生成策略常量。每个 IDE 独立声明交互模式（Qoder→genui，其他→inputRequired），新增 IDE 只需编辑 TOML 不改代码。[回流: 2026-07-28 caijuehub 化 #14]
 
 ---
 
@@ -102,10 +112,14 @@ create_hitl({ planName, type, _fallback? })
   ▼
 人工审核提案文件
   │
+  ├─ Qoder 专属：genui show_widget 聊天内嵌审批面板（表格+逐行同意/调整+同意全部/驳回全部）[2026-07-28 修订: 回流 #10 genui 双轨制]
+  └─ 其他 IDE：MCP inputRequired.elicit() 弹框（逐项决策/简单三按钮）
+  │
   ▼
 update_hitl({ planName, type, _fallback? })  ← status 由弹框结果决定 [2026-07-27 修订: status 可选]
   │
   ├─ ~~直接写哨兵+更新 DB~~ → inputRequired 弹框：[同意 / 驳回 / 取消] [2026-07-27 修订: 三按钮弹框]
+  │   ├─ Qoder：genui 面板回调 sendToAgent → AI 自动调用 update_hitl [2026-07-28 修订: genui 集成]
   │   ├─ 用户选「同意」→ 自动 TONGYI，approvedAt → now() + 写 .hitl-tongyi-{planName} 哨兵
   │   ├─ 用户选「驳回」→ 自动 BOHUI，rejectedAt → now() + 写 .hitl-bohui-{planName} 哨兵
   │   ├─ 用户选「取消」→ 返回取消消息，不操作
@@ -146,6 +160,40 @@ update_hitl({ planName, type, status: BOHUI, reason: "..." })  ← 交互模式�
 > HitlRecord 唯一约束为 `@@unique([planName, round])`，允许多轮审批记录共存。[回流: Review P2 #7 BOHUI回环]
 ```
 
+### 3.1.1 IDE 代办清单加载流程（session-init → TodoWrite）[2026-07-28 新增: 回流 #13]
+
+```
+session-init Step 2.6
+  │
+  ├─ 场景 A：全新对话 thread（无明确 Plan 上下文）
+  │   ├─ 调用 plan_track({ scanAll: true }) 查询 PlanRecord 表，获取活跃 Plan 清单
+  │   ├─ 展示 Plan 清单 → 用户选择
+  │   └─ 定位 {{magicDir}}/specs/{specName}/tasks.md
+  │
+  └─ 场景 B：编码阶段 / 回话恢复（DPS 通过 / 明确在执行某个 Plan）
+      ├─ 当前 Plan 即是执行目标，不重新扫描
+      ├─ 直接定位当前 Plan 对应的 tasks.md
+      └─ IDE 代办面板丢失时自动刷新重载
+          ※ session-init 依赖 IDE resume 机制；降级兜底：session-start.sh §代办刷新 + §HITL 检测
+  │
+  ▼
+tasks.md §IDE JSON（唯一数据源）
+  │
+  ▼  TodoWrite({ todos: [...] })
+IDE 任务面板（用户可见）
+  │
+  ├─ [轮次1·已完成] 3 tasks ✓
+  ├─ [轮次2·已完成] 6 tasks ✓
+  ├─ [轮次3·已完成] 8 tasks ✓
+  └─ [轮次5·待实施] 4 tasks ◻
+  │
+  ▼  每完成一个 Task
+TodoWrite({ merge: true, todos: [{ id, status: COMPLETE }] })
+  │
+  ▼  同时回写
+tasks.md §IDE JSON status 字段
+```
+
 ### 3.2 系统构图
 
 ```mermaid
@@ -155,6 +203,8 @@ graph TB
         HUMAN[人类审核者]
         INTERACT[ 交互门
 inputRequired 弹框确认]
+        GENUI[genui widget
+Qoder 聊天内嵌审批面板] [2026-07-28 修订: 回流 #10 genui]
     end
 
     subgraph MCP工具层
@@ -190,6 +240,8 @@ inputRequired 弹框确认]
 
     PROPOSAL -->|"审核"| HUMAN
     HUMAN -->|"拍板"| LLM
+    HUMAN -.->|"Qoder 聊天面板审批"| GENUI [2026-07-28 修订: genui 集成]
+    GENUI -.->|"sendToAgent 回调"| LLM
 
     LLM -->|"update_hitl({...status:TONGYI, _fallback?})"| HITL_TOOLS
     HITL_TOOLS -->|"inputRequired 确认通过"| INTERACT
@@ -234,12 +286,14 @@ add-coder/
 ├── templates/core/
 │   ├── hooks/
 │   │   ├── pre-tool-use.sh                ← 修改：新增 plans/reviews 写入拦截 + tongyi 检查
-│   │   └── doc-format-guard.sh            ← 修改：新增 hitl-template.schema.json 校验路径
+│   │   ├── doc-format-guard.sh            ← 修改：新增 hitl-template.schema.json 校验路径
+│   │   └── prompt-submit.sh               ← 修改：新增 §HITL 待审批检测 + AI 上下文注入 [2026-07-28 修订: 回流 #11 UserPromptSubmit 增强]
 │   ├── skills/add-paradigm/SKILL.md       ← 修改：~~Plan/Review 流程含 create_hitl + status_hitl~~ → §0.0 跨轮上下文 + §A.0 增量修订 + DEVELOPMENT.md 引用 + HITL 工具流 + devlog Step 8 [2026-07-27 修订: SKILL 三重更新]
 │   ├── rules/project_rules.md             ← 修改：~~新增 ADD-13 HITL 人机审核规则~~ → ADD-7 新增 devlog 双层记录与轮次闭合 [2026-07-27 修订: 扩展现有规则非新建]
 │   └── templates/
 │       ├── hitl-template.md               ← 新建：HITL 提案模板
-│       └── hitl-template.schema.json      ← 新建：提案文件结构校验
+│       ├── hitl-template.schema.json      ← 新建：提案文件结构校验
+│       └── hitl-approval-widget.html      ← 新建：Qoder genui 审批面板（表格+逐行按钮+回调）[2026-07-28 修订: 回流 #10 genui widget]
 ├── tests/
 │   └── hitl.test.ts                       ← 新建：三表 CRUD + hook 拦截测试
 └── 
@@ -318,6 +372,19 @@ Migration 后需执行 `npx prisma generate` 重新生成 Prisma Client。
   ├── Task 3.6: review_track 验证（解析 agent-memory 的 review 文件）
   ├── Task 3.7: weather_proxy sync 验证 [回流: Review P2 #9 sync验证Task]
   └── Task 3.8: ROUND_CLOSED
+        │
+        ▼（产出: SKILL/Rules/Templates 全量更新 + sync 验证，轮次 4 消费）
+轮次 4: genui 交互增强 + UserPromptSubmit HITL 注入 [2026-07-28 修订: 回流 #10,#11]
+  ├── Task 4.1: genui widget HTML 模板（hitl-approval-widget.html）
+  │     │  [回流: #10 genui 审批面板]
+  │     ▼
+  ├── Task 4.2: hitl.ts 双轨制集成（Qoder→genui widget，其他 IDE→inputRequired 降级）
+  │     │  [回流: #10 genui 双轨制]
+  │     ▼
+  ├── Task 4.3: session-start.sh §HITL 检测 + §代办刷新（resume 兜底）
+  │     │  [回流: #11 resume HITL+代办]
+  │     ▼
+  └── Task 4.4: ROUND_CLOSED
 ```
 
 ### 轮次 1: Prisma 模型
@@ -352,6 +419,15 @@ Migration 后需执行 `npx prisma generate` 重新生成 Prisma Client。
 | 3.7 | sync 验证 | weather_proxy 执行 sync | `npx add-coder sync --adapter qoder --patch` | HITL 规则在 weather_proxy 生效 |
 | 3.8 | ROUND_CLOSED | `record_dev_operation` | 轮次 3 闭合审计: action=ROUND_CLOSED, targetId=planName::round3 | DevOperation 表含记录 |
 
+### 轮次 4: genui 交互增强 + UserPromptSubmit HITL 注入 [2026-07-28 新增: 回流 #10,#11]
+
+| # | 任务 | 文件 | 说明 | 验收 |
+|---|------|------|------|------|
+| 4.1 | genui widget HTML 模板 | `templates/core/templates/hitl-approval-widget.html` | 创建 Qoder 聊天内嵌审批面板：表格+逐行同意/调整按钮+调整文本框+同意全部/驳回全部/重置。通过 `sendToAgent({action:'hitl_approval',...})` 回调决策数据 | genui show_widget 渲染正常，逐行交互流畅 |
+| 4.2 | hitl.ts 双轨制集成 | `templates/core/scripts/mcp-server/tools/hitl.ts` | create_hitl/update_hitl 检测 Qoder 环境 → genui show_widget 渲染审批面板；其他 IDE → 现有 inputRequired.elicit() 弹框降级。支持逐项决策（同意/调整）+ 调整内容编辑 + 底部批量操作 | Qoder 走 genui 面板，Claude/VS Code 走 elicitation 弹框 |
+| 4.3 | session-start.sh HITL + 代办刷新 | `templates/core/hooks/session-start.sh` + `templates/adapters/qoder/hooks/session-start.sh` | ③ §代办刷新：活跃 Plan 时注入 TodoWrite 刷新提示。④ §HITL 检测：扫描 *.hitl.md 待审批文件并注入提醒。SessionStart 每 resume 触发一次，优于 UserPromptSubmit 每次消息触发 | resume 时有活跃 Plan → 注入代办刷新；有 .hitl.md → 注入 HITL 待审批 |
+| 4.4 | ROUND_CLOSED | `record_dev_operation` | 轮次 4 闭合审计 | DevOperation 表含记录 |
+
 ---
 
 ## 五、验收标准
@@ -370,6 +446,16 @@ Migration 后需执行 `npx prisma generate` 重新生成 Prisma Client。
 - [ ] weather_proxy `npx add-coder sync --adapter qoder --patch` 后 HITL 规则生效
 - [ ] 每轮完成后 `record_dev_operation` 记录 `ROUND_CLOSED`（action=ROUND_CLOSED, targetType=PLAN, targetId=planName::roundN）
 
+### 轮次 4 验收（genui 交互增强）[2026-07-28 新增: 回流 #10,#11]
+
+- [ ] `hitl-approval-widget.html` genui 渲染正常，逐行同意/调整按钮可交互
+- [ ] 调整按钮展开文本框，用户可编辑调整后内容
+- [ ] 「同意全部」→ 全部维度为同意，回调 sendToAgent
+- [ ] 「驳回全部」→ 全部维度为调整+预设驳回文案，回调 sendToAgent
+- [ ] 其他 IDE（Claude/VS Code）降级到现有 inputRequired 弹框，功能不受影响
+- [ ] session-start.sh §HITL 检测到 *.hitl.md 时注入 HITL 待审批提示
+- [ ] session-start.sh §代办刷新：活跃 Plan 时注入 TodoWrite 刷新提示
+
 ---
 
 ## 六、关联文档
@@ -385,3 +471,13 @@ Migration 后需执行 `npx prisma generate` 重新生成 Prisma Client。
 | Checklist | `.qoder/specs/add-coder-hitl-mcp-hook/checklist.md` |
 | 验证用例 | `.qoder/plans/2026-07/16/add-coder-agent-memory-plan-v1.md` |
 | 参考规范 | codein2027 `docs/大田精准耕播智能决策系统/knowledge/02-规范/《开发操作审计存档规范》.md` |
+
+---
+
+## 七、IDE 代办清单
+
+> ~~JSON 任务清单已迁移至 tasks.md §IDE 代办清单~~ → 职责归属：Plan 管「改什么、为什么改」，tasks.md 管「怎么执行、IDE 集成」。[2026-07-28 修订: 职责重构，tasks.md 成为 IDE 代办清单的唯一数据源]
+>
+> AI 启动时读取 `{{specsDir}}/add-coder-hitl-mcp-hook/tasks.md` 的 §IDE JSON → 调用 `TodoWrite` 加载到 IDE 任务面板。
+>
+> 参考: `.qoder/specs/add-coder-hitl-mcp-hook/tasks.md`

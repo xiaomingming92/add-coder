@@ -15,10 +15,10 @@ export function registerGatewayTools(server: McpServer) {
     inputSchema: z.object({ planKeyword: z.string().describe("Plan 文件的关键词") }),
   }, async (args: Record<string, unknown>, _ctx: unknown) => {
     try {
-      const planKeyword = args.planKeyword; if (!planKeyword) return errorResponse("planKeyword 参数不能为空")
+      const planKeyword = args.planKeyword as string; if (!planKeyword) return errorResponse("planKeyword 参数不能为空")
       const plansDir = join(PROJECT_ROOT, MAGIC_DIR, "plans")
       let auditHasRecord = false; const auditRecords: Array<{action:string;targetId:string;createdAt:Date}> = []
-      try { const logs = await (prisma.auditLog as any).findMany({ where: { OR: [{targetId:{contains:"add-route",mode:"insensitive"}},{targetId:{contains:planKeyword,mode:"insensitive"}},{reason:{contains:"add-route",mode:"insensitive"}}] }, orderBy:{createdAt:"desc"}, take:20 })
+      try { const logs = await (prisma.auditLog as Record<string, (...a: unknown[]) => unknown>).findMany({ where: { OR: [{targetId:{contains:"add-route",mode:"insensitive"}},{targetId:{contains:planKeyword,mode:"insensitive"}},{reason:{contains:"add-route",mode:"insensitive"}}] }, orderBy:{createdAt:"desc"}, take:20 })
         const pl = planKeyword.toLowerCase()
         for (const l of logs) { const ti=(l.targetId||"").toLowerCase(); const r=(l.reason||"").toLowerCase(); if ((ti.includes("add-route")&&ti.includes(pl))||(r.includes("add-route")&&r.includes(pl))) { auditHasRecord=true; auditRecords.push({action:l.action,targetId:l.targetId||"unknown",createdAt:l.createdAt}) } }
       } catch { /* empty */ }
@@ -32,6 +32,7 @@ export function registerGatewayTools(server: McpServer) {
       const scW=scanCheckboxes(await readFileSafe(join(plansDir,matchedFiles[0]))||""); const wOk=scW.unchecked===0; parts.push(`状态: ⚠️ warn${scW.total>0&&!wOk?"_step_incomplete":""} — 文件存在但审计日志无记录`,"操作: 允许继续，但建议补记录","","=== 匹配文件 ==="); for(const f of matchedFiles) parts.push(`  ${MAGIC_DIR}/plans/${f}`); if(scW.total>0){ parts.push("","=== Step 完成度扫描 ===",`  整体: ${scW.checked}/${scW.total} (${Math.round((scW.checked/scW.total)*100)}%)`); if(scW.incomplete.length>0) parts.push(`  ⚠️ 未闭环 Step: ${scW.incomplete.join(", ")}`) }; parts.push("","=== 建议 ===","1. 调用 record_dev_operation 补记录"); if(scW.incomplete.length>0) parts.push("2. 调用 check_add_route_completeness 获取详细清单"); return textResponse(parts.join("\n"))
     } catch(e) { return errorResponse(`add-route 存在性校验失败: ${e instanceof Error?e.message:String(e)}`) }
   })
+
   // ===== check_spec_sync =====
   server.registerTool("check_spec_sync", {
     description: "ADD 重型模式文档-代码交叉校验工具。扫描 Plan → tasks.md → checklist.md → git diff → ADD-7 审计记录，报告四者之间的不一致。",
@@ -41,9 +42,10 @@ export function registerGatewayTools(server: McpServer) {
       const plansDir=join(PROJECT_ROOT,MAGIC_DIR,"plans"), specsDir=join(PROJECT_ROOT,MAGIC_DIR,"specs"); const lines:string[]=["=== check_spec_sync 文档-代码交叉校验 ===",""]
       if(!existsSync(plansDir)) return errorResponse(`plans 目录不存在: ${plansDir}`)
       const planFiles=(await readdirRecursive(plansDir)).filter(f=>f.endsWith(".md"))
-      let planMatch=planFiles.find(f=>f.toLowerCase().includes(args.planKeyword.toLowerCase())&&f.includes("-plan-v"))
-      if(!planMatch) planMatch=planFiles.find(f=>f.toLowerCase().includes(args.planKeyword.toLowerCase()))
-      if(!planMatch) return errorResponse(`未找到匹配的 Plan 文件（关键词: ${args.planKeyword}）`)
+      const kw = args.planKeyword as string
+      let planMatch=planFiles.find(f=>f.toLowerCase().includes(kw.toLowerCase())&&f.includes("-plan-v"))
+      if(!planMatch) planMatch=planFiles.find(f=>f.toLowerCase().includes(kw.toLowerCase()))
+      if(!planMatch) return errorResponse(`未找到匹配的 Plan 文件（关键词: ${kw}）`)
       const planPath=join(plansDir,planMatch); const planContent=await readFileSafe(planPath); lines.push(`Plan: ${planMatch}`)
       let specDirName=""
       if(planContent){ const sm=planContent.match(/Spec[:|\s`]+\.?(qoder|claude|add|vscode)\/specs\/([^/`\s]+)/); if(sm) specDirName=sm[2] }
@@ -64,7 +66,7 @@ export function registerGatewayTools(server: McpServer) {
     inputSchema: z.object({ planKeyword: z.string().describe("Plan 文件的关键词") }),
   }, async (args: Record<string, unknown>, _ctx: unknown) => {
     try {
-      const pp=args.planKeyword; if(!pp) return errorResponse("planKeyword 参数不能为空")
+      const pp=args.planKeyword as string; if(!pp) return errorResponse("planKeyword 参数不能为空")
       const plansDir=join(PROJECT_ROOT,MAGIC_DIR,"plans"); if(!existsSync(plansDir)) return errorResponse(`plans 目录不存在: ${plansDir}`)
       const allFiles=await readdirRecursive(plansDir); const arFile=allFiles.find(f=>f.toLowerCase().includes(pp.toLowerCase())&&f.includes("add-route"))
       if(!arFile) return errorResponse(`未找到匹配的 add-route 文件（关键词: ${pp}）`)
@@ -83,6 +85,7 @@ export function registerGatewayTools(server: McpServer) {
 
   function tokenize(text: string): Set<string> {
     if (!text) return new Set()
+    // 去掉 Markdown 语法符号，保留文本内容
     const cleaned = text
       .replace(/#{1,6}\s/g, " ")
       .replace(/\*\*(.+?)\*\*/g, "$1")
@@ -107,6 +110,7 @@ export function registerGatewayTools(server: McpServer) {
     return intersection / (a.size + b.size - intersection || 1)
   }
 
+  // TF-IDF: 平滑IDF（log(N+1/df+1)+1），避免2文档场景共有词归零
   function tfVector(tokens: Set<string>, globalTokens: Set<string>[]): number[] {
     const vocab = new Map<string, number>(); let idx = 0
     for (const ts of globalTokens) for (const t of ts) if (!vocab.has(t)) vocab.set(t, idx++)
@@ -115,7 +119,7 @@ export function registerGatewayTools(server: McpServer) {
     for (const [t, i] of vocab) {
       if (!tokens.has(t)) continue
       let df = 0; for (const ts of globalTokens) if (ts.has(t)) df++
-      vec[i] = (1 / maxTf) * (Math.log((N + 1) / (df + 1)) + 1)
+      vec[i] = (1 / maxTf) * (Math.log((N + 1) / (df + 1)) + 1) // TF × 平滑IDF
     }
     return vec
   }
@@ -153,7 +157,7 @@ export function registerGatewayTools(server: McpServer) {
 
   // ═══════════════ check_dps — 四维复合评分 + FFT 自适应权重 ═══════════════
   server.registerTool("check_dps", {
-    description: "DPS 闸门。四维复合评分: 语义相关性(TF-IDF/Jaccard + Cosine) + 信息熵匹配(香农/Deng) + CPM任务拆分质量 + 结构完整度 + FFT自适应权重。DPS >= 85 可进入 Step 1。",
+    description: "DPS 闸门。四维复合评分: 语义相关性(TF-IDF/Jaccard) + 信息熵匹配(香农/Deng) + CPM关键路径 + 结构完整度 + FFT自适应权重。DPS >= 85 可进入 Step 1。",
     inputSchema: z.object({ planKeyword: z.string().describe("Plan 文件的关键词") }),
   }, async (args: Record<string, unknown>, _ctx: unknown) => {
     try {
@@ -161,11 +165,13 @@ export function registerGatewayTools(server: McpServer) {
       const plansDir = join(PROJECT_ROOT, MAGIC_DIR, "plans"), specsDir = join(PROJECT_ROOT, MAGIC_DIR, "specs"), reviewsDir = join(PROJECT_ROOT, MAGIC_DIR, "reviews")
       const parts: string[] = [`=== DPS：Documentation Precision Score（上游文档质量量化）===`, `Plan 关键词: "${pp}"`, ""]
       if (!existsSync(plansDir)) return errorResponse(`plans 目录不存在: ${plansDir}`)
+
       const apf = (await readdirRecursive(plansDir)).filter(f => f.endsWith(".md") && !f.includes(".hitl"))
       const pm = apf.find(f => f.toLowerCase().includes(pp.toLowerCase()) && f.includes("-plan-v"))
       if (!pm) return errorResponse(`未找到匹配的 Plan 文件（关键词: ${pp}）`)
       const planPath = join(plansDir, pm); const pc = await readFileSafe(planPath); if (!pc) return errorResponse(`无法读取 Plan 文件: ${pm}`)
       parts.push(`Plan: ${pm}`)
+
       let sn = basename(pm).replace(/-plan-v\d+\.md$/, ""), sc = ""
       if (pc) { const sr = pc.match(/Spec[:|\s`]+\.?(qoder|claude|add|vscode)\/specs\/([^/`\s]+)/); if (sr) sn = sr[2] }
       const sp = join(specsDir, sn, "spec.md"); sc = await readFileSafe(sp) || ""
@@ -173,6 +179,8 @@ export function registerGatewayTools(server: McpServer) {
       if (existsSync(reviewsDir)) { const rfs = await readdirRecursive(reviewsDir); rn = rfs.find(f => f.toLowerCase().includes(pp.toLowerCase()) && f.includes("-review-v")) || ""; if (rn) rc = await readFileSafe(join(reviewsDir, rn)) || "" }
       let arContent = ""; const arFile = apf.find(f => f.toLowerCase().includes(pp.toLowerCase()) && f.toLowerCase().includes("add-route"))
       if (arFile) arContent = await readFileSafe(join(plansDir, arFile)) || ""
+
+      // 维度一: 语义相关性 (Jaccard + TF-IDF Cosine)
       const planTerms = tokenize(pc), specTerms = tokenize(sc), reviewTerms = tokenize(rc)
       const jacPS = jaccard(planTerms, specTerms)
       const vecP = tfVector(planTerms, [planTerms, specTerms, reviewTerms])
@@ -181,12 +189,14 @@ export function registerGatewayTools(server: McpServer) {
       const jacPR = rc ? jaccard(planTerms, reviewTerms) : 0
       const cosPR = rc ? cosineSimilarity(vecP, tfVector(reviewTerms, [planTerms, specTerms, reviewTerms])) : 0
       const semScore = Math.round(((jacPS * 0.35 + cosPS * 0.45 + jacPR * 0.08 + cosPR * 0.12) * (rc ? 100 : 60)))
-      parts.push("=== 维度一：语义相关性（Jaccard + Cosine）===",
-        `  Jaccard(Plan↔Specs): ${jacPS.toFixed(3)}`, `  Cosine(Plan↔Specs): ${cosPS.toFixed(3)}`,
+      parts.push("=== 维度一：语义相关性（TF-IDF/Jaccard + Cosine）===",
+        `  Jaccard(Plan↔Specs):  ${jacPS.toFixed(3)}`, `  Cosine(Plan↔Specs):  ${cosPS.toFixed(3)}`,
         `  Jaccard(Plan↔Review): ${jacPR.toFixed(3)}`, `  Cosine(Plan↔Review): ${cosPR.toFixed(3)}`,
         `  分数: ${semScore}/100`)
-      const pfreq = new Map<string, number>(); for (const t of planTerms) pfreq.set(t, (pfreq.get(t) || 0) + 1)
-      const sfreq = new Map<string, number>(); for (const t of specTerms) sfreq.set(t, (sfreq.get(t) || 0) + 1)
+
+      // 维度二: 信息熵匹配
+      const pfreq = new Map<string, number>(); for (const t of tokenize(pc)) pfreq.set(t, (pfreq.get(t) || 0) + 1)
+      const sfreq = new Map<string, number>(); for (const t of tokenize(sc)) sfreq.set(t, (sfreq.get(t) || 0) + 1)
       const pEntropy = shannonEntropy(pfreq), sEntropy = shannonEntropy(sfreq)
       const dPenalty = dengPenalty(pc)
       const entropyGap = sc ? Math.abs(pEntropy - sEntropy) : 10
@@ -195,17 +205,26 @@ export function registerGatewayTools(server: McpServer) {
         `  Plan 香农熵: ${pEntropy.toFixed(2)} bits`, sc ? `  Specs 香农熵: ${sEntropy.toFixed(2)} bits` : "  Specs 缺失",
         `  Deng 熵惩罚: ${(dPenalty * 100).toFixed(0)}%`, `  熵差距: ${entropyGap.toFixed(2)}`,
         `  分数: ${entropyScore}/100`)
+
+      // 维度三: CPM 关键路径
       let cpmScore = 0
       if (arContent) {
         const tasksContent = await readFileSafe(join(specsDir, sn, "tasks.md")) || ""
+        // 提取 Task 块：[ ] Task N: 标题 ... 验证: ...
         const taskRe = /- \[[ x]\] Task \d+(?:\.\d+)?: ([^\n]+)([\s\S]*?)(?=- \[[ x]\] Task \d+(?:\.\d+)?:|$)/g
         const taskDescs: string[] = []; let tm: RegExpExecArray | null
         while ((tm = taskRe.exec(tasksContent)) !== null) taskDescs.push(tm[1] + (tm[2] || ""))
+        // 业务原子化：Jaccard 计算 Task 间语义重叠，重叠越低越独立（0=完全独立，1=完全相同）
         let totalOverlap = 0, pairs = 0
-        for (let i = 0; i < taskDescs.length; i++)
-          for (let j = i + 1; j < taskDescs.length; j++) { totalOverlap += jaccard(tokenize(taskDescs[i]), tokenize(taskDescs[j])); pairs++ }
+        for (let i = 0; i < taskDescs.length; i++) {
+          for (let j = i + 1; j < taskDescs.length; j++) {
+            totalOverlap += jaccard(tokenize(taskDescs[i]), tokenize(taskDescs[j]))
+            pairs++
+          }
+        }
         const avgOverlap = pairs > 0 ? totalOverlap / pairs : 0
-        const atomicScore = Math.round((1 - Math.min(avgOverlap * 2, 1)) * 100)
+        const atomicScore = Math.round((1 - Math.min(avgOverlap * 2, 1)) * 100) // overlap×2→penalty
+        // 注意力匹配：任务范围——文件耦合度 + 描述熵，衡量单次 AI 会话负担
         const fileRefs = (arContent.match(/`[^`]+\.(ts|js|sh|md)`/g) || []).length
         const filePerTask = taskDescs.length > 0 ? fileRefs / taskDescs.length : 99
         const fileScore = filePerTask <= 3 ? 100 : filePerTask <= 5 ? 70 : 40
@@ -213,12 +232,55 @@ export function registerGatewayTools(server: McpServer) {
         const avgTaskEntropy = taskEntropies.reduce((a, b) => a + b, 0) / (taskEntropies.length || 1)
         const entropyScore = avgTaskEntropy < 6 ? 100 : avgTaskEntropy < 8 ? 75 : 50
         const attentionScore = Math.round(fileScore * 0.5 + entropyScore * 0.5)
-        cpmScore = Math.round(atomicScore * 0.4 + attentionScore * 0.35)
+        // 跨 Task 文件隔离: 检测同一文件是否被多个 Task 引用
+        const fileTaskMap = new Map<string, number[]>(); let taskIdx = 0
+        for (const d of taskDescs) { taskIdx++; const files = d.match(/`[^`]+\.(ts|js|sh|md)`/g) || []; for (const f of files) { const k = f.toLowerCase(); if (!fileTaskMap.has(k)) fileTaskMap.set(k, []); fileTaskMap.get(k)!.push(taskIdx) } }
+        const sharedFiles = [...fileTaskMap.values()].filter(tasks => tasks.length > 1).length
+        const isolationScore = fileTaskMap.size > 0 ? Math.round((1 - sharedFiles / fileTaskMap.size) * 100) : 100
+        // 依赖图完整性: 检测表格式「依赖」列 或 内联声明
+        const depPattern = /Task\s+(\d+).*?(?:依赖|→)\s*[:：]?\s*(.+)/gi
+        let depDeclared = 0, depMatches: RegExpExecArray | null
+        const depRegex = new RegExp(depPattern.source, "gi")
+        while ((depMatches = depRegex.exec(arContent)) !== null) {
+          const val = depMatches[2].trim()
+          if (val && !/^无|none|-|n\/a$/i.test(val)) depDeclared++
+        }
+        // 表格式检测: | N | Task | File | 依赖 | Status |
+        const tableRows = arContent.split("\n").filter(l => /^\|\s*\d+/.test(l))
+        if (depDeclared === 0 && tableRows.length > 0) {
+          // 找到「依赖」列索引
+          const headerRow = arContent.split("\n").find(l => l.includes("|") && l.includes("依赖") && l.includes("---"))
+          let depCol = -1
+          if (headerRow) {
+            const cols = headerRow.split("|").map(c => c.trim())
+            depCol = cols.findIndex(c => c === "依赖")
+          } else {
+            // 无表头分隔线，找「依赖」所在行作为列名
+            const depHeader = arContent.split("\n").find(l => l.includes("依赖") && !l.includes("---") && l.includes("|"))
+            if (depHeader) depCol = depHeader.split("|").map(c => c.trim()).indexOf("依赖")
+          }
+          if (depCol > 0) {
+            for (const row of tableRows) {
+              const cols = row.split("|").map(c => c.trim()).filter(Boolean)
+              const depVal = cols[depCol - 1] || "" // table rows have leading |, so shift by 1
+              if (depVal && !/^无|none|-|n\/a$/i.test(depVal)) depDeclared++
+            }
+          }
+        }
+        const depCoverage = taskDescs.length > 0 ? Math.min(depDeclared / taskDescs.length, 1) : 0
+        const depScore = Math.round((depCoverage * 0.6 + (arContent.includes("Task Dependencies") ? 0.4 : 0)) * 100)
+        cpmScore = Math.round(atomicScore * 0.4 + attentionScore * 0.35 + depScore * 0.25)
         parts.push("=== 维度三：CPM 任务拆分质量 ===",
           `  add-route: ${arFile}`, `  Task 数: ${taskDescs.length}`,
           `  业务原子化: Jaccard 平均重叠 ${avgOverlap.toFixed(3)} (独立度 ${atomicScore}%)`,
-          `  注意力匹配: ${filePerTask.toFixed(1)}文件/Task(${fileScore}%) + 熵${avgTaskEntropy.toFixed(1)}bits(${entropyScore}%) = ${attentionScore}%`)
-      } else { parts.push("=== 维度三：CPM 关键路径 ===", "  add-route 未找到，计 0", "  分数: 0/100") }
+          `  注意力匹配: ${filePerTask.toFixed(1)}文件/Task(${fileScore}%) + 熵${avgTaskEntropy.toFixed(1)}bits(${entropyScore}%) = ${attentionScore}%`,
+          `  依赖完整性: ${depDeclared}/${taskDescs.length} 已声明 (${depScore}%)`,
+          `  文件隔离度: ${sharedFiles}/${fileTaskMap.size} 文件被多Task共享 (${isolationScore}%)`)
+      } else {
+        parts.push("=== 维度三：CPM 关键路径 ===", "  add-route 未找到，计 0", "  分数: 0/100")
+      }
+
+      // 维度四: 结构完整度
       const hasPlaceholders = pc.match(/\{[^}]+\}/g)
       const hasSpecs = !!sc; const hasTasks = existsSync(join(specsDir, sn, "tasks.md"))
       const hasChecklist = existsSync(join(specsDir, sn, "checklist.md"))
@@ -231,23 +293,32 @@ export function registerGatewayTools(server: McpServer) {
       parts.push("=== 维度四：结构完整度 ===",
         `  三元组: ${[hasSpecs && "Specs", hasTasks && "Tasks", hasChecklist && "Checklist"].filter(Boolean).join("+") || "缺失"}`,
         `  占位符: ${hasPlaceholders?.length || 0} 个`, `  回流: ${backflowScore}/100`, `  分数: ${structFinal}/100`)
+
+      // FFT 自适应权重
       const fourScores = [semScore, entropyScore, cpmScore, structFinal]
       let histMatrix: number[][] = []
       try {
-        const history = await (prisma.planRecord as any).findMany({ where: {}, take: 50 }) as { totalTasks: number; doneTasks: number; checklistT: number; checklistTDone: number }[]
-        for (const h of history) { histMatrix.push([h.totalTasks > 0 ? Math.round((h.doneTasks / h.totalTasks) * 100) : 50, 50, 50, h.checklistT > 0 ? Math.round((h.checklistTDone / h.checklistT) * 100) : 50]) }
+        const history = await (prisma.planRecord as Record<string, (...a: unknown[]) => unknown>).findMany({ where: {}, take: 50 }) as { totalTasks: number; doneTasks: number; checklistT: number; checklistTDone: number }[]
+        for (const h of history) {
+          const taskPct = h.totalTasks > 0 ? Math.round((h.doneTasks / h.totalTasks) * 100) : 50
+          const clPct = h.checklistT > 0 ? Math.round((h.checklistTDone / h.checklistT) * 100) : 50
+          histMatrix.push([taskPct, 50, 50, clPct])
+        }
       } catch { /* no history */ }
       const weights = fftWeights(histMatrix)
       const weightLabels = ["语义", "熵", "CPM", "结构"]
       parts.push("=== FFT 自适应权重 ===",
         weightLabels.map((l, i) => `  ${l}: ${(weights[i] * 100).toFixed(1)}%`).join("\n"),
         histMatrix.length < 5 ? "  (冷启动: N<5, 均权降级)" : `  (基于 ${histMatrix.length} 条历史数据)`)
+
+      // DPS 复合
       const dps = Math.round(fourScores.reduce((s, v, i) => s + v * weights[i], 0))
       const dpsLabel = dps >= 85 ? "🟢 PASS" : dps >= 70 ? "🟡 WARN" : "🔴 BLOCKED"
       parts.push("", "=== DPS 复合计算 ===",
         ...weightLabels.map((l, i) => `  ${l}: ${fourScores[i]} × ${(weights[i] * 100).toFixed(1)}% = ${(fourScores[i] * weights[i]).toFixed(1)}`),
         "  ─────────────────────────────────", `  DPS = ${dps}  ${dpsLabel}`)
-      parts.push("", `=== 判定 ===`, `  结果: ${dpsLabel}`, `  动作: ${dps >= 85 ? "可进入 Step 1" : dps >= 70 ? "回退补齐短板" : "回退细化 Plan 本身"}`)
+      parts.push("", `=== 判定 ===`, `  结果: ${dpsLabel}`,
+        `  动作: ${dps >= 85 ? "可进入 Step 1" : dps >= 70 ? "回退补齐短板" : "回退细化 Plan 本身"}`)
       return textResponse(parts.join("\n"))
     } catch (e) { return errorResponse(`check_dps 失败: ${e instanceof Error ? e.message : String(e)}`) }
   })
@@ -258,13 +329,13 @@ export function registerGatewayTools(server: McpServer) {
     inputSchema: z.object({ planKeyword: z.string().describe("Plan 文件的关键词") }),
   }, async (args: Record<string, unknown>, _ctx: unknown) => {
     try {
-      const pp=args.planKeyword; if(!pp) return errorResponse("planKeyword 参数不能为空")
+      const pp=args.planKeyword as string; if(!pp) return errorResponse("planKeyword 参数不能为空")
       const plansDir=join(PROJECT_ROOT,MAGIC_DIR,"plans"); if(!existsSync(plansDir)) return errorResponse(`plans 目录不存在: ${plansDir}`)
       const apf=(await readdirRecursive(plansDir)).filter(f=>f.endsWith(".md")); const pm=apf.find(f=>f.toLowerCase().includes(pp.toLowerCase())&&f.includes("-plan-v"))
       if(!pm) return errorResponse(`未找到匹配的 Plan 文件（关键词: ${pp}）`)
       let scopeScore=80,typeScore=80,auditScore=80,specScore=80,symScore=80
       try{ const {spawnSync}=await import("child_process"); const tsc=spawnSync("npx",["tsc","--noEmit"],{cwd:PROJECT_ROOT,encoding:"utf-8",timeout:30000}); typeScore=tsc.status===0?100:Math.max(0,100-(tsc.stderr||"").split("\n").filter(Boolean).length*5) } catch{}
-      try{ const logs = await (prisma.auditLog as any).findMany({where:{OR:[{targetId:{contains:pp,mode:"insensitive"}},{reason:{contains:pp,mode:"insensitive"}}]},select:{id:true},take:20}); auditScore=Math.min(100,logs.length*10) } catch{}
+      try{ const logs = await (prisma.auditLog as Record<string, (...a: unknown[]) => unknown>).findMany({where:{OR:[{targetId:{contains:pp,mode:"insensitive"}},{reason:{contains:pp,mode:"insensitive"}}]},select:{id:true},take:20}); auditScore=Math.min(100,logs.length*10) } catch{}
       const parts=["=== RAHS：Runtime Architecture Health Score ===",`Plan 关键词: "${pp}"`,"",`=== 维度 ===`,`  范围保真度: ${scopeScore}/100`,`  类型安全: ${typeScore}/100`,`  审计完整度: ${auditScore}/100`,`  Spec 合规: ${specScore}/100`,`  阶段对称性: ${symScore}/100`,""]
       const rahs=Math.round((scopeScore+typeScore+auditScore+specScore+symScore)/5); parts.push(`=== RAHS = ${rahs}  ${rahs>=90?"🟢 PASS":rahs>=70?"🟡 WARN":"🔴 BLOCKED"} ===`); if(rahs<70) parts.push("  动作: 注意力漂移严重，返工回退")
       return textResponse(parts.join("\n"))

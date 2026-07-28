@@ -118,6 +118,28 @@ function genPrismaSyncRules(rules: TomlData): string {
     return `export const SYNC_PRISMA_CONFIG = {\n    BASE_SCHEMA: "${base}",\n    TARGET_PATTERN: "${target}",\n    SYNC_ITEMS: [${items}],\n    ON_MISSING_MODEL: "${missingModel}",\n    ON_FIELD_CONFLICT: "${fieldConflict}",\n    ON_MISSING_FIELD: "${missingField}",\n    ON_EXTRA_FIELD: "${extraField}",\n    PROMPT: "${prompt}",\n};`;
 }
 
+// ── HITL 交互策略生成器 ──
+interface HitlIdeRule { mode?: string; widget_path?: string }
+
+function genHitlInteractionRules(rules: TomlData): string {
+    const d = rules as Record<string, HitlIdeRule | undefined>;
+    const def = d.default ?? { mode: "inputRequired" };
+    const ideKeys = ["qoder", "claude", "vscode", "trae", "codex"];
+    const entries: string[] = [];
+    entries.push(`    default: { mode: "${def.mode}" as const }`);
+    for (const key of ideKeys) {
+        const ide = d[key];
+        if (!ide) continue;
+        const mode = ide.mode ?? def.mode;
+        if (mode === "genui" && ide.widget_path) {
+            entries.push(`    ${key}: { mode: "genui" as const, widget_path: "${ide.widget_path}" }`);
+        } else {
+            entries.push(`    ${key}: { mode: "${mode}" as const }`);
+        }
+    }
+    return `export const HITL_INTERACTION_CONFIG = {\n${entries.join(",\n")}\n} as const;\n\nexport type HitlInteractionMode = (typeof HITL_INTERACTION_CONFIG)[keyof typeof HITL_INTERACTION_CONFIG]["mode"];`;
+}
+
 const GENERATORS: Record<string, RuleGenerator> = {
     "detect-ide": genDetectRules,
     "resolve-adapters": genAdapterRules,
@@ -126,6 +148,7 @@ const GENERATORS: Record<string, RuleGenerator> = {
     "sync-patch": genSyncRules,
     "project-root-resolution": genProjectRootRules,
     "sync-prisma-schema": genPrismaSyncRules,
+    "hitl-interaction": genHitlInteractionRules,
 };
 
 function readExistingUserCode(filePath: string): string {

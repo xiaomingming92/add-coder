@@ -6,8 +6,8 @@
  * FilePath     : /add-coder/src/cli/commands/sync.ts
  * Description  : ADD 模板同步命令 — 补缺 / --patch 更新。策略由 caijuehub 驱动。
  */
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { resolve } from "path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { resolve, dirname } from "path";
 import { createHash } from "crypto";
 import { renderCore } from "../../core/renderer";
 import { renderAdapter as renderClaude } from "../../adapters/claude/renderer";
@@ -242,10 +242,10 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
                 selected = indices.map(i => result.missing[i]);
                 return true;
             },
-            async execute() {
+            execute() {
                 const n = injectMissingModels(result.targetPath, selected);
                 console.log(`  ✅ 已将 ${n} 个模型/枚举注入 ${result.targetPath}`);
-                return n;
+                return Promise.resolve(n);
             },
         });
     }
@@ -273,10 +273,10 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
                         const ans = await ask(`    是否用基准定义覆盖这些冲突字段？(y/n): `);
                         return ans === "y" || ans === "yes";
                     },
-                    async execute() {
+                    execute() {
                         const n = overwriteFieldLines(targetPath, basePath, d.name, d.conflicts);
                         console.log(`    ✅ 已覆盖 ${n} 个冲突字段`);
-                        return n;
+                        return Promise.resolve(n);
                     },
                 });
             }
@@ -295,10 +295,10 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
                         const ans = await ask(`    是否补充这些缺失字段？(y/n): `);
                         return ans === "y" || ans === "yes";
                     },
-                    async execute() {
+                    execute() {
                         const n = injectFieldLines(targetPath, basePath, d.name, d.missingFields);
                         console.log(`    ✅ 已补充 ${n} 个字段`);
-                        return n;
+                        return Promise.resolve(n);
                     },
                 });
             }
@@ -313,8 +313,8 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
                             console.log(`      - ${f}`);
                         }
                     },
-                    async confirm() { return false; },
-                    async execute() { return 0; },
+                    confirm() { return Promise.resolve(false); },
+                    execute() { return Promise.resolve(0); },
                 });
             }
         }
@@ -326,8 +326,6 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
         console.log(`  ▶ 请运行: npx prisma migrate dev && npx prisma generate`);
     } else {
         console.log(`\n  目标 schema 文件不存在: ${result.targetPath}`);
-        const { writeFileSync, mkdirSync } = require('fs');
-        const { dirname } = require('path');
         mkdirSync(dirname(targetPath), { recursive: true });
         writeFileSync(targetPath, '// add.prisma — ADD 治理模型\n\n', 'utf-8');
         const n = injectMissingModels(targetPath, result.missing);

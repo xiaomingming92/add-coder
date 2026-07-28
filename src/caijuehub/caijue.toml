@@ -46,6 +46,13 @@ description = "sync 命令行为：补缺 / --patch 覆盖更新，双 hash 校�
 rules = "sync-rules.toml"
 implementation = "src/caijuehub/strategies/sync.strategy.ts"
 
+[[caijue]]
+id = "hitl-interaction"
+type = "strategy"
+description = "HITL 人机交互策略：每个 IDE 独立声明审批交互模式（genui / inputRequired）"
+rules = "hitl-interaction-rules.toml"
+implementation = "templates/core/scripts/mcp-server/shared/hitl-interaction.strategy.ts"
+
 # ──── Runtime 环境策略 ────────────────────────────────────────
 
 [[caijue]]

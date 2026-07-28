@@ -1,0 +1,27 @@
+# HITL 人机交互策略 —— 每个 IDE 独立声明审批交互模式
+# 修改交互行为只需编辑此 TOML → npm run generate → hitl.ts 自动生效
+
+[default]
+# 未知 IDE 的降级策略
+mode = "inputRequired"
+
+# ─── Qoder CN ───
+[qoder]
+mode = "genui"
+widget_path = "templates/core/templates/hitl-approval-widget.html"
+
+# ─── Claude Code ───
+[claude]
+mode = "inputRequired"
+
+# ─── VS Code Copilot ───
+[vscode]
+mode = "inputRequired"
+
+# ─── Trae ───
+[trae]
+mode = "inputRequired"
+
+# ─── Codex ───
+[codex]
+mode = "inputRequired"

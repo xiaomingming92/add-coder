@@ -3,6 +3,15 @@
 > **定位**：描述 ADD 范式如何通过 Qoder CN 的 Hook 机制在 agent 生命周期中确定性运行。
 > **关联文档**：[add-coder-hook-full-alignment-plan-v1](../.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md)
 > **Hook 参考**: https://help.aliyun.com/zh/lingma/qoder-cn-update-log
+> **目录**: Hook 事件模型 · ADD 治理卡位 · 注入通道 · HITL 人机审核交互 · 调试与排错
+
+| 章节 | 内容 |
+|------|------|
+| [Qoder CN Hook 事件模型](#qoder-cn-hook-事件模型) | 10 个核心事件及频率 |
+| [ADD 治理卡位映射](#add-治理卡位映射) | agent 生命周期 → ADD 卡位 |
+| [注入通道](#注入通道) | hookSpecificOutput JSON / 纯文本 |
+| [HITL 人机审核交互](#hitl-人机审核交互) | **genui widget 聊天内嵌审批**（Qoder 专属） |
+| [调试与排错](#调试与排错) | 日志路径 + 常见问题 |
 
 ---
 
@@ -67,6 +76,58 @@ Qoder CN 的注入通道为 **stderr → 下一轮 system prompt 注入**。这�
 | 权限系统 | PermissionRequest/Denied hook | IDE 内置权限弹窗 |
 | StopFailure | ✅ | ❌ |
 | 独有特性 | ConfigChange / Worktree | asyncRewake（v1.7.0）+ if 条件匹配 |
+
+---
+
+## HITL 人机审核交互
+
+Qoder CN 通过 **caijuehub 配置驱动**的 genui widget 实现聊天内嵌审批面板，而非 MCP 标准 elicitation 弹框。
+
+### 交互模式
+
+```
+用户触发 create_hitl / update_hitl
+  │
+  ▼
+读取 caijuehub 配置：hitl-interaction-rules.toml
+  ├─ [qoder] mode = "genui"
+  │   widget_path = "templates/core/templates/hitl-approval-widget.html"
+  │
+  ▼
+genui show_widget({ widget_path, data: { planName, dimensions, ... } })
+  │
+  ▼  聊天面板内嵌审批表格
+用户逐行「同意/调整」→ 点击「同意全部/驳回全部」
+  │
+  ▼  sendToAgent 回调
+AI 收到 { planName, status: "TONGYI"/"BOHUI", dimensions: [...] }
+  │
+  ▼
+create_hitl / update_hitl({ ..., _use_genui: true })
+```
+
+### caijuehub 配置
+
+```toml
+# hitl-interaction-rules.toml
+[qoder]
+mode = "genui"
+widget_path = "templates/core/templates/hitl-approval-widget.html"
+```
+
+配置入口：`src/caijuehub/hitl-interaction-rules.toml` → `npm run generate` → 策略常量 → hitl.ts 薄壳消费。
+
+### 与其他 IDE 对比
+
+| IDE | 交互模式 | 配置方式 |
+|-----|---------|---------|
+| Qoder CN | genui widget（聊天内嵌） | caijuehub TOML |
+| Claude Code | inputRequired 弹框 | caijuehub TOML（默认） |
+| VS Code Copilot | inputRequired 弹框 | caijuehub TOML（默认） |
+| Trae | inputRequired 弹框 | caijuehub TOML（默认） |
+| Codex | inputRequired 弹框 | caijuehub TOML（默认） |
+
+> **新增 IDE 只需在 TOML 加一行配置，不改 hitl.ts 代码。**
 
 ---
 

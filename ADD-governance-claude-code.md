@@ -3,6 +3,15 @@
 > **定位**：描述 ADD 范式如何通过 Claude Code 的 Hook 机制在 agent 生命周期中确定性运行。面向 add-coder 用户和贡献者，说明每个 hook 事件的治理职能和注入通道。
 > **关联文档**：[add-coder-hook-full-alignment-plan-v1](../.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | [issue-6-report](../.qoder/reports/issue-6-tool-call-throttling-report.md)
 > **Hook 参考**: https://code.claude.com/docs/zh-CN/hooks
+> **目录**: Hook 事件模型 · ADD 治理卡位 · 注入通道 · Claude 独有治理 · HITL 人机审核交互
+
+| 章节 | 内容 |
+|------|------|
+| [Claude Code Hook 事件模型](#claude-code-hook-事件模型) | 17 种事件及频率 |
+| [ADD 治理卡位映射](#add-治理卡位映射) | agent 生命周期 → ADD 卡位 |
+| [注入通道](#注入通道) | stdout / stderr / exit code |
+| [Claude Code 独有治理能力](#claude-code-独有治理能力) | Permission / StopFailure / ConfigChange |
+| [HITL 人机审核交互](#hitl-人机审核交互) | caijuehub 配置驱动的 inputRequired 弹框 |
 
 ---
 
@@ -119,3 +128,28 @@ Claude Code 的注入通道为 **stdout → additionalContext**——hook 脚本
 | PermissionDenied | 记录拒绝原因 + 建议替代方案 |
 | StopFailure | 异常退出前紧急 dump State |
 | ConfigChange | settings.json 热重载 + 变更审计 |
+
+---
+
+## HITL 人机审核交互
+
+Claude Code 使用 MCP 标准 **inputRequired.elicit()** 弹框完成 HITL 审批交互。
+
+```
+create_hitl / update_hitl
+  │
+  ▼  hitl.ts 读取 caijuehub 配置
+hitl-interaction-rules.toml: [claude] mode = "inputRequired"
+  │
+  ▼
+inputRequired.elicit() 弹框
+  ├─ 逐项决策模式（有 dimensions）
+  └─ 简单三按钮模式（同意/驳回/取消）
+  │
+  ▼
+用户选择 → 写 DB + 哨兵文件
+```
+
+交互模式由 caijuehub 统一管理：`src/caijuehub/hitl-interaction-rules.toml` → `npm run generate` → hitl.ts 薄壳消费。
+
+> Qoder CN 使用 genui widget 聊天内嵌审批面板，详见 [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md)。

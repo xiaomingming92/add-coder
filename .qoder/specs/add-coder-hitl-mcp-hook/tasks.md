@@ -82,6 +82,27 @@
   - [ ] 验证 hook §C 拦截 + HITL MCP 工具可调用
   - [ ] 验证 pre-tool-use.sh 无 tongyi 标记时阻断写入
 
+### 轮次 5: genui 交互增强 + UserPromptSubmit HITL 注入 [2026-07-28 新增: 回流 #10,#11]
+
+- [ ] Task 5.1: genui widget HTML 模板 — 验证: genui show_widget 渲染正常
+  - [ ] 创建 `templates/core/templates/hitl-approval-widget.html`
+  - [ ] 表格布局：8 维度 × 4 列（#、维度、方案内容、决策）
+  - [ ] 逐行「同意/调整」按钮 + 调整文本框
+  - [ ] 底部「同意全部/驳回全部/重置」+ 状态标记
+  - [ ] `sendToAgent({action:'hitl_approval',...})` 回调决策数据
+- [ ] Task 5.2: hitl.ts 双轨制集成 — 验证: Qoder→genui，其他 IDE→inputRequired 降级
+  - [ ] create_hitl/update_hitl 检测 Qoder 环境 → genui show_widget
+  - [ ] 非 Qoder → 现有 inputRequired.elicit() 降级
+  - [ ] genui 回调自动映射到 update_hitl 参数
+- [ ] Task 5.3: prompt-submit.sh §HITL 待审批检测 — 验证: 有待审批 HITL 时注入提示
+  - [ ] 检测 HitlRecord DRAFT 状态提案
+  - [ ] 注入待审批提示到 `additionalContext`
+  - [ ] 不依赖 jq（Windows 兼容，使用 Node.js JSON 解析）
+- [ ] Task 5.4: prompt-submit.sh §代办刷新 — 验证: resume 时代办为空时注入刷新提示
+  - [ ] 有活跃 Plan 但 TodoWrite 代办为空 → 注入刷新提示
+  - [ ] 作为 session-init 不支持 resume invoke SKILL 时的兜底
+- [ ] Task 5.5: 轮次 5 闭合审计 — 验证: `record_dev_operation ROUND_CLOSED` 落库
+
 ## Task Dependencies
 
 ```
@@ -175,3 +196,78 @@ Task 1.1 (Prisma 3 表 + 枚举)
 - [ ] `plan_track({ scanAll: true })` 返回正确计数
 - [ ] pre-tool-use hook 无标记时阻断
 - [ ] weather_proxy sync 后 HITL 规则生效
+
+---
+
+## IDE 代办清单
+
+> AI 读取本段 JSON → 调用 `TodoWrite` 加载到 IDE 任务面板 → 打通 tasks.md↔IDE 实施流程。
+> 每条 content 以 `[轮次N·状态]` 前缀展示轮次分组，`id` 编码层级 `hitl-r{N}-t{N}`。
+> 每完成一个 Task 后更新对应 `status` 为 `COMPLETE`。
+
+```json
+{
+  "planName": "add-coder-hitl-mcp-hook",
+  "source": "tasks.md",
+  "rounds": [
+    {
+      "round": 1,
+      "name": "Prisma 模型",
+      "status": "COMPLETE",
+      "tasks": [
+        {"id": "hitl-r1-t1", "content": "[轮次1·已完成] Task 1.1: add.prisma 新增 HitlRecord + PlanRecord + ReviewRecord + 3 enum", "file": "prisma/add.prisma", "status": "COMPLETE"},
+        {"id": "hitl-r1-t2", "content": "[轮次1·已完成] Task 1.2: prisma migrate + client regen（幂等）", "file": "prisma/migrations/", "status": "COMPLETE"},
+        {"id": "hitl-r1-t3", "content": "[轮次1·已完成] Task 1.3: ROUND_CLOSED", "file": "—", "status": "COMPLETE"}
+      ]
+    },
+    {
+      "round": 2,
+      "name": "MCP 工具 + Hook",
+      "status": "COMPLETE",
+      "tasks": [
+        {"id": "hitl-r2-t1", "content": "[轮次2·已完成] Task 2.1: HITL 工具（create/update/status + inputRequired + _fallback）", "file": "tools/hitl.ts", "status": "COMPLETE"},
+        {"id": "hitl-r2-t2", "content": "[轮次2·已完成] Task 2.2: Plan 工具（plan_track/status/sync）", "file": "tools/plan.ts", "status": "COMPLETE"},
+        {"id": "hitl-r2-t3", "content": "[轮次2·已完成] Task 2.3: Review 工具（review_track/status/sync）", "file": "tools/review.ts", "status": "COMPLETE"},
+        {"id": "hitl-r2-t4", "content": "[轮次2·已完成] Task 2.4: pre-tool-use.sh §C 拦截 + tongyi 检查", "file": "hooks/pre-tool-use.sh", "status": "COMPLETE"},
+        {"id": "hitl-r2-t5", "content": "[轮次2·已完成] Task 2.5: MCP index 注册 9 工具", "file": "tools/index.ts", "status": "COMPLETE"},
+        {"id": "hitl-r2-t6", "content": "[轮次2·已完成] Task 2.6: ROUND_CLOSED", "file": "—", "status": "COMPLETE"}
+      ]
+    },
+    {
+      "round": 3,
+      "name": "SKILL / Rules / Templates",
+      "status": "COMPLETE",
+      "tasks": [
+        {"id": "hitl-r3-t1", "content": "[轮次3·已完成] Task 3.1: add-paradigm SKILL 更新", "file": "skills/add-paradigm/SKILL.md", "status": "COMPLETE"},
+        {"id": "hitl-r3-t2", "content": "[轮次3·已完成] Task 3.2: project_rules.md ADD-7 devlog", "file": "rules/project_rules.md", "status": "COMPLETE"},
+        {"id": "hitl-r3-t3", "content": "[轮次3·已完成] Task 3.3: hitl-template.md + schema.json", "file": "templates/hitl-template.*", "status": "COMPLETE"},
+        {"id": "hitl-r3-t4", "content": "[轮次3·已完成] Task 3.4: doc-format-guard.sh 扩展", "file": "hooks/doc-format-guard.sh", "status": "COMPLETE"},
+        {"id": "hitl-r3-t5", "content": "[轮次3·已完成] Task 3.5: plan_track scanAll 验证", "file": "—", "status": "COMPLETE"},
+        {"id": "hitl-r3-t6", "content": "[轮次3·已完成] Task 3.6: review_track 验证", "file": "—", "status": "COMPLETE"},
+        {"id": "hitl-r3-t7", "content": "[轮次3·已完成] Task 3.7: weather_proxy sync 验证", "file": "—", "status": "COMPLETE"},
+        {"id": "hitl-r3-t8", "content": "[轮次3·已完成] Task 3.8: ROUND_CLOSED", "file": "—", "status": "COMPLETE"}
+      ]
+    },
+    {
+      "round": 4,
+      "name": "sync 验证",
+      "status": "COMPLETE",
+      "tasks": [
+        {"id": "hitl-r4-t1", "content": "[轮次4·已完成] Task 4.1: weather_proxy sync 验证", "file": "—", "status": "COMPLETE"}
+      ]
+    },
+    {
+      "round": 5,
+      "name": "genui 交互增强 + UserPromptSubmit HITL 注入",
+      "status": "PENDING",
+      "tasks": [
+        {"id": "hitl-r5-t1", "content": "[轮次5·待实施] Task 5.1: genui widget HTML 模板 — 表格+逐行按钮+回调", "file": "templates/hitl-approval-widget.html", "status": "PENDING"},
+        {"id": "hitl-r5-t2", "content": "[轮次5·待实施] Task 5.2: hitl.ts 双轨制集成 — Qoder genui / 其他 IDE inputRequired", "file": "tools/hitl.ts", "status": "PENDING"},
+        {"id": "hitl-r5-t3", "content": "[轮次5·待实施] Task 5.3: prompt-submit.sh §HITL 待审批检测 + 上下文注入（不依赖 jq）", "file": "hooks/prompt-submit.sh", "status": "PENDING"},
+        {"id": "hitl-r5-t4", "content": "[轮次5·待实施] Task 5.4: prompt-submit.sh §代办刷新 — resume 兜底", "file": "hooks/prompt-submit.sh", "status": "PENDING"},
+        {"id": "hitl-r5-t5", "content": "[轮次5·待实施] Task 5.5: ROUND_CLOSED", "file": "—", "status": "PENDING"}
+      ]
+    }
+  ]
+}
+```

@@ -94,6 +94,7 @@ if [ -f "$HOOK_JSONL" ]; then
     fi
   fi
 fi
+
 echo "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"${add_ctx}\"}}"
 exit 0
 
