@@ -403,18 +403,22 @@ export function registerHitlTools(server: McpServer) {
         if (reason) data.rejectReason = reason
       }
       await db.hitl.update({ where: { id: r.id }, data })
-      // 写哨兵文件
+      // 写哨兵文件（双命名：原始 planName + pre-tool-use hook §C 剥后缀推导名，保持闸门一致）
       const markerDir = join(PROJECT_ROOT, MAGIC_DIR, "hitl")
       mkdirSync(markerDir, { recursive: true })
-      const marker = s === "TONGYI"
-        ? join(markerDir, `.tongyi-${planName}`)
-        : join(markerDir, `.bohui-${planName}`)
+      const hookBase = String(planName)
+        .replace(/\.hitl$/, "")
+        .replace(/-(plan|add-route|review)-v\d+$/, "")
+        .replace(/-review-(implementation|runtime)$/, "")
+      const markerPrefix = s === "TONGYI" ? ".tongyi-" : ".bohui-"
+      const markerNames = [...new Set([String(planName), hookBase])]
       const markerContent = [
         `status: ${s}`,
         `time: ${new Date().toISOString()}`,
         reason ? `reason: ${reason}` : null,
       ].filter(Boolean).join("\n") + "\n"
-      writeFileSync(marker, markerContent, "utf-8")
+      for (const n of markerNames) writeFileSync(join(markerDir, markerPrefix + n), markerContent, "utf-8")
+      const marker = markerNames.map(n => join(markerDir, markerPrefix + n)).join(", ")
       // 响应
       const lines = [
         `✅ update_hitl`,
