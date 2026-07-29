@@ -9,7 +9,7 @@ Make 0.75 into one.
  </p>
 
 ```bash
-# 第一次过死亡谷耗时
+# 第一次过死亡谷耗时 19天
 ~ $ curl -s https://api.npmjs.org/downloads/point/last-month/add-coder                          {"downloads":5161,"start":"2026-06-29","end":"2026-07-28","package":"add-coder"}~ $             ~ $ npm info add-coder@0.1.0                                                                    add-coder@0.1.0 | MIT | deps: 3 | versions: 35  Initialize ADD paradigm workflow templates for Claude Code, Qoder, and VS Code.                                                                 keywords: add, add-paradigm, claude, qoder, vscode, mcp, workflow, codein2027, 集中裁决层, caijuehub
                                                 bin: add-coder
                                                 dist
