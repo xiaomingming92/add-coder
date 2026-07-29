@@ -1,7 +1,7 @@
 import * as z from "zod/v4"
 import { inputRequired, acceptedContent, type McpServer } from "@modelcontextprotocol/server"
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
-import { join } from "path"
+import { join, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
@@ -12,6 +12,28 @@ const db = {
 }
 
 export function registerHitlTools(server: McpServer) {
+
+  // ═══════════════ 辅助：按安装环境裁决交互模式（caijuehub: hitl-interaction-rules.toml） ═══════════════
+  const _interaction = (() => {
+    const key = MAGIC_DIR.replace(/^\./, "") as keyof typeof HITL_INTERACTION_CONFIG
+    return (HITL_INTERACTION_CONFIG[key] ?? HITL_INTERACTION_CONFIG.default) as { mode: string; widget_path?: string }
+  })()
+
+  // genui 模式客户端（如 Qoder）未声明 elicitation capability，弹框必然失败 → 返回 genui 流程引导
+  function _genuiGuide(recallStep: string): string {
+    let widgetPath = ""
+    if (_interaction.widget_path) {
+      // genui show_widget 仅接受 workspace 相对路径，绝对路径会被拒
+      const bakedRel = join(MAGIC_DIR, "templates", basename(_interaction.widget_path))
+      widgetPath = existsSync(join(PROJECT_ROOT, bakedRel)) ? bakedRel : _interaction.widget_path
+    }
+    return [
+      `⚠️ 当前环境（${MAGIC_DIR}）客户端不支持 elicitation 弹框，交互模式已裁决为 genui。请按以下流程完成：`,
+      `1. 调用 genui show_widget 渲染审批表单${widgetPath ? `（widget_path: ${widgetPath}，workspace 相对路径，维度列表经 data 注入）` : ""}`,
+      `2. 用户在 widget 中逐项拍板`,
+      `3. ${recallStep}`,
+    ].join("\n")
+  }
 
   // ═══════════════ 辅助：解析 inputRequired 响应 ═══════════════
   function _parseElicitResp(ctx: Record<string, unknown>): { action: string } | null {
@@ -71,8 +93,10 @@ export function registerHitlTools(server: McpServer) {
   // ===== create_hitl =====
   server.registerTool("create_hitl", {
     description: "HITL 审批：创建提案。写入 HitlRecord（status=DRAFT，自动递增 round），并生成 hitl.md 提案文件供人工审核。\n" +
-      "支持 inputRequired 交互式确认，含逐项决策（LLM 传 dimensions）或简单弹框两种模式。\n" +
-      "降级模式（_fallback=true）：跳过弹框，按原始代码行为直接创建。\n" +
+      "交互模式按安装环境自动裁决（caijuehub: hitl-interaction-rules.toml）：\n" +
+      "- genui 模式环境（如 Qoder，客户端未声明 elicitation capability）：MUST 直接走 genui 流程——先用 genui show_widget 渲染逐项决策表单，用户拍板后以 _use_genui=true + 最终 dimensions 调用本工具。不带模式参数调用会返回 genui 引导而非弹框。\n" +
+      "- 支持 elicitation 的客户端（2026-07-28+ 协议）：inputRequired 弹框，含逐项决策（LLM 传 dimensions）或简单弹框两种模式。\n" +
+      "降级模式（_fallback=true）：genui 与弹框均不可用时兜底，跳过弹框直接以传入的 dimensions 创建，人工审核 hitl.md。\n" +
       "_use_genui=true：genui widget 回调后使用，跳过所有弹框，直接以传入的 dimensions 创建 DB+文件。\n" +
       "planName 示例: add-coder-hitl-mcp-hook-plan-v1\n" +
       "type: PLAN=计划审批, PLAN_REVIEW=方案评审",
@@ -93,13 +117,21 @@ export function registerHitlTools(server: McpServer) {
       // ── 最终维度内容（从弹框结果合并） ──
       let finalDims: { name: string; content: string }[] = []
 
-      // ── genui 模式：widget 回调已完成决策，直接跳过所有弹框 ──
-      if (_use_genui) {
+      // ── genui/降级模式：无弹框环节，直接采用传入的 dimensions（降级丢维度会退化成默认空模板） ──
+      if (_use_genui || _fallback) {
         finalDims = (dimensions || []).map(d => ({ name: d.name, content: d.content || "" }))
       }
 
       // ── 交互式确认（非降级模式且非 genui 模式） ──
       if (!_fallback && !_use_genui) {
+        // 环境裁决：genui 模式下不发起注定失败的 elicitation，引导 LLM 走 widget 流程
+        if (_interaction.mode === "genui") {
+          const dimDesc = (dimensions || []).map((d, i) => `${i + 1}. ${d.name}: ${d.content || ""}`).join("\n")
+          return textResponse(
+            _genuiGuide("携带最终确认的 dimensions 以 _use_genui=true 重新调用 create_hitl") +
+            (dimDesc ? `\n\n待决策维度：\n${dimDesc}` : "\n\n（未传 dimensions，请先根据对话生成决策维度再渲染 widget）")
+          )
+        }
         const hasDims = dimensions && dimensions.length > 0
 
         if (hasDims) {
@@ -247,8 +279,10 @@ export function registerHitlTools(server: McpServer) {
   // ===== update_hitl =====
   server.registerTool("update_hitl", {
     description: "HITL 审批：更新状态。SUBMITTED→TONGYI/BOHUI。\n" +
-      "交互模式（默认）：返回 inputRequired 弹框让用户确认→确认后写哨兵+更新 DB。\n" +
-      "降级模式（_fallback=true）：跳过弹框，直接写哨兵+更新 DB（原代码行为降级）。\n" +
+      "交互模式按安装环境自动裁决（caijuehub: hitl-interaction-rules.toml）：\n" +
+      "- genui 模式环境（如 Qoder）：MUST 先用 genui show_widget 渲染审批表单（维度取自 hitl.md），用户拍板后以 _use_genui=true + status(TONGYI/BOHUI) 调用本工具。不带模式参数调用会返回 genui 引导而非弹框。\n" +
+      "- 支持 elicitation 的客户端：inputRequired 弹框确认→确认后写哨兵+更新 DB。\n" +
+      "降级模式（_fallback=true）：genui 与弹框均不可用时兜底，跳过弹框直接写哨兵+更新 DB。\n" +
       "_use_genui=true：genui widget 回调后使用，跳过弹框直接以传入的 status/reason 更新。\n" +
       "已终态（TONGYI/BOHUI）不可再更新，BOHUI 后需 create_hitl 新建 round。",
     inputSchema: z.object({
@@ -267,6 +301,16 @@ export function registerHitlTools(server: McpServer) {
       let effectiveStatus = status as string | undefined
 
       if (!_fallback && !_use_genui) {
+        // 环境裁决：genui 模式下不发起注定失败的 elicitation，引导 LLM 走 widget 流程
+        if (_interaction.mode === "genui") {
+          const gPath = findHitlFile(planName as string)
+          const gDims = gPath ? parseHitlDimensions(gPath) : []
+          const gDesc = gDims.map((d, i) => `${i + 1}. ${d.name}: ${d.content}`).join("\n")
+          return textResponse(
+            _genuiGuide("拍板后以 _use_genui=true + status(TONGYI/BOHUI) 重新调用 update_hitl（驳回时附 reason）") +
+            (gDesc ? `\n\n待审批维度（来自 ${gPath}）：\n${gDesc}` : "")
+          )
+        }
         // 尝试读取 hitl.md 文件解析维度
         const hitlPath = findHitlFile(planName as string)
         const dims = hitlPath ? parseHitlDimensions(hitlPath) : []
