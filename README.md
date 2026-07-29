@@ -8,6 +8,28 @@ Make 0.75 into one.
    <a href="https://www.npmcharts.com/compare/add-coder?interval=30" style="color:#c41a16;font-weight:700">📈 趋势</a>
  </p>
 
+```bash
+# 第一次过死亡谷耗时
+~ $ curl -s https://api.npmjs.org/downloads/point/last-month/add-coder                          {"downloads":5161,"start":"2026-06-29","end":"2026-07-28","package":"add-coder"}~ $             ~ $ npm info add-coder@0.1.0                                                                    add-coder@0.1.0 | MIT | deps: 3 | versions: 35  Initialize ADD paradigm workflow templates for Claude Code, Qoder, and VS Code.                                                                 keywords: add, add-paradigm, claude, qoder, vscode, mcp, workflow, codein2027, 集中裁决层, caijuehub
+                                                bin: add-coder
+                                                dist
+.tarball: https://registry.npmjs.org/add-coder/-/add-coder-0.1.0.tgz
+.shasum: 3266ddb5304d303705694edec7c2f41efc24881d                                               .integrity: sha512-MxFICLEoAgTVxnHaiIOli5eVyCXvB+xnSzpfmu0mrigEeM9NxzBOm2Auzjn1GKUTXSWelT0FecwwlYmsCf+TWQ==
+.unpackedSize: 704.9 kB
+
+dependencies:
+zod: ^3.24.0, commander: ^13.1.0, smol-toml: ^1.7.0
+
+maintainers:
+- wujixmm <wujixmm@gmail.com>
+
+dist-tags:
+latest: 0.3.5
+preview: 0.3.6-feature-hitl-enhance-v1.2
+
+published 2 weeks ago by wujixmm <wujixmm@gmail.com>
+
+```
 > 🀄中文 | 🔤[English](#-english-readme)
 
 **AI 代码治理的落地方案** — [codein2027](https://github.com/xiaomingming92/codein2027) 快速构建 ADD 编程范式的完整脚手架。以「审计即基础设施」为核心，彻底打破编程过程黑盒与跨轮失忆，让编程范式进化为可审计、可追溯、可收敛的新时代。 [NPM](https://www.npmjs.com/package/add-coder) · [GitHub](https://github.com/xiaomingming92/add-coder)
