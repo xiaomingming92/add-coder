@@ -29,6 +29,22 @@ services:
       timeout: 5s
       retries: 5
 
+# ═══════════════════════════════════════════════════════════════
+# Prisma 影子库（migrate dev 必需）
+# ═══════════════════════════════════════════════════════════════
+# migrate dev 需要一个临时影子库来检测 schema drift，
+# SHADOW_DATABASE_URL 指向同一 PG 实例的另一个库即可。
+#
+# 创建：
+#   podman exec ${PROJECT_NAME}-postgres psql -U ${DATABASE_USER} \
+#     -c "CREATE DATABASE shadow_${PROJECT_NAME} OWNER ${DATABASE_USER}"
+#
+# .env.development 中生效配置：
+#   SHADOW_DATABASE_URL="postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:${DATABASE_PORT}/shadow_${PROJECT_NAME}?schema=public"
+#
+# 首次运行或 shadow 库被清空后需重新创建。
+# 不需要在 compose 中额外声明服务——同一个 PG 实例即可。
+
 networks:
   ${PROJECT_NAME:-add-project}-network:
     driver: bridge
