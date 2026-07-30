@@ -655,3 +655,7 @@ npx add-coder init
 | Memory Enhancement | Long-term project knowledge memory and plan-level sparse memory | 📋 |
 
 ---
+
+My hometown 
+
+<img width="720"  alt="hometown outside" src="https://github.com/user-attachments/assets/7aad93de-9cea-4194-b09d-cbd892d61cc2" />
