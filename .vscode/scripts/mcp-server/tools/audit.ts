@@ -49,8 +49,8 @@ export function registerAuditTools(server: McpServer) {
       targetType: z.string().describe("目标类型: 'API_ROUTE', 'COMPONENT', 'SCHEMA', 'RULE', 'DOC', 'PLAN', 'SPEC', 'SKILL', 'AGENT' 等"),
       targetId: z.string().optional().describe("目标标识（相对路径）"),
       planKeyword: z.string().optional().describe("关联 Plan 的关键词"),
-      beforeState: z.string().optional().describe("操作前的状态（JSON 字符串）"),
-      afterState: z.string().optional().describe("操作后的状态（JSON 字符串）"),
+      beforeState: z.string().describe("操作前的状态（JSON 字符串）。必填，记录变更前的文件内容或配置状态，用于审计回溯。"),
+      afterState: z.string().describe("操作后的状态（JSON 字符串）。必填，记录变更后的文件内容或配置状态，用于审计回溯。"),
       reason: z.string().optional().describe("操作原因"),
     }),
   }, async (args: Record<string, string | number | undefined>, _ctx: unknown) => {
