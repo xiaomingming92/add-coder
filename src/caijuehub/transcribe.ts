@@ -118,6 +118,141 @@ function genPrismaSyncRules(rules: TomlData): string {
     return `export const SYNC_PRISMA_CONFIG = {\n    BASE_SCHEMA: "${base}",\n    TARGET_PATTERN: "${target}",\n    SYNC_ITEMS: [${items}],\n    ON_MISSING_MODEL: "${missingModel}",\n    ON_FIELD_CONFLICT: "${fieldConflict}",\n    ON_MISSING_FIELD: "${missingField}",\n    ON_EXTRA_FIELD: "${extraField}",\n    PROMPT: "${prompt}",\n};`;
 }
 
+// ── Sync Magic 生成器 ──
+interface SyncMagicRules {
+    core?: { project_name?: string; magic_dirs?: string[] };
+    exclude?: { patterns?: string[]; log_extensions?: string[] };
+    hooks?: Array<{ src: string; dest: string; name: string; magic_dir: string }>;
+    categories?: Array<{ name: string; icon: string; bake?: boolean }>;
+    verify?: Array<{ src: string; dest: string; name: string }>;
+}
+
+function genSyncMagicRules(rules: TomlData): string {
+    const d = rules as SyncMagicRules;
+    const core = d.core ?? {};
+    const exclude = d.exclude ?? {};
+    const hooks = d.hooks ?? [];
+    const categories = d.categories ?? [];
+    const verify = d.verify ?? [];
+
+    const projectName = core.project_name ?? "add-coder";
+    const magicDirs = (core.magic_dirs ?? [".add", ".qoder", ".claude", ".vscode"])
+        .map((s: string) => `"${s}"`).join(", ");
+    const excludePatterns = (exclude.patterns ?? [".gitkeep", ".DS_Store", "debug-dump"])
+        .map((s: string) => `"${s}"`).join(", ");
+    const logExts = (exclude.log_extensions ?? [".log"])
+        .map((s: string) => `"${s}"`).join(", ");
+
+    const hookEntries = hooks.map(h =>
+        `    { src: "${h.src}", dest: "${h.dest}", name: "${h.name}", magicDir: "${h.magic_dir}" }`
+    ).join(",\n");
+
+    const catEntries = categories.map(c =>
+        `    { name: "${c.name}", icon: "${c.icon}", bake: ${c.bake !== false} }`
+    ).join(",\n");
+
+    const verifyEntries = verify.map(v =>
+        `    { src: "${v.src}", dest: "${v.dest}", name: "${v.name}" }`
+    ).join(",\n");
+
+    return `export const SYNC_MAGIC_CONFIG = {
+    PROJECT_NAME: "${projectName}",
+    MAGIC_DIRS: [${magicDirs}],
+    EXCLUDE_PATTERNS: [${excludePatterns}],
+    LOG_EXTENSIONS: [${logExts}],
+    HOOKS: [
+${hookEntries}
+    ],
+    CATEGORIES: [
+${catEntries}
+    ],
+    VERIFY: [
+${verifyEntries}
+    ],
+} as const;
+
+export type SyncMagicHook = (typeof SYNC_MAGIC_CONFIG)["HOOKS"][number];
+export type SyncMagicCategory = (typeof SYNC_MAGIC_CONFIG)["CATEGORIES"][number];
+export type SyncMagicVerify = (typeof SYNC_MAGIC_CONFIG)["VERIFY"][number];`;
+}
+
+// ── Sync Magic Bash Shell 生成器（跨语言通道：TOML → .sh）──
+
+interface SyncMagicBashRules {
+    core?: { project_name?: string; magic_dirs?: string; exclude_patterns?: string; log_extensions?: string };
+    hooks?: Record<string, string>;
+    categories?: Record<string, string>;
+    verify?: Record<string, string>;
+}
+
+function genSyncMagicBashShell(rules: TomlData): string {
+    const d = rules as SyncMagicBashRules;
+    const core = d.core ?? {};
+    const hooks = d.hooks ?? {};
+    const categories = d.categories ?? {};
+    const verify = d.verify ?? {};
+
+    const projectName = core.project_name ?? "add-coder";
+    const magicDirs = (core.magic_dirs ?? ".add .qoder .claude .vscode")
+        .split(/\s+/).filter(Boolean).map(s => `"${s}"`).join(" ");
+    const excludePatterns = (core.exclude_patterns ?? ".gitkeep .DS_Store debug-dump")
+        .split(/\s+/).filter(Boolean).map(s => `"${s}"`).join(" ");
+    const logExts = (core.log_extensions ?? ".log")
+        .split(/\s+/).filter(Boolean).map(s => `"${s}"`).join(" ");
+
+    // 解析管道分隔值: "src|dest|name|magic_dir"
+    const parsePipe = (val: string) => val.replace(/^"|"$/g, "").split("|").map(s => s.trim());
+
+    const hookEntries = Object.entries(hooks).map(([, v]) => parsePipe(v));
+    const catEntries = Object.entries(categories).map(([k, v]) => {
+        const [icon, bake] = parsePipe(v);
+        return { name: k.replace(/_/g, " "), icon, bake };
+    });
+    const verifyEntries = Object.entries(verify).map(([, v]) => parsePipe(v));
+
+    const hookSrcs = hookEntries.map(h => `"${h[0]}"`).join(" ");
+    const hookDests = hookEntries.map(h => `"${h[1]}"`).join(" ");
+    const hookNames = hookEntries.map(h => `"${h[2]}"`).join(" ");
+    const hookMagics = hookEntries.map(h => `"${h[3]}"`).join(" ");
+
+    const catNames = catEntries.map(c => `"${c.name}"`).join(" ");
+    const catIcons = catEntries.map(c => `"${c.icon}"`).join(" ");
+    const catBakes = catEntries.map(c => c.bake === "1" || c.bake === "true" ? "1" : "0").join(" ");
+
+    const vSrcs = verifyEntries.map(v => `"${v[0]}"`).join(" ");
+    const vDests = verifyEntries.map(v => `"${v[1]}"`).join(" ");
+    const vNames = verifyEntries.map(v => `"${v[2]}"`).join(" ");
+
+    return `# ⚠️ 由 caijuehub/transcribe.ts 自动生成，不要手动编辑！
+# 改 sync-magic-bash-rules.toml 后重新运行: add-coder generate
+
+# ── 核心配置 ──
+PROJECT_NAME="${projectName}"
+MAGIC_DIRS=(${magicDirs})
+EXCLUDE_PATTERNS=(${excludePatterns})
+LOG_EXTENSIONS=(${logExts})
+
+# ── Hook 同步映射 (${hookEntries.length} 条) ──
+HOOK_COUNT=${hookEntries.length}
+HOOK_SRCS=(${hookSrcs})
+HOOK_DESTS=(${hookDests})
+HOOK_NAMES=(${hookNames})
+HOOK_MAGICS=(${hookMagics})
+
+# ── 通用类别同步 (${catEntries.length} 条) ──
+CAT_COUNT=${catEntries.length}
+CAT_NAMES=(${catNames})
+CAT_ICONS=(${catIcons})
+CAT_BAKES=(${catBakes})
+
+# ── 验证映射 (${verifyEntries.length} 条) ──
+VERIFY_COUNT=${verifyEntries.length}
+VERIFY_SRCS=(${vSrcs})
+VERIFY_DESTS=(${vDests})
+VERIFY_NAMES=(${vNames})
+`;
+}
+
 // ── HITL 交互策略生成器 ──
 interface HitlIdeRule { mode?: string; widget_path?: string }
 
@@ -196,8 +331,14 @@ const GENERATORS: Record<string, RuleGenerator> = {
     "sync-patch": genSyncRules,
     "project-root-resolution": genProjectRootRules,
     "sync-prisma-schema": genPrismaSyncRules,
+    "sync-magic": genSyncMagicRules,
     "hitl-interaction": genHitlInteractionRules,
     "dps-scoring": genDpsScoringRules,
+};
+
+// ── Shell 配置生成器（产出 .sh 文件，不走 TS 策略路径）──
+const SHELL_GENERATORS: Record<string, RuleGenerator> = {
+    "sync-magic-bash": genSyncMagicBashShell,
 };
 
 function readExistingUserCode(filePath: string): string {
@@ -236,17 +377,30 @@ export function transcribe(caijueDir?: string, outputRoot?: string) {
         }
 
         const gen = GENERATORS[entry.id];
-        if (!gen) { console.log(`跳过 ${entry.id}: 无生成器`); continue; }
+        const shellGen = SHELL_GENERATORS[entry.id];
+
+        if (!gen && !shellGen) { console.log(`跳过 ${entry.id}: 无生成器`); continue; }
 
         const rules = parse(readFileSync(rulesPath, "utf-8"));
-        const generated = `${HEADER}${GENERATED_MARKER}\n${gen(rules)}\n${GENERATED_END}`;
 
-        const outPath = join(outRoot, entry.implementation);
-        const userCode = readExistingUserCode(outPath);
+        // TS 策略生成（如果存在 GENERATOR）
+        if (gen) {
+            const generated = `${HEADER}${GENERATED_MARKER}\n${gen(rules)}\n${GENERATED_END}`;
+            const outPath = join(outRoot, entry.implementation);
+            const userCode = readExistingUserCode(outPath);
+            mkdirSync(dirname(outPath), { recursive: true });
+            writeFileSync(outPath, `${generated}\n${userCode}`, "utf-8");
+            console.log(`生成 ${entry.implementation}`);
+        }
 
-        mkdirSync(dirname(outPath), { recursive: true });
-        writeFileSync(outPath, `${generated}\n${userCode}`, "utf-8");
-        console.log(`生成 ${entry.implementation}`);
+        // Shell 配置生成（如果存在 SHELL_GENERATOR）
+        if (shellGen) {
+            const shellContent = shellGen(rules);
+            const shellOutPath = join(outRoot, entry.implementation);
+            mkdirSync(dirname(shellOutPath), { recursive: true });
+            writeFileSync(shellOutPath, shellContent, "utf-8");
+            console.log(`生成 ${entry.implementation}`);
+        }
     }
 }
 
