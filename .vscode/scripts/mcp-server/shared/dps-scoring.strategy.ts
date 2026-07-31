@@ -26,7 +26,8 @@ export const DPS_SCORING_CONFIG = {
     FFT_COLD_START: 5,
     FFT_HISTORY_LIMIT: 50,
     FFT_DEFAULT_WEIGHTS: [0.25, 0.25, 0.25, 0.25],
-    THRESHOLD_PASS: 85,
-    THRESHOLD_WARN: 70,
+    THRESHOLD_PASS: 80,
+    THRESHOLD_WARN: 65,
+    EMBEDDING_MODEL: "Xenova/bge-small-zh-v1.5",
 } as const;
 // <<< CAIJUE GENERATED END <<<

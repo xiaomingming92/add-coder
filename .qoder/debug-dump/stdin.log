@@ -12012,3 +12012,1540 @@ has_replacements: false
 top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
 tool_input_keys: command, is_background, timeout
 === DONE ===
+=== 2026年 07月 29日 星期三 18:09:38 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: ### 3.6 部署形态决策：增量路径 vs 独立项目
+
+**结论：在现有 add-coder 仓库内增量新增 `src/mcp/` 路径。**
+
+| 候选 | 形态 | 结论 |
+|------|------|------|
+| A: 现仓库增量新增 `src/mcp/` | 同一 npm 包新增 exports `"./mcp"`，tsup 构建产出 `dist/mcp/` | ✅ 选用（零运维成本、版本绑定天然一致） |
+| B: 独立 `@add-coder/mcp` 子包 | monorepo workspace 新建 `packages/mcp/` 独立发布 | ❌ 版本号对齐额外负担、pnpm link
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:09:43 CST ===
+file_path: EMPTY
+has_file_content: false
+has_replacements: false
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: command, is_background
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:09:46 CST ===
+file_path: EMPTY
+has_file_content: false
+has_replacements: false
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: command, is_background
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:10:07 CST ===
+file_path: EMPTY
+has_file_content: false
+has_replacements: false
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: command, is_background
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:10:33 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: ### 3.6 部署形态决策：增量路径 vs 独立项目
+
+**结论：在现有 add-coder 仓库内增量新增 `src/mcp/` 路径。**
+
+| 候选 | 形态 | 结论 |
+|------|------|------|
+| A: 现仓库增量新增 `src/mcp/` | 同一 npm 包新增 exports `"./mcp"`，tsup 构建产出 `dist/mcp/` | ✅ 选用（零运维成本、版本绑定天然一致） |
+| B: 独立 `@add-coder/mcp` 子包 | monorepo workspace 新建 `packages/mcp/` 独立发布 | ❌ 版本号对齐额外负担、pnpm link
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:10:37 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: ### 3.6 部署形态决策：增量路径 vs 独立项目
+
+**结论：在现有 add-coder 仓库内增量新增 `src/mcp/` 路径。**
+
+| 候选 | 形态 | 结论 |
+|------|------|------|
+| A: 现仓库增量新增 `src/mcp/` | 同一 npm 包新增 exports `"./mcp"`，tsup 构建产出 `dist/mcp/` | ✅ 选用（零运维成本、版本绑定天然一致） |
+| B: 独立 `@add-coder/mcp` 子包 | monorepo workspace 新建 `packages/mcp/` 独立发布 | ❌ 版本号对齐额外负担、pnpm link
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:17:30 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: ### 3.6 部署形态决策：Monorepo 双包 vs 单包 subpath export
+
+#### 3.6.0 前置澄清：add-coder 不是 VS Code Extension
+
+add-coder 不产出 `.vsix` 插件，不调用 VS Code Extension API，不走插件市场。它的运行方式：
+
+```
+IDE 启动 → 读 mcp.json → 执行 tsx mcp-server.ts → 新开子进程
+                                      ↓
+                         IDE ← JSON-RPC over stdin/stdout → 子进程
+```
+
+这是一个 **stdio 子进程**，不是 IDE 扩�
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:17:33 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: ### 3.6 部署形态决策：Monorepo 双包 vs 单包 subpath export
+
+#### 3.6.0 前置澄清：add-coder 不是 VS Code Extension
+
+add-coder 不产出 `.vsix` 插件，不调用 VS Code Extension API，不走插件市场。它的运行方式：
+
+```
+IDE 启动 → 读 mcp.json → 执行 tsx mcp-server.ts → 新开子进程
+                                      ↓
+                         IDE ← JSON-RPC over stdin/stdout → 子进程
+```
+
+这是一个 **stdio 子进程**，不是 IDE 扩�
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:17:59 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: | packages/add-coder-mcp/src/index.ts | COMPONENT | COMPONENT_CREATED | 不存在 | createAddMcpServer(config) 工厂入口 | 待实施 |
+| packages/add-coder-mcp/src/config.ts | COMPONENT | COMPONENT_CREATED | 不存在 | AddMcpConfig 显式配置契约 | 待实施 |
+| packages/add-coder-mcp/src/shared/prisma.ts | COMPONENT | MODIFY | 六路径隐式探测宿主 Prisma Client | 显式 config.prismaClient 注入 + fail-fast | 待实施 |
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:18:03 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: | packages/add-coder-mcp/src/index.ts | COMPONENT | COMPONENT_CREATED | 不存在 | createAddMcpServer(config) 工厂入口 | 待实施 |
+| packages/add-coder-mcp/src/config.ts | COMPONENT | COMPONENT_CREATED | 不存在 | AddMcpConfig 显式配置契约 | 待实施 |
+| packages/add-coder-mcp/src/shared/prisma.ts | COMPONENT | MODIFY | 六路径隐式探测宿主 Prisma Client | 显式 config.prismaClient 注入 + fail-fast | 待实施 |
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:18:19 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: {magicDir}/scripts/mcp-server.ts        ← 薄入口壳（唯一下游文件）
+  │ import { createAddMcpServer } from "@add-coder/mcp-server"
+  │ 显式注入 { projectRoot, magicDir, prismaClient }
+  │   └─ 壳内静态 import 宿主 src/generated/prisma/client.js
+  │      路径错误 = tsx 编译期报错（fail-fast，替代六路径静默探测）
+  ▼
+node_modules/@add-coder/mcp-server/dist/index.js   ← 全部业务逻辑
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:18:23 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: {magicDir}/scripts/mcp-server.ts        ← 薄入口壳（唯一下游文件）
+  │ import { createAddMcpServer } from "@add-coder/mcp-server"
+  │ 显式注入 { projectRoot, magicDir, prismaClient }
+  │   └─ 壳内静态 import 宿主 src/generated/prisma/client.js
+  │      路径错误 = tsx 编译期报错（fail-fast，替代六路径静默探测）
+  ▼
+node_modules/@add-coder/mcp-server/dist/index.js   ← 全部业务逻辑
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:18:33 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: mcp-server.ts（薄入口壳）→ @add-coder/mcp-server（包内逻辑）
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:18:37 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: mcp-server.ts（薄入口壳）→ @add-coder/mcp-server（包内逻辑）
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:18:58 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:19:01 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:19:11 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:19:14 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:19:22 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 29日 星期三 18:19:26 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:40:07 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:40:09 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:40:20 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:40:22 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:40:32 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:40:33 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:40:49 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:40:53 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:59:43 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 08:59:47 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:02 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:04 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:11 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:12 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:25 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:26 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:31 CST ===
+file_path: EMPTY
+has_file_content: false
+has_replacements: false
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: command, is_background
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:39 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:41 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:52 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:53 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:00:58 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:01:02 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:01:07 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:01:09 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:01:15 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:01:19 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:01:23 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:01:27 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:02:20 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:02:24 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:02:38 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:02:40 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:02:46 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:02:50 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:02:57 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:03:01 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:03:17 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:03:21 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:03:29 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:03:32 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:04 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:08 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:12 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:16 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:23 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:27 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:39 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:41 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:48 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:52 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:04:57 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:05:00 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:05:40 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:05:44 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:05:49 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:05:53 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:05:58 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:02 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:09 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:10 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:18 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:22 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:37 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:41 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:46 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:50 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:06:57 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:07:01 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:07:07 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:07:10 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:07:14 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:07:18 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:07:44 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:07:48 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:11:07 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:11:10 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:11:20 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:11:24 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:26:44 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:26:48 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:27:18 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:27:22 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:33:10 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:33:14 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:33:34 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:33:38 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:45:19 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:45:23 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:45:35 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:45:39 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:50:23 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:50:26 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:51:31 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 09:51:35 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:02:42 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:02:46 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:02:53 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:02:57 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:04:40 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:04:44 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:08:11 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:08:14 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:11:46 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:11:49 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:18:21 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:18:26 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:18:45 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:18:49 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:21:59 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:22:03 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:25:35 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:25:39 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:27:58 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:28:02 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:30:43 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:30:46 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:35:54 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:35:58 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:36:30 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:36:34 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:36:40 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:36:43 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:40:22 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:40:26 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:46:41 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:46:45 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:49:40 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:49:44 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:57:25 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:57:29 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:57:36 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:57:40 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:58:01 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:58:05 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:58:21 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:58:25 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:58:44 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:58:48 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:59:01 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:59:05 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:59:31 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:59:36 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:59:49 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 10:59:53 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:00:00 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:00:04 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:11:53 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:11:57 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:12:08 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:12:12 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:12:34 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:12:38 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:12:51 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:12:55 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:13:10 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:13:14 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:13:28 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:13:31 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:13:44 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:13:47 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:14:18 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:14:22 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:14:29 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
+=== 2026年 07月 30日 星期四 11:14:33 CST ===
+file_path: /home/xmm/ai/add-coder/.qoder/plans/2026-07/29/add-coder-plugin-architecture-plan-v1.md
+has_file_content: false
+has_replacements: true
+[replacement_new_text[500]]: null
+top_keys: cwd, extra, hook_event_name, request_set_id, session_id, tool_input, tool_name, tool_response, transcript_path
+tool_input_keys: file_path, replacements
+=== DONE ===
