@@ -293,6 +293,11 @@ function genDpsScoringRules(rules: TomlData): string {
         if (typeof v !== "number") throw new Error(`dps-scoring-rules.toml: [${section}] ${key} 必须是数字`);
         return v;
     };
+    const str = (section: string, key: string): string => {
+        const v = required(section, key);
+        if (typeof v !== "string") throw new Error(`dps-scoring-rules.toml: [${section}] ${key} 必须是字符串`);
+        return v;
+    };
 
     return `export const DPS_SCORING_CONFIG = {
     SEMANTIC_WEIGHTS: [${arr("semantic", "weights").join(", ")}],
@@ -320,7 +325,7 @@ function genDpsScoringRules(rules: TomlData): string {
     FFT_DEFAULT_WEIGHTS: [${arr("fft", "default_weights").join(", ")}],
     THRESHOLD_PASS: ${num("thresholds", "pass")},
     THRESHOLD_WARN: ${num("thresholds", "warn")},
-    EMBEDDING_MODEL: "${String(required("embedding", "model"))}",
+    EMBEDDING_MODEL: "${str("embedding", "model")}",
 } as const;`;
 }
 
