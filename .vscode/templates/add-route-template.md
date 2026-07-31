@@ -20,11 +20,13 @@
 2. 调用 `find_related_docs` 检索受影响的架构/规范/需求文档
 3. 按检索结果更新项目文档（`docs/*/knowledge/`），或声明"本次变更无需更新项目文档"并说明理由
 4. 确认 Handoff 就绪（含 round 边界、ADD-7 策略表、回滚方案）
+5. **落库同步**：调用 `plan_track({ planName: "{planName}" })` 将 Plan/Specs/add-route 路径同步到 PlanRecord 表
 
 **产出**：
 - [ ] Specs 三元组路径确认
 - [ ] 项目文档更新（或无需更新声明）
 - [ ] Handoff 就绪
+- [ ] PlanRecord 已同步（plan_track 已调用）
 
 ---
 
@@ -83,7 +85,7 @@
 
 | # | Task | 文件 | 审计植入点 | 新增字面量 | 依赖 | 状态 |
 |---|------|------|-----------|-----------|------|------|
-| 1 | {Task名} | `file.ts` | `agentAudit("PHASE", ...)` | `PHASE_NAME` | 无 | ⬜ |
+| 1 | {Task名} | `file.ts` | `agentAudit("PHASE", ...)` | `PHASE_NAME` | 前置条件 | ⬜ |
 | 2 | {Task名} | `file.ts` | 无（结构变更） | — | Task 1 | ⬜ |
 
 ### 依赖拓扑

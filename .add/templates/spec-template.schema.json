@@ -2,6 +2,37 @@
     "template": "spec-template.md",
     "sections": [
         {
+            "id": "plan_spec_mapping",
+            "heading": "## Plan→Spec 映射",
+            "required": true
+        },
+        {
+            "id": "section_1",
+            "heading": "## 1.",
+            "required": true
+        },
+        {
+            "id": "plan_track_note",
+            "pattern": "plan_track\\(\\{ planName:",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{功能名称}",
+        "{标题}",
+        "{条件}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "Step",
+        "阶段",
+        "步骤"
+    ]
+}
+{
+    "template": "spec-template.md",
+    "sections": [
+        {
             "id": "why",
             "heading": "## Why",
             "required": true
