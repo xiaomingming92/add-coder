@@ -73,6 +73,12 @@ export function registerPlanTools(server: McpServer) {
           checklistTDone = (checklistContent.match(/\[x\].*\[T\]/g) || []).length
           checklistR = (checklistContent.match(/\[R\]/g) || []).length
         }
+        // 定位 add-route
+        const planPrefix = basename(t.name).replace(/-plan-v\d+$/, "")
+        const addRouteFile = allFiles.find(f =>
+          f.includes("add-route") && f.includes(planPrefix)
+        )
+        const addRoutePath = addRouteFile ? join(plansDir, addRouteFile) : undefined
         // upsert PlanRecord
         const existing = await db.plan.findFirst({ where: { planName: t.name } }) as Record<string, unknown> | null
         const data = {
@@ -80,15 +86,16 @@ export function registerPlanTools(server: McpServer) {
           specPath: existsSync(specPath) ? specPath : undefined,
           tasksPath: existsSync(tasksPath) ? tasksPath : undefined,
           checklistPath: existsSync(checklistPath) ? checklistPath : undefined,
+          addRoutePath: addRoutePath && existsSync(addRoutePath) ? addRoutePath : undefined,
           totalTasks, doneTasks, checklistT, checklistTDone, checklistR,
           planKeyword: keyword,
         }
         if (existing) {
           await db.plan.update({ where: { id: existing.id }, data })
-          results.push(`  ✅ 已更新 (totalTasks=${totalTasks}, done=${doneTasks})`)
+          results.push(`  ✅ 已更新 (totalTasks=${totalTasks}, done=${doneTasks})` + (addRoutePath ? `, addRoute` : ``))
         } else {
           await db.plan.create({ data: { ...data, planName: t.name, planPath: t.path } })
-          results.push(`  ✅ 已创建 (totalTasks=${totalTasks}, done=${doneTasks})`)
+          results.push(`  ✅ 已创建 (totalTasks=${totalTasks}, done=${doneTasks})` + (addRoutePath ? `, addRoute` : ``))
           newPlans.push(t.name.replace(/-plan-v\d+$/, ""))
         }
       }
@@ -105,7 +112,7 @@ export function registerPlanTools(server: McpServer) {
 
   // ===== plan_status =====
   server.registerTool("plan_status", {
-    description: "Plan 进度查询：返回 PlanRecord 进度数据和关联 Review。tasks.md 完成率、checklist 勾选率。",
+    description: "Plan 进度查询：返回 PlanRecord 进度数据和关联 Review。tasks.md 完成率、checklist 勾选率、add-route 路径。",
     inputSchema: z.object({
       planName: z.string().describe("Plan 名称"),
     }),
@@ -127,6 +134,7 @@ export function registerPlanTools(server: McpServer) {
         `checklist:    [T] ${ctd}/${ct} | [R] ${cr} 项`,
         `planKeyword:  ${plan.planKeyword || "—"}`,
         plan.specPath ? `spec:         ${plan.specPath}` : null,
+        plan.addRoutePath ? `addRoute:     ${plan.addRoutePath}` : null,
       ].filter(Boolean)
       return textResponse(lines.join("\n"))
     } catch (e) {
