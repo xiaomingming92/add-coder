@@ -75,3 +75,17 @@ type = "strategy"
 description = "Prisma schema 增量同步：diff add-coder 基准 vs 消费方 schema，interactive 确认后只插不删"
 rules = "sync-rules.toml"
 implementation = "src/caijuehub/strategies/prisma-sync.strategy.ts"
+
+[[caijue]]
+id = "sync-magic"
+type = "strategy"
+description = "magic 目录批量同步：hooks/templates/skills/rules 等从模板到 4 个 IDE 目录的映射与烘焙"
+rules = "sync-magic-rules.toml"
+implementation = "src/caijuehub/strategies/sync-magic.strategy.ts"
+
+[[caijue]]
+id = "sync-magic-bash"
+type = "strategy"
+description = "magic 目录批量同步（bash 版）：独立 TOML 结构，产 shell config 供 sync-magic.sh source"
+rules = "benchmark/sync-magic-benchmark-bash-rules.toml"
+implementation = "scripts/sync-magic-config.sh"

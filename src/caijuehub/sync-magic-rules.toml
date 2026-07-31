@@ -1,0 +1,110 @@
+# magic-sync 同步规则 — 模板文件到各 magic 目录的映射配置
+
+[core]
+# 项目名称（烘焙到 .md 占位符 {{projectName}}）
+project_name = "add-coder"
+# 所有目标 magic 目录
+magic_dirs = [".add", ".qoder", ".claude", ".vscode"]
+
+[exclude]
+# 同步 + 验证时跳过的文件/目录
+patterns = [".gitkeep", ".DS_Store", "debug-dump"]
+log_extensions = [".log"]
+
+# ── Hook 同步：adapter 专属 hooks ──
+[[hooks]]
+src = "templates/adapters/claude/hooks"
+dest = ".claude/hooks"
+name = "claude hooks"
+magic_dir = ".claude"
+
+[[hooks]]
+src = "templates/adapters/qoder/hooks"
+dest = ".qoder/hooks"
+name = "qoder hooks"
+magic_dir = ".qoder"
+
+[[hooks]]
+src = "templates/adapters/vscode/hooks"
+dest = ".vscode/hooks"
+name = "vscode hooks"
+magic_dir = ".vscode"
+
+[[hooks]]
+src = "templates/core/hooks"
+dest = ".add/hooks"
+name = ".add hooks"
+magic_dir = ".add"
+
+# ── Hook 同步：core → adapter 模板派生 ──
+[[hooks]]
+src = "templates/core/hooks"
+dest = "templates/adapters/codex/hooks"
+name = "codex hooks"
+magic_dir = ".codex"
+
+[[hooks]]
+src = "templates/core/hooks"
+dest = "templates/adapters/trae/hooks"
+name = "trae hooks"
+magic_dir = ".trae"
+
+# ── 通用类别：批量同步到所有 magic 目录 ──
+[[categories]]
+name = "templates"
+icon = "📚"
+bake = false   # 保留 {{magicDir}} 占位符给 init 渲染
+
+[[categories]]
+name = "skills"
+icon = "🎯"
+
+[[categories]]
+name = "rules"
+icon = "📋"
+
+[[categories]]
+name = "agents"
+icon = "🤖"
+
+[[categories]]
+name = "scripts"
+icon = "📜"
+
+[[categories]]
+name = "docs"
+icon = "📖"
+
+[[categories]]
+name = "vocabulary"
+icon = "📕"
+
+[[categories]]
+name = "tools"
+icon = "🔧"
+
+# ── 验证：同步后逐文件比对 ──
+[[verify]]
+src = "templates/adapters/claude/hooks"
+dest = ".claude/hooks"
+name = "claude hooks"
+
+[[verify]]
+src = "templates/adapters/qoder/hooks"
+dest = ".qoder/hooks"
+name = "qoder hooks"
+
+[[verify]]
+src = "templates/adapters/vscode/hooks"
+dest = ".vscode/hooks"
+name = "vscode hooks"
+
+[[verify]]
+src = "templates/core/hooks"
+dest = ".add/hooks"
+name = ".add hooks"
+
+[[verify]]
+src = "templates/core/templates"
+dest = ".add/templates"
+name = ".add templates"
