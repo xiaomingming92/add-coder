@@ -65,6 +65,30 @@
   - [ ] SubTask 1.1: {子任务描述}
 - [ ] Task 2: {任务描述}
 
+### IDE 代办清单
+
+> AI 读取本段 JSON → 调用 `TodoWrite` 加载到 IDE 任务面板。
+> 每条 content 以 `[轮次N·状态]` 前缀展示轮次分组，`id` 编码层级 `{plan-key}-r{N}-t{N}`。
+> 每完成一个 Task 后更新对应 `status` 为 `COMPLETE`。
+
+```json
+{
+  "planName": "{plan-keyword}",
+  "source": "simple-plan-template.md",
+  "rounds": [
+    {
+      "round": 1,
+      "name": "{轮次名称}",
+      "status": "IN_PROGRESS",
+      "tasks": [
+        {"id": "{plan-key}-r1-t1", "content": "[轮次1·待实施] Task 1: {任务描述}", "file": "{文件路径}", "status": "PENDING"},
+        {"id": "{plan-key}-r1-t2", "content": "[轮次1·待实施] Task 2: {任务描述}", "file": "{文件路径}", "status": "PENDING"}
+      ]
+    }
+  ]
+}
+```
+
 ---
 
 ## 四、Handoff（融合于 Plan 中，无需独立 handoff 文件）

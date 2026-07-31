@@ -6,7 +6,7 @@ set -e
 # 探测 MAGIC_DIR：在当前目录向上查找包含 plans/ 的隐藏目录
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CURRENT="$SCRIPT_DIR"
-MAGIC_DIR=""
+MAGIC_DIR=".vscode"
 while [ "$CURRENT" != "/" ]; do
   for d in "$CURRENT"/.qoder "$CURRENT"/.claude "$CURRENT"/.vscode "$CURRENT"/.trae "$CURRENT"/.codex "$CURRENT"/.add; do
     if [ -d "$d/plans" ]; then

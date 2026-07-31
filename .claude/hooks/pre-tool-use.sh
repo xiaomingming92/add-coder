@@ -8,7 +8,7 @@ export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 COMMON_LIB="$HOOK_DIR/lib/common.sh"
 [ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
 [ -f "$HOOK_DIR/lib/notify.sh" ] && source "$HOOK_DIR/lib/notify.sh" 2>/dev/null || true
-MAGIC_DIR="$CURRENT_MAGIC"
+MAGIC_DIR=".claude"
 
 # ── Hook 通知: 提前计算 Plan 关联信息 ──
 ACTIVE_PLAN=$(detect_active_add 2>/dev/null || true)
