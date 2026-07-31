@@ -50,6 +50,8 @@ Caijuehub 是 add-coder 历史上第一个实现 **TOML 规则声明 → 自动�
 | DPS 评分 | `dps-scoring-rules.toml` | `gateway.ts` | 文档质量闸门：语义/熵/CPM/结构 四维权重+阈值，AI 调参不碰代码 |
 
 > 📊 [sync-magic benchmark](./docs/sync-magic-benchmark-report.md)：caijuehub 改造实测——4 组对比，TS vs bash，熵值 vs 速度的场景价值分析。
+>
+> 🧠 [什么是酷的软件](./docs/what-makes-software-cool.md)：从 benchmark 出发抽象工程美学框架——标准符合度 × 熵值 × runtime 容忍区间。含 IT 运营 vs 个人认知双视角分析、达索案例。
 
 **改规则不改代码**——产品经理读 TOML 即可理解软件行为，市场人员改 TOML 即可调整策略参数。AI Agent 大规模索引、检索、修改规则时，操作的是同一张决策表。认知负担从 O(N×M) 降为 O(1)。
 
@@ -368,6 +370,8 @@ Caijuehub is add-coder's first implementation of **TOML declaration → auto-gen
 | DPS Scoring | `dps-scoring-rules.toml` | `gateway.ts` | Doc quality gateway: semantic/entropy/CPM/structure 4D weights+thresholds, AI self-tuning without touching code |
 
 > 📊 [sync-magic benchmark](./docs/sync-magic-benchmark-report.md): Caijuehub refactoring measured — 4-group comparison, TS vs bash, scenario-value analysis of entropy vs speed.
+>
+> 🧠 [What Makes Software Cool](./docs/what-makes-software-cool.md): An engineering aesthetics framework derived from the benchmark — standards compliance × entropy × runtime tolerance. IT ops vs personal cognition perspectives, Dassault case study.
 
 **Edit rules, not code** — product managers read TOML to understand software behavior, marketers modify TOML to adjust strategy parameters. When AI agents index, search, and modify rules at scale, they operate on the same decision table. Cognitive load drops from O(N×M) to O(1).
 
