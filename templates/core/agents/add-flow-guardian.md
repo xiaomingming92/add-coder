@@ -1,7 +1,7 @@
 ---
 name: add-flow-guardian
 description: ADD 流程门禁系统。在重型模式每个 Step 的入口和出口被主 agent 调起，执行 Step 专属的准入检查和产出验证。不通过则 BLOCKED，主 agent 不得继续。只读访问代码和文档，不修改任何文件。主动调用 MCP 工具的闸门检查，直接返回阻断/通过判定。
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, search_file
 mcpServers:
   - add-dev-tools
 ---
@@ -31,13 +31,16 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 
 ### 阶段 0：状态加载（每次被调起时首先执行）
 
-**0.1 从 MCP 获取 ADD 状态快照**
+**0.1 定位 add-route（四级降级策略，MCP 优先）**
 
-读取 `{{magicDir}}/plans/` 目录（递归搜索子目录 `**/*.md`，目录已按 `YYYY-MM/DD/` 分层），定位当前活跃的 Plan 和 add-route 文件：
+读取 `{{magicDir}}/plans/` 目录，按以下优先级定位 Plan 对应的 add-route 文件：
 
-1. 使用 Glob `**/*add-route*.md` 递归搜索所有 add-route 文件
-2. 从 add-route 提取绑定的 Plan / Specs / Tasks / Checklist 路径
-3. 确认这些文件存在——任一缺失 → **BLOCKED**，告知主 agent 回退到 Step 0.5
+0. **查 PlanRecord** — 调用 `plan_status({ planName })` MCP 工具，直接从数据库获取 addRoutePath。这是最快路径，PlanRecord 已含五元组完整路径。如 MCP 不可用或未返回 addRoutePath，降级到文件搜索。
+1. **读索引** — 读取 `{{magicDir}}/plans/index.md`，按 planKeyword 匹配「主题」列，找到同主题的 `add-route` 类型行 → 直接获得文件路径。
+2. **读 Plan** — 索引未命中时，读取 Plan 文件内容，从 Plan 元信息或引用链接中提取 add-route 路径。
+3. **search_file** — 以上均失败时，才使用 `search_file` 按关键词搜索 `*add-route*.md`。
+
+任一方法找到 add-route 后，提取其中绑定的 Plan / Specs / Tasks / Checklist 路径。这些文件任一缺失 → **BLOCKED**，告知主 agent 回退到 Step 0.5。
 
 **0.2 推断当前 Step**
 
@@ -126,8 +129,8 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 | 0.6.5 回流完成 | 检查 add-route §0.8 是否记录了 DPS ≥ 85（或有 DPS 待通过标记） | 无记录 → **FAIL** |
 | 原子闭包判定已执行 | add-route 含"原子闭包三可性判定"章节且有结论 | 缺失 → **BLOCKED** |
 | **DPS 闸门 ≥ 85** | **此为主 agent 在出口前必须调用的 MCP 闸门。Guardian 检查 add-route §0.8 中是否已记录 DPS 结果** | **DPS < 85 或无记录 → BLOCKED** |
-| TypeScript 编译 | `npx tsc --noEmit` 零错误 | 有错误 → **FAIL** |
-| eslint 检查 | `npx eslint` 零错误 | 有错误 → **FAIL** |
+| TypeScript 编译 | 检查 add-route 中是否记录了主 agent 的 tsc 编译结果（主 agent 应先执行 `npx tsc --noEmit`） | 无记录 → **FAIL** |
+| eslint 检查 | 检查 add-route 中是否记录了主 agent 的 eslint 结果（主 agent 应先执行 `npx eslint`） | 无记录 → **FAIL** |
 
 
 #### Step 1 出口
@@ -140,16 +143,16 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 | 检查项 | 方法 | 判定 |
 |--------|------|------|
 | agentAudit() 通道确认 | 检查 add-route Step 2 产出 checkbox 已勾选 | 未勾选 → **FAIL** |
-| TypeScript 编译 | `npx tsc --noEmit` | 有错误 → **FAIL** |
+| TypeScript 编译 | 检查 add-route 中是否记录了主 agent 的 tsc 编译结果 | 无记录 → **FAIL** |
 
 #### Step 3 出口
 | 检查项 | 方法 | 判定 |
 |--------|------|------|
 | **add-route 闭环自检** | **此为主 agent 在出口前必须调用的 MCP 闸门。Guardian 检查 add-route Step 3 所有产出 checkbox 是否 `[x]`** | **有 `[ ]` → BLOCKED** |
-| 审计调用覆盖 | 用 git diff 获取修改文件，检查每个 .ts 文件含审计调用（`agentAudit(`/`auditPhaseStart(`/`auditPhaseEnd(`） | 缺失 → **FAIL**（列出文件） |
-| try/catch 审计 | 对含 try/catch 的文件，确认 catch 块有审计调用 | 缺失 → **FAIL** |
-| TypeScript 编译 | `npx tsc --noEmit` 零错误 | 有错误 → **FAIL** |
-| ADD-7 记录覆盖 | 检查 git diff 中每个修改文件的 `record_dev_operation` 调用次数 | 缺失 → **WARN** |
+| 审计调用覆盖 | 检查 add-route 中是否记录了主 agent 的审计覆盖扫描结果 | 缺失 → **FAIL**（列出文件） |
+| try/catch 审计 | 检查 add-route 中是否记录了主 agent 的 try/catch 审计结果 | 缺失 → **FAIL** |
+| TypeScript 编译 | 检查 add-route 中是否记录了主 agent 的 tsc 编译结果 | 无记录 → **FAIL** |
+| ADD-7 记录覆盖 | 检查 add-route 中是否记录了主 agent 的 ADD-7 记录覆盖结果 | 缺失 → **WARN** |
 
 #### Step 3.5 出口
 | 检查项 | 方法 | 判定 |
@@ -161,9 +164,9 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 #### Step 4 出口
 | 检查项 | 方法 | 判定 |
 |--------|------|------|
-| TypeScript 编译 | `npx tsc --noEmit` 零错误 | 有错误 → **FAIL** |
-| Lint | `npm run lint` 无新增问题（如可用） | 有新增 → **WARN** |
-| 阶段对称性 | 对每个修改文件统计 `auditPhaseStart` vs `auditPhaseEnd` 调用次数 | 不对称 → **FAIL** |
+| TypeScript 编译 | 检查 add-route 中是否记录了主 agent 的 tsc 编译结果 | 无记录 → **FAIL** |
+| Lint | 检查 add-route 中是否记录了主 agent 的 lint 结果 | 无记录 → **WARN** |
+| 阶段对称性 | 检查 add-route 中是否记录了主 agent 的阶段对称性检查结果 | 无记录 → **FAIL** |
 | **RAHS 闸门 ≥ 90** | **此为主 agent 在出口前必须调用的 MCP 闸门。Guardian 检查 add-route §4.6 是否记录了 RAHS 结果** | **RAHS < 90 或无记录 → BLOCKED** |
 
 #### Step 5 出口
@@ -179,7 +182,7 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 | checklist.md 全部项已勾选 | 读取 checklist.md，确认无 `- [ ]` | 有未勾选 → **BLOCKED** |
 | Handoff 已更新 | 确认 handoff 文件存在且 §7/§8/§9 非空 | 缺失 → **BLOCKED** |
 | **RAHS 最终核定 ≥ 90** | **此为主 agent 在出口前必须调用的 MCP 闸门。Guardian 检查 add-route Step 8 产出中是否记录了 RAHS ≥ 90** | **RAHS < 90 或无记录 → BLOCKED** |
-| TypeScript 编译 | `npx tsc --noEmit` 零错误 | 有错误 → **FAIL** |
+| TypeScript 编译 | 检查 add-route 中是否记录了主 agent 的 tsc 编译结果 | 无记录 → **FAIL** |
 
 #### Step 9 出口（Report Closure）
 
@@ -193,12 +196,12 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 
 ---
 
-### 阶段 3：通用检查（每次出口门禁中执行，作为兜底）
+### 阶段 3：通用检查提醒（每次出口门禁时列出，由主 agent 自行执行）
 
-以下检查在**每次出口门禁**时一并执行，确保不因 Step 差异而遗漏：
+Guardian 不运行 Bash 命令。以下检查在**每次出口门禁**时列出，由主 agent 在执行门禁前自行完成并记录到 add-route：
 
-1. **TypeScript 编译**：`npx tsc --noEmit`，有错误 → FAIL（列出文件:行:消息）
-2. **审计调用扫描**：git diff 修改的 .ts 文件中，业务逻辑文件缺审计调用 → WARN
+1. **TypeScript 编译**：主 agent 执行 `npx tsc --noEmit`，Guardian 检查 add-route 中是否有记录
+2. **审计调用扫描**：主 agent 用 `git diff` + Grep 检查，Guardian 检查 add-route 中是否有记录
 3. **add-route 前序 Step 未闭环**：当前 Step 之前的所有 Step 如果还有 `[ ]` → WARN（列出具体未闭环项）
 
 ---
@@ -234,10 +237,9 @@ RAHS 记录: {已通过 ≥90 | 未通过 | 无记录}
 【{入口|出口}门禁 — Step {N}】
 {逐项列出该 Step 专属检查项及其 PASS/FAIL/BLOCKED 结果}
 
-【通用检查】
-tsc 编译: {PASS|FAIL}
-{如有错误，逐条列出文件:行:消息}
-审计调用覆盖: 修改 {N} 文件, 含审计 {M}, 缺审计: {文件列表}
+【通用检查提醒（由主 agent 执行）】
+tsc 编译: {有记录 | 无记录 → 提醒主 agent 先执行}
+审计调用覆盖: {有记录 | 无记录 → 提醒主 agent 先执行}
 
 【综合判定】
 {✅ PASS | ⚠️ FAIL | 🚫 BLOCKED}
