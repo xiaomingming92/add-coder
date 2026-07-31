@@ -553,18 +553,21 @@ export function registerGatewayTools(server: McpServer) {
           rc = "";
         if (existsSync(reviewsDir)) {
           const rfs = await readdirRecursive(reviewsDir);
+          const rkNoVersion = pp.replace(/-plan-v\d+$/i, "");
           rn =
             rfs.find(
               (f) =>
-                f.toLowerCase().includes(pp.toLowerCase()) &&
+                f.toLowerCase().includes(rkNoVersion.toLowerCase()) &&
                 f.includes("-review-v"),
             ) || "";
           if (rn) rc = (await readFileSafe(join(reviewsDir, rn))) || "";
         }
+        // ★ 兼容精简版和标准版 Plan：剥离 -plan-vN 后缀匹配 add-route 和 review
+        const kwNoVersion = pp.replace(/-plan-v\d+$/i, "");
         let arContent = "";
         const arFile = apf.find(
           (f) =>
-            f.toLowerCase().includes(pp.toLowerCase()) &&
+            f.toLowerCase().includes(kwNoVersion.toLowerCase()) &&
             f.toLowerCase().includes("add-route"),
         );
         if (arFile)
@@ -642,13 +645,21 @@ export function registerGatewayTools(server: McpServer) {
         if (arContent) {
           const tasksContent =
             (await readFileSafe(join(specsDir, sn, "tasks.md"))) || "";
-          // 提取 Task 块：[ ] Task N: 标题 ... 验证: ...
-          const taskRe =
+          // 提取 Task 块：兼容精简版（- [ ] Task N: ...）和标准版（### Task X.Y: ...）
+          const taskReSimple =
             /- \[[ x]\] Task \d+(?:\.\d+)?: ([^\n]+)([\s\S]*?)(?=- \[[ x]\] Task \d+(?:\.\d+)?:|$)/g;
           const taskDescs: string[] = [];
           let tm: RegExpExecArray | null;
-          while ((tm = taskRe.exec(tasksContent)) !== null)
+          while ((tm = taskReSimple.exec(tasksContent)) !== null)
             taskDescs.push(tm[1] + (tm[2] || ""));
+          // 标准版兼容: ### Task X.Y: 标题后提取描述文本
+          if (taskDescs.length === 0) {
+            const taskReStd = /###\s+Task\s+(\d+(?:\.\d+)?)\s*[:：]\s*([^\n]+)/g;
+            let tms: RegExpExecArray | null;
+            while ((tms = taskReStd.exec(tasksContent)) !== null) {
+              taskDescs.push(`Task ${tms[1]}: ${tms[2].trim()}`);
+            }
+          }
           // 业务原子化：Jaccard 计算 Task 间语义重叠，重叠越低越独立
           const totalPairs = (taskDescs.length * (taskDescs.length - 1)) / 2;
           const maxPairs = CFG.CPM_MAX_TASK_PAIRS;
