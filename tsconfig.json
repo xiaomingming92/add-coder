@@ -18,7 +18,7 @@
         "src",
         "templates/core/scripts",
         "scripts/*.ts"
-    ],
+, "scripts/benchmark/benchmark-sync.ts"    ],
     "exclude": [
         "node_modules",
         "dist"
