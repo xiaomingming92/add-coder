@@ -1,0 +1,46 @@
+# ============================================================
+# sync-magic bash 同步规则（bash 专用，独立于 TS 版）
+# 由 transcribe.ts (跨语言) 或 transcribe.sh (同语言) 转录为 shell config
+# 新增 adapter: 在 [hooks]/[verify] 加一行 key = "src|dest|name|magic_dir"
+#
+# 格式约定（为 transcribe.sh grep 兼容）:
+#   - 数组值用空格分隔: magic_dirs = ".add .qoder .claude .vscode"
+#   - 管道分隔多字段: key = "field1|field2|field3|field4"
+# ============================================================
+
+[core]
+project_name = "add-coder"
+magic_dirs = ".add .qoder .claude .vscode"
+exclude_patterns = ".gitkeep .DS_Store debug-dump"
+log_extensions = ".log"
+
+# ── Hook 同步映射 ──
+# 格式: key = "src|dest|name|magic_dir"
+[hooks]
+claude = "templates/adapters/claude/hooks|.claude/hooks|claude hooks|.claude"
+qoder  = "templates/adapters/qoder/hooks|.qoder/hooks|qoder hooks|.qoder"
+vscode = "templates/adapters/vscode/hooks|.vscode/hooks|vscode hooks|.vscode"
+add    = "templates/core/hooks|.add/hooks|.add hooks|.add"
+codex  = "templates/core/hooks|templates/adapters/codex/hooks|codex hooks|.codex"
+trae   = "templates/core/hooks|templates/adapters/trae/hooks|trae hooks|.trae"
+
+# ── 通用类别同步 ──
+# 格式: key = "icon|bake(0/1)"
+[categories]
+templates  = "📚|0"
+skills     = "🎯|1"
+rules      = "📋|1"
+agents     = "🤖|1"
+scripts    = "📜|1"
+docs       = "📖|1"
+vocabulary = "📕|1"
+tools      = "🔧|1"
+
+# ── 验证映射 ──
+# 格式: key = "src|dest|name"
+[verify]
+claude_hooks  = "templates/adapters/claude/hooks|.claude/hooks|claude hooks"
+qoder_hooks   = "templates/adapters/qoder/hooks|.qoder/hooks|qoder hooks"
+vscode_hooks  = "templates/adapters/vscode/hooks|.vscode/hooks|vscode hooks"
+add_hooks     = "templates/core/hooks|.add/hooks|.add hooks"
+add_templates = "templates/core/templates|.add/templates|.add templates"
