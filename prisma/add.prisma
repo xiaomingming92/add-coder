@@ -86,6 +86,7 @@ model PlanRecord {
   specPath       String?
   tasksPath      String?
   checklistPath  String?
+  addRoutePath   String?
   totalTasks     Int           @default(0)
   doneTasks      Int           @default(0)
   checklistT     Int           @default(0)

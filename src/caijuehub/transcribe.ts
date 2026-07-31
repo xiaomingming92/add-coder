@@ -320,6 +320,7 @@ function genDpsScoringRules(rules: TomlData): string {
     FFT_DEFAULT_WEIGHTS: [${arr("fft", "default_weights").join(", ")}],
     THRESHOLD_PASS: ${num("thresholds", "pass")},
     THRESHOLD_WARN: ${num("thresholds", "warn")},
+    EMBEDDING_MODEL: "${required("embedding", "model")}",
 } as const;`;
 }
 
