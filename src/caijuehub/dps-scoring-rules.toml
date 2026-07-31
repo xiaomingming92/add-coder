@@ -54,5 +54,13 @@ default_weights = [0.25, 0.25, 0.25, 0.25]
 
 # ═══════════════ DPS 阈值 ═══════════════
 [thresholds]
-pass = 85
-warn = 70
+pass = 80
+warn = 65
+
+# ═══════════════ Embedding 模型（@xenova/transformers ONNX）═══════════════
+[embedding]
+# 首次 DPS 调用自动下载并缓存到本地 ~/.cache/huggingface/hub/
+# 可选值（注释掉的前两个是备选方案）：
+#   "Xenova/all-MiniLM-L6-v2"      英文为主，80MB，速度快
+#   "Xenova/multilingual-e5-small"  多语言，118MB，平衡选择
+model = "Xenova/bge-small-zh-v1.5"
