@@ -2,6 +2,50 @@
     "template": "tasks-template.md",
     "sections": [
         {
+            "id": "round_deps",
+            "heading": "## 轮次依赖",
+            "required": true
+        },
+        {
+            "id": "plan_task_mapping",
+            "heading": "## Plan→Task 映射",
+            "required": true
+        },
+        {
+            "id": "round_1",
+            "heading": "## 轮次 1:",
+            "required": true
+        },
+        {
+            "id": "verification",
+            "heading": "## Verification",
+            "required": true
+        },
+        {
+            "id": "plan_track_note",
+            "pattern": "plan_track\\(\\{ planName:",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{需求域名}",
+        "{核心内容}",
+        "{版本号}",
+        "{轮次名称}",
+        "{任务描述}",
+        "{子任务描述}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "Round",
+        "轮次",
+        "阶段"
+    ]
+}
+{
+    "template": "tasks-template.md",
+    "sections": [
+        {
             "id": "preconditions",
             "heading": "## Preconditions",
             "required": true

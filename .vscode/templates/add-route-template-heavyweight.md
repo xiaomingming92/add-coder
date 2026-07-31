@@ -22,11 +22,13 @@
 2. 调用 `find_related_docs` 检索受影响的架构/规范/需求文档
 3. 按检索结果更新项目文档（`docs/*/knowledge/`），或声明"本次变更无需更新项目文档"并说明理由
 4. 确认 Handoff 就绪（含 round 边界、ADD-7 策略表、回滚方案）
+5. **落库同步**：调用 `plan_track({ planName: "{planName}" })` 将 Plan/Specs/add-route 路径同步到 PlanRecord 表
 
 **产出**：
 - [ ] 验证并更新项目状态：Specs 三元组路径确认
 - [ ] 验证并更新项目状态：项目文档已更新（或无需更新声明已记录）
 - [ ] 验证并更新项目状态：Handoff 就绪
+- [ ] 验证并更新项目状态：PlanRecord 已同步（plan_track 已调用）
 
 ### §0.8 DPS 闸门（上游文档质量校验）
 
@@ -36,11 +38,11 @@
 
 | DPS | 判定 | 动作 |
 |-----|:--:|------|
-| ≥ 85 | 🟢 | 进入 Step 1 |
-| 70–84 | 🟡 | 回退补齐短板（补 Review 缺失维度 / Specs 缺失 Requirement） |
-| < 70 | 🔴 | 回退细化 Plan 本身（粒度不足是下游漂移的根因） |
+| ≥ 80 | 🟢 | 进入 Step 1 |
+| 65–79 | 🟡 | 回退补齐短板（补 Review 缺失维度 / Specs 缺失 Requirement） |
+| < 65 | 🔴 | 回退细化 Plan 本身（粒度不足是下游漂移的根因） |
 
-- [ ] DPS 已通过（≥ 85），可进入 Step 1
+- [ ] DPS 已通过（≥ 80），可进入 Step 1
 
 ---
 
@@ -103,7 +105,7 @@
 
 | # | Task | 文件 | 审计植入点 | 新增字面量 | 依赖 | 状态 |
 |---|------|------|-----------|-----------|------|------|
-| 1 | {Task名} | `file.ts` | `agentAudit("PHASE", ...)` | `PHASE_NAME` | 无 | ⬜ |
+| 1 | {Task名} | `file.ts` | `agentAudit("PHASE", ...)` | `PHASE_NAME` | 前置条件 | ⬜ |
 | 2 | {Task名} | `file.ts` | 无（结构变更） | — | Task 1 | ⬜ |
 
 ### 依赖拓扑

@@ -64,6 +64,7 @@
 >
 > 当所有 `[T]` 编译期检查项均为 `[x]` 时（`[R]` 项可保持 `[ ]`），AI 必须执行：
 >
+> 0. **落库同步**：调用 `plan_track({ planName: "{planName}" })` 将 checklist 路径同步到 PlanRecord 表
 > 1. **读取** `review-implementation-template.md`，逐项填写实现审查内容
 > 2. **读取** `review-runtime-template.md`，复制为 `{{magicDir}}/reviews/{project}-review-runtime.md`
 >    - 替换占位符（标题、关联文档路径）
