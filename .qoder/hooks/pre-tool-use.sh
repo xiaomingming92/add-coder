@@ -9,7 +9,7 @@ export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
 export PROJECT_DIR="${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}"
 source "$HOOK_DIR/lib/common.sh" 2>/dev/null || true
 source "$HOOK_DIR/lib/notify.sh" 2>/dev/null || true
-MAGIC_DIR="$CURRENT_MAGIC"
+MAGIC_DIR=".qoder"
 
 # ── Hook 通知: 提前计算 Plan 关联信息 ──
 ACTIVE_PLAN=$(detect_active_add 2>/dev/null || true)
