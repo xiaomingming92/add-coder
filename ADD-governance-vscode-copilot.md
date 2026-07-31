@@ -4,15 +4,6 @@
 > **关联文档**：[add-coder-hook-full-alignment-plan-v1](../.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | [issue-6-report](../.qoder/reports/issue-6-tool-call-throttling-report.md)
 > **Hook 参考**: https://docs.github.com/zh/copilot/concepts/agents/hooks | https://vscode.js.cn/docs/agent-customization/hooks
 > **VS Code 版本要求**: 1.127+（Agent Hook 预览），1.129+（Agent Host 架构，支持 `.claude/settings.json`）
-> **目录**: Hook 事件模型 · ADD 治理卡位 · 注入通道 · HITL 人机审核交互 · 端差异汇总
-
-| 章节 | 内容 |
-|------|------|
-| [VS Code Copilot Hook 事件模型](#vs-code-copilot-hook-事件模型) | 10 种事件及频率 |
-| [ADD 治理卡位映射](#add-治理卡位映射) | agent 生命周期 → ADD 卡位 |
-| [注入通道](#注入通道) | stdout / stderr 输出格式 |
-| [HITL 人机审核交互](#hitl-人机审核交互) | caijuehub 配置驱动的 inputRequired 弹框 |
-| [端差异汇总](#端差异汇总) | VS Code vs Claude Code 差异 |
 
 ---
 
@@ -87,14 +78,6 @@ npx add-coder init --adapter=vscode
 VS Code Copilot hooks 必须位于 **项目根目录** 的 `.github/hooks/` 下。`npx add-coder init --adapter vscode` 会将 JSON 文件分发到此路径，而非 `.vscode/` 子目录。
 
 **Issue #6 背景**：本端的 429 并发问题是最初触发源。轮次 1 优先交付 `session-start.json` + `user-prompt-submit.json` 两个文件，仅这两个 JSON 即可消灭模板读取风暴（429 不再触发）。
-
----
-
-## HITL 人机审核交互
-
-VS Code Copilot 使用 MCP 标准 **inputRequired.elicit()** 弹框完成 HITL 审批。
-
-交互模式由 caijuehub 统一管理：`hitl-interaction-rules.toml` 中 `[vscode] mode = "inputRequired"`。Qoder CN 使用 genui widget 聊天内嵌审批面板（详见 [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md)）。
 
 ---
 

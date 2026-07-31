@@ -166,6 +166,23 @@ get_project_context({ scope: "add-state" })
   - 如 audit log 有最近操作 → 与 Plan 交叉验证一致
 ```
 
+### 3.5 检测 Specs 启动条件（流程演进 2026-07）
+
+**Review 回流完成后，Specs 可立即生成——不等 DPS 闸门。**
+
+检测逻辑：
+```
+Plan 是否存在？
+  ├─ 是 → Review 文件是否存在？
+  │   ├─ 是 → Plan 中是否有 [回流:] 标记？
+  │   │   ├─ 有 → ✅ 可写 Specs（立即开始，不等 DPS 不过闸门）
+  │   │   └─ 无 → ⚠️ 先完成 Review 回流
+  │   └─ 否 → ⚠️ 先生成 Review
+  └─ 否 → 无活跃 Plan
+```
+
+目的：避免聊天上下文窗口滑走导致 Plan 讨论浪费。Plan 的架构决策和 Review 的反馈都在当前对话上下文中——立即写 Specs 比等 DPS 闸门过后再写，质量更高。
+
 ---
 
 ## Step 4：构建上下文摘要
@@ -188,6 +205,10 @@ get_project_context({ scope: "add-state" })
 **Plan 拓扑**（从 index.md 提取）:
 - 最近 Plan: {links}
 - 待执行 ADD 操作: {从 get_project_context 提取}
+
+**Specs 就绪状态**（Review 回流检测）:
+- {如果 Review 已回流 → "✅ 可立即生成 Specs（不等 DPS）"}
+- {如果 Review 未回流 → "⚠️ 先完成 Review 回流后再生成 Specs"}
 
 **建议下一步**：
 - {根据审计记录、Plan 拓扑和 ADD 状态推断的下一步操作}
