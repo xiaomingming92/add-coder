@@ -1,6 +1,6 @@
 # Plans 总览
 
-> 自动生成: 2026-07-27 13:02:02 | 文档总数: 25 | 下次更新: 每天 2:00 AM
+> 自动生成: 2026-07-31 17:00:13 | 文档总数: 35 | 下次更新: 每天 2:00 AM
 
 
 ## 2026-07
@@ -29,9 +29,19 @@
 | 25 | handoff | [add-coder-hitl-mcp-hook-handoff-v1.md](2026-07/25/add-coder-hitl-mcp-hook-handoff-v1.md) | add-coder — HITL 人机审核架构 5 轮原子事务交接手册 |
 | 25 | plan | [add-coder-hitl-mcp-hook-plan-v1.hitl.md](2026-07/25/add-coder-hitl-mcp-hook-plan-v1.hitl.md) | add-coder-hitl-mcp-hook — HITL 提案 (round 1) |
 | 25 | plan | [add-coder-hitl-mcp-hook-plan-v1.md](2026-07/25/add-coder-hitl-mcp-hook-plan-v1.md) | add-coder-hitl-mcp-hook-plan-v1 |
+| 27 | add-route | [add-coder-dps-algorithm-redesign-add-route-v1.md](2026-07/27/add-coder-dps-algorithm-redesign-add-route-v1.md) | add-coder-dps-algorithm-redesign-add-route-v1 |
 | 27 | plan | [add-coder-agent-memory.hitl.md](2026-07/27/add-coder-agent-memory.hitl.md) | add-coder-agent-memory — HITL 提案 (round 1) |
+| 27 | plan | [add-coder-dps-algorithm-redesign-plan-v1.hitl.md](2026-07/27/add-coder-dps-algorithm-redesign-plan-v1.hitl.md) | add-coder-dps-algorithm-redesign-plan-v1 — HITL 提案 (round 3) |
+| 27 | plan | [add-coder-dps-algorithm-redesign-plan-v1.md](2026-07/27/add-coder-dps-algorithm-redesign-plan-v1.md) | add-coder-dps-algorithm-redesign-plan-v1 |
+| 27 | plan | [add-coder-hitl-mcp-hook-plan-v1.hitl.md](2026-07/27/add-coder-hitl-mcp-hook-plan-v1.hitl.md) | add-coder-hitl-mcp-hook-plan-v1 — HITL 提案 (round 1) |
 | 27 | plan | [add-coder-sync-prisma-patch-plan-v1.hitl.md](2026-07/27/add-coder-sync-prisma-patch-plan-v1.hitl.md) | add-coder-sync-prisma-patch-plan-v1 — HITL 提案 (round 1) |
 | 27 | plan | [add-coder-sync-prisma-patch-plan-v1.md](2026-07/27/add-coder-sync-prisma-patch-plan-v1.md) | add-coder-sync-prisma-patch-plan-v1 |
+| 31 | add-route | [add-coder-add-flow-loose-coupling-add-route-v1.md](2026-07/31/add-coder-add-flow-loose-coupling-add-route-v1.md) | add-coder-add-flow-loose-coupling-add-route-v1 |
+| 31 | add-route | [add-coder-addroute-path-persistence-add-route-v1.md](2026-07/31/add-coder-addroute-path-persistence-add-route-v1.md) | add-coder-addroute-path-persistence-add-route-v1 |
+| 31 | handoff | [add-coder-addroute-path-persistence-handoff-v1.md](2026-07/31/add-coder-addroute-path-persistence-handoff-v1.md) | add-coder — PlanRecord 补齐 addRoutePath 落库 交接手册 |
+| 31 | plan | [add-coder-add-flow-loose-coupling-plan-v1.md](2026-07/31/add-coder-add-flow-loose-coupling-plan-v1.md) | add-coder-add-flow-loose-coupling-plan-v1 |
+| 31 | plan | [add-coder-addroute-path-persistence-plan-v1.md](2026-07/31/add-coder-addroute-path-persistence-plan-v1.md) | add-coder-addroute-path-persistence-plan-v1 |
+| 31 | plan | [benchmark-sync-fair-redesign-plan-v1.md](2026-07/31/benchmark-sync-fair-redesign-plan-v1.md) | benchmark-sync 公平化改造 + transcribe 双通道对比-plan-v1 |
 
 ---
 *索引由 `.qoder/scripts/gen-plan-index.sh` 自动生成，勿手动编辑*

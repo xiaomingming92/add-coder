@@ -2,5 +2,7 @@ allowBuilds:
   '@prisma/engines': false
   esbuild: false
   prisma: false
+  protobufjs: true
+  sharp: true
 overrides:
   add-coder: 'link:'

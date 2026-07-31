@@ -706,7 +706,9 @@ DPS（Documentation Precision Score）在 Step 0 末尾量化上游文档质量�
 - Review 覆盖完备度（35%）：覆盖 Plan 的 7 个架构维度
 - Specs 精确度（35%）：Requirements 数与 Plan Phase 数 1:1 映射
 
-**执行方式**：`check_dps({ planKeyword: "..." })`。DPS ≥ 85 进入 Step 1；70–84 回退补齐；< 70 回退细化 Plan。
+**执行方式**：`check_dps({ planKeyword: "..." })`。DPS ≥ 80 进入 Step 1；65–79 回退补齐；< 65 回退细化 Plan。
+
+> **流程演进（2026-07）**：DPS 不再阻断 Specs 生成。Plan Review 回流完成后，AI 即可开始写 Specs——不等 DPS 闸门，不等用户说"继续"。目的是避免聊天上下文窗口滑走导致 Plan 讨论浪费。DPS 仍是 Step 1 入口闸门，但 Specs/Tasks/Checklist 的生成与 DPS 调优可并行推进。
 
 ---
 
