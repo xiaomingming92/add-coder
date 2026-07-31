@@ -49,6 +49,8 @@ Caijuehub 是 add-coder 历史上第一个实现 **TOML 规则声明 → 自动�
 | HITL 审批 | `hitl-interaction-rules.toml` | `hitl.ts` | 每 IDE 独立声明交互模式 |
 | DPS 评分 | `dps-scoring-rules.toml` | `gateway.ts` | 文档质量闸门：语义/熵/CPM/结构 四维权重+阈值，AI 调参不碰代码 |
 
+> 📊 [sync-magic benchmark](./docs/sync-magic-benchmark-report.md)：caijuehub 改造实测——4 组对比，TS vs bash，熵值 vs 速度的场景价值分析。
+
 **改规则不改代码**——产品经理读 TOML 即可理解软件行为，市场人员改 TOML 即可调整策略参数。AI Agent 大规模索引、检索、修改规则时，操作的是同一张决策表。认知负担从 O(N×M) 降为 O(1)。
 
 ### ③ Prompt Cache 原生友好 — 月费 ¥218，节省 98%
@@ -364,6 +366,8 @@ Caijuehub is add-coder's first implementation of **TOML declaration → auto-gen
 | sync --patch | `sync-rules.toml` | `sync.ts` | **First centralized decision hot-update in npm history** (eating my own dog food: add-coder manages its own template sync via caijuehub) |
 | HITL Approval | `hitl-interaction-rules.toml` | `hitl.ts` | Per-IDE interaction mode declaration |
 | DPS Scoring | `dps-scoring-rules.toml` | `gateway.ts` | Doc quality gateway: semantic/entropy/CPM/structure 4D weights+thresholds, AI self-tuning without touching code |
+
+> 📊 [sync-magic benchmark](./docs/sync-magic-benchmark-report.md): Caijuehub refactoring measured — 4-group comparison, TS vs bash, scenario-value analysis of entropy vs speed.
 
 **Edit rules, not code** — product managers read TOML to understand software behavior, marketers modify TOML to adjust strategy parameters. When AI agents index, search, and modify rules at scale, they operate on the same decision table. Cognitive load drops from O(N×M) to O(1).
 
