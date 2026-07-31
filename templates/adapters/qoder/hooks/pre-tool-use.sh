@@ -83,6 +83,25 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "
     exit 2
   fi
 
+  # §B: 模板类型前置注入 — plans/ 写入前提示应选模板
+  if echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(plans)/'; then
+    fname=$(basename "$file_path")
+    if echo "$fname" | grep -qE 'plan-v[0-9]'; then
+      echo "💡 [ADD PreToolUse] 写入 Plan → 模板: standard-plan-template.md（标准）或 simple-plan-template.md（≤3文件）" >&2
+    elif echo "$fname" | grep -qE 'add-route'; then
+      echo "💡 [ADD PreToolUse] 写入 ADD Route → 模板: add-route-template.md" >&2
+    elif echo "$fname" | grep -qE 'handoff'; then
+      echo "💡 [ADD PreToolUse] 写入 Handoff → 模板: handoff-single-round-template.md（单轮）或 handoff-multi-round-template.md（多轮）" >&2
+    fi
+    # Qoder Write 大文件适配 — 已存在大文件建议用 SearchReplace 分块
+    if echo "$tool_name" | grep -qE 'Write' && [ -f "$file_path" ]; then
+      fsize=$(wc -c < "$file_path" 2>/dev/null || echo "0")
+      if [ "$fsize" -gt 2000 ] 2>/dev/null; then
+        echo "⚠️ [ADD PreToolUse] 文件已有 ${fsize} 字节，Write 全量覆盖可能触发 Qoder 40500。建议用 SearchReplace 分块追加。" >&2
+      fi
+    fi
+  fi
+
   # §C: HITL tongyi 检查 — plans/ + PLAN_REVIEW reviews/ 写入前必须有 .hitl-tongyi-{planName} 哨兵
   # implementation/runtime review 不需要 HITL，走 §B 活跃 Plan 检查
   if echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(plans)/'; then
