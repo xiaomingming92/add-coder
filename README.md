@@ -1,6 +1,6 @@
 # add-coder
 
-Make 0.75 into one.> 
+Make 0.75 into one.
 
 💡 [什么叫做酷，怎么让软件变酷？](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) —— add范式的设计哲学
 
