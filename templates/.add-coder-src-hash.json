@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.7",
+  "_version": "0.3.8",
   "adapters/claude/hooks/doc-format-guard.sh": "ec59ad3f",
   "adapters/claude/hooks/lib/common.sh": "db321ef6",
   "adapters/claude/hooks/lib/context-inject.sh": "4132f203",
@@ -197,7 +197,7 @@
   "core/scripts/mcp-server/shared/fs.ts": "97257db9",
   "core/scripts/mcp-server/shared/hitl-interaction.strategy.ts": "7c5c26f5",
   "core/scripts/mcp-server/shared/package.json": "e3d5a4a2",
-  "core/scripts/mcp-server/shared/prisma.ts": "ec1dcfa2",
+  "core/scripts/mcp-server/shared/prisma.ts": "e871942b",
   "core/scripts/mcp-server/shared/project-root-strategy.ts": "1a5bdc57",
   "core/scripts/mcp-server/shared/response.ts": "f7806b67",
   "core/scripts/mcp-server/tasks/index.ts": "c040eb75",
