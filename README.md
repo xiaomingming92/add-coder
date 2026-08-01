@@ -382,13 +382,13 @@ Traditional AI development: Chat → Generate code → Dig through chat history 
 | Auditing relies on developer discipline | The **MCP audit toolchain** automatically records every operation; system gateways enforce checks |
 | No traceability | Audit events are naturally linked: Plan → Spec → Task → Step → Tool Call, forming a complete evidence chain |
 
-### ② Caijuehub Rule Engine: From Sync to Three Domains
+### ② Caijuehub — The Centralized Adjudication Layer: From Sync to Three Domains
 
-Caijuehub is add-coder's first implementation of **TOML declaration → auto-generated strategy → business code consumption**. From the initial sync --patch experiment to today's three-domain coverage spanning HITL and DPS, the evolution proves the extensibility of centralized decision layers. Details: [docs/caijuehub.md](./docs/caijuehub.md).
+Caijuehub is add-coder's first implementation of **TOML declaration → auto-generated strategy → business code consumption**. From the initial sync --patch experiment to today's three-domain coverage spanning HITL and DPS, the evolution proves the extensibility of the centralized adjudication layer. Details: [docs/caijuehub.md](./docs/caijuehub.md).
 
 | Domain | Rules File | Consumer | Description |
 |--------|---------|--------|------|
-| sync --patch | `sync-rules.toml` | `sync.ts` | **First centralized decision hot-update in npm history** (eating my own dog food: add-coder manages its own template sync via caijuehub) |
+| sync --patch | `sync-rules.toml` | `sync.ts` | **First centralized adjudication hot-update in npm history** (eating my own dog food: add-coder manages its own template sync via caijuehub) |
 | HITL Approval | `hitl-interaction-rules.toml` | `hitl.ts` | Per-IDE interaction mode declaration |
 | DPS Scoring | `dps-scoring-rules.toml` | `gateway.ts` | Doc quality gateway: semantic/entropy/CPM/structure 4D weights+thresholds, AI self-tuning without touching code |
 
@@ -617,7 +617,8 @@ npx add-coder init
               ┌────────────┘
               ▼
        ┌─────────────────────────────────────┐
-       │       Caijuehub Rule Engine          │
+       │  Caijuehub — Centralized            │
+       │  Adjudication Layer                  │
        │  TOML-Driven Policy System           │
        │  Detect / Adapt / Prisma / Write —   │
        │  Fully Configurable                  │
