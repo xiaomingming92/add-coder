@@ -103,7 +103,7 @@ function genProjectRootRules(rules: TomlData): string {
     return `export const PROJECT_ROOT_PRIORITY = [${tierList}] as const;\nexport type ProjectRootTier = (typeof PROJECT_ROOT_PRIORITY)[number];`;
 }
 
-interface PrismaSyncRules { base_schema?: string; target_pattern?: string; sync_items?: string[]; on_diff?: string; on_missing_model?: string; on_field_conflict?: string; on_missing_field?: string; on_extra_field?: string; prompt?: string }
+interface PrismaSyncRules { base_schema?: string; target_pattern?: string; sync_items?: string[]; on_diff?: string; on_missing_model?: string; on_field_conflict?: string; on_missing_field?: string; on_extra_field?: string; prompt?: string; post_sync?: { header?: string; final?: string; managed_actions?: Array<{label: string; cmd: string}>; p3005?: { hint?: string; cmd?: string }; unmanaged_actions?: Array<{label: string; cmd?: string; hint?: string; steps?: string[]}> } }
 
 function genPrismaSyncRules(rules: TomlData): string {
     const d = (rules as Record<string, unknown>).prisma as PrismaSyncRules | undefined;
@@ -115,7 +115,38 @@ function genPrismaSyncRules(rules: TomlData): string {
     const missingField = d?.on_missing_field ?? d?.on_diff ?? "interactive";
     const extraField = d?.on_extra_field ?? "ignore";
     const prompt = d?.prompt ?? "add-coder add.prisma 有新模型需要同步。";
-    return `export const SYNC_PRISMA_CONFIG = {\n    BASE_SCHEMA: "${base}",\n    TARGET_PATTERN: "${target}",\n    SYNC_ITEMS: [${items}],\n    ON_MISSING_MODEL: "${missingModel}",\n    ON_FIELD_CONFLICT: "${fieldConflict}",\n    ON_MISSING_FIELD: "${missingField}",\n    ON_EXTRA_FIELD: "${extraField}",\n    PROMPT: "${prompt}",\n};`;
+    // Post-Sync 迁移指引
+    const ps = d?.post_sync;
+    const header = ps?.header ?? "下一步按你的场景选择迁移命令:";
+    const finalCmd = ps?.final ?? "npx prisma generate";
+    const p3005 = ps?.p3005;
+    const managedItems = (ps?.managed_actions ?? []).map(a => `{ label: "${a.label}", cmd: "${a.cmd}" }`).join(",\n            ");
+    const unmanagedItems = (ps?.unmanaged_actions ?? []).map(a => {
+        if (a.cmd) return `{ label: "${a.label}", cmd: "${a.cmd}" }`;
+        const stepList = (a.steps ?? []).map((s: string) => `"${s}"`).join(", ");
+        return `{ label: "${a.label}", hint: "${a.hint || ""}", steps: [${stepList}] }`;
+    }).join(",\n            ");
+    return `export const SYNC_PRISMA_CONFIG = {
+    BASE_SCHEMA: "${base}",
+    TARGET_PATTERN: "${target}",
+    SYNC_ITEMS: [${items}],
+    ON_MISSING_MODEL: "${missingModel}",
+    ON_FIELD_CONFLICT: "${fieldConflict}",
+    ON_MISSING_FIELD: "${missingField}",
+    ON_EXTRA_FIELD: "${extraField}",
+    PROMPT: "${prompt}",
+    POST_SYNC: {
+        HEADER: "${header}",
+        FINAL: "${finalCmd}",
+        MANAGED_ACTIONS: [
+            ${managedItems}
+        ],
+        P3005: { hint: "${p3005?.hint ?? ""}", cmd: "${p3005?.cmd ?? ""}" },
+        UNMANAGED_ACTIONS: [
+            ${unmanagedItems}
+        ],
+    },
+};`;
 }
 
 // ── Sync Magic 生成器 ──

@@ -51,3 +51,42 @@ on_missing_field = "interactive"  # 基准有、消费方无
 on_extra_field = "ignore"         # 消费方特有（不做操作）
 # 汇总提示
 prompt = "add-coder 标准 add.prisma 与消费方 schema 存在差异。"
+
+# ── Post-Sync 动作指引（sync 写入差异后的迁移收尾）──
+# 宿主状态判断：有 migrations 目录 → managed_actions；无 → unmanaged_actions
+
+[prisma.post_sync]
+header = "下一步按你的场景选择迁移命令:"
+final = "npx prisma generate"
+
+# 有 migrations 目录的宿主：dev / deploy / status 三选一
+[[prisma.post_sync.managed_actions]]
+label = "开发环境（生成新迁移+同步本地库）"
+cmd = "npx prisma migrate dev"
+
+[[prisma.post_sync.managed_actions]]
+label = "生产/CI（只应用已有迁移）"
+cmd = "npx prisma migrate deploy"
+
+[[prisma.post_sync.managed_actions]]
+label = "不确定？先查状态"
+cmd = "npx prisma migrate status"
+
+# P3005 基线化提示（仅在有 migrations 场景显示）
+[prisma.post_sync.p3005]
+hint = "若报 P3005（库有表但无迁移记录）= 需先基线化:"
+cmd = "npx prisma migrate resolve --applied <��移名>，再执行 deploy"
+
+# 无 migrations 目录的宿主：首次接入
+[[prisma.post_sync.unmanaged_actions]]
+label = "首次接入迁移管理（空库）"
+cmd = "npx prisma migrate dev --name init"
+
+[[prisma.post_sync.unmanaged_actions]]
+label = "库已有表（db push 建过）"
+hint = "先手动基线化，再 deploy:"
+steps = [
+    "npx prisma migrate diff --from-empty --to-schema-datamodel <schema文件> --script",
+    "将输出写入 prisma/migrations/<时间戳>_init/migration.sql",
+    "npx prisma migrate resolve --applied <时间戳>_init",
+]

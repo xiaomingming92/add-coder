@@ -196,6 +196,33 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
     await checkPrismaDiff(projectRoot, options);
 }
 
+/** 迁移命令指引：从 caijuehub POST_SYNC 策略渲染场景化后续命令（按宿主 migrations 状态分流） */
+function printMigrateGuidance(targetPath: string, changed: number) {
+    const g = SYNC_PRISMA_CONFIG.POST_SYNC;
+    const isManaged = existsSync(resolve(dirname(targetPath), "migrations"));
+    const actions = isManaged ? g.MANAGED_ACTIONS : g.UNMANAGED_ACTIONS;
+
+    console.log(`  ▶ 已写入 ${changed} 处变更，${g.HEADER}`);
+
+    for (const a of actions) {
+        if ("cmd" in a && "label" in a) {
+            const prefix = isManaged ? "├─" : "├─";
+            console.log(`     ${prefix} ${(a as {label: string}).label}: ${(a as {cmd: string}).cmd}`);
+        } else if ("steps" in a) {
+            const item = a as { label: string; hint?: string; steps: string[] };
+            console.log(`     └─ ${item.label}:`);
+            if (item.hint) console.log(`        ⚠️  ${item.hint}`);
+            for (const s of item.steps) console.log(`          ${s}`);
+        }
+    }
+
+    if (isManaged) {
+        console.log(`     ⚠️  ${g.P3005.hint}`);
+        console.log(`          ${g.P3005.cmd}`);
+    }
+    console.log(`     ⚠️  所有场景收尾: ${g.FINAL}`);
+}
+
 /** Prisma schema diff 检查（--patch 模式下触发） */
 async function checkPrismaDiff(projectRoot: string, options: { adapter?: string; patch?: boolean }) {
     if (!options.patch) return;
@@ -213,6 +240,8 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
     }
 
     const targetExists = existsSync(targetPath);
+    // 实际写入统计（决定汇总提示是否建议迁移，避免“零修改也提示”的误导）
+    let modifiedCount = 0;
 
     console.log(`\n⚠️  Prisma schema 差异检测:`);
     console.log(`  基准: ${result.baseSchema} (add-coder 标准)`);
@@ -244,6 +273,7 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
             },
             execute() {
                 const n = injectMissingModels(result.targetPath, selected);
+                modifiedCount += n;
                 console.log(`  ✅ 已将 ${n} 个模型/枚举注入 ${result.targetPath}`);
                 return Promise.resolve(n);
             },
@@ -275,6 +305,7 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
                     },
                     execute() {
                         const n = overwriteFieldLines(targetPath, basePath, d.name, d.conflicts);
+                        modifiedCount += n;
                         console.log(`    ✅ 已覆盖 ${n} 个冲突字段`);
                         return Promise.resolve(n);
                     },
@@ -297,6 +328,7 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
                     },
                     execute() {
                         const n = injectFieldLines(targetPath, basePath, d.name, d.missingFields);
+                        modifiedCount += n;
                         console.log(`    ✅ 已补充 ${n} 个字段`);
                         return Promise.resolve(n);
                     },
@@ -320,17 +352,23 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
         }
     }
 
-    // 汇总提示
+    // 汇总提示（覆盖全部分支边界：零差异/拒绝全部/新建/已修改）
     if (targetExists) {
         console.log(`\n  ${SYNC_PRISMA_CONFIG.PROMPT}`);
-        console.log(`  ▶ 请运行: npx prisma migrate dev && npx prisma generate`);
+        if (modifiedCount > 0) {
+            printMigrateGuidance(targetPath, modifiedCount);
+        } else {
+            console.log(`  ▶ 目标 schema 已是最新（未选择任何变更），无需迁移操作`);
+        }
     } else {
         console.log(`\n  目标 schema 文件不存在: ${result.targetPath}`);
         mkdirSync(dirname(targetPath), { recursive: true });
         writeFileSync(targetPath, '// add.prisma — ADD 治理模型\n\n', 'utf-8');
         const n = injectMissingModels(targetPath, result.missing);
         console.log(`  ✅ 已创建并注入 ${n} 个模型/枚举`);
-        console.log(`  ▶ 请运行: npx prisma migrate dev && npx prisma generate`);
+        if (n > 0) {
+            printMigrateGuidance(targetPath, n);
+        }
     }
 }
 
