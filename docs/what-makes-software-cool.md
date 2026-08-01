@@ -1,6 +1,6 @@
 # 什么是酷的软件
 
-> 本文从 [sync-magic benchmark]（https://github.com/xiaomingming92/add-coder/blob/main/docs%2Fsync-magic-benchmark-report.md） 出发，抽象一套衡量"酷"的工程美学框架。
+> 本文从 [sync-magic benchmark](https://github.com/xiaomingming92/add-coder/blob/main/docs%2Fsync-magic-benchmark-report.md） 出发，抽象一套衡量"酷"的工程美学框架。
 
 ---
 
