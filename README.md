@@ -11,7 +11,7 @@ Make 0.75 into one.
  </p>
 
 ```bash
-# 第一次过死亡谷耗时 19 天
+# 0.1.0 发布于2026-07-10 04:11 UTC（北京时间当天上午 12:11）至 2026-07-28 累计突破 5000 次下载，**首次过死亡谷耗时 19 天**。
 ~ $ curl -s https://api.npmjs.org/downloads/point/last-month/add-coder
 {
   "downloads": 5161,
