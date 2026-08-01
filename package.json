@@ -65,7 +65,6 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@prisma/adapter-libsql": "^7.0.0",
     "@prisma/adapter-pg": "^7.0.0",
     "@prisma/client": "^7.0.0",
     "dotenv": "*",
@@ -88,13 +87,10 @@
       "optional": false
     },
     "@prisma/adapter-pg": {
-      "optional": true
-    },
-    "@prisma/adapter-libsql": {
-      "optional": true
+      "optional": false
     },
     "@xenova/transformers": {
-      "optional": true
+      "optional": false
     }
   },
   "devDependencies": {
