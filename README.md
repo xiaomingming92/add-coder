@@ -2,7 +2,7 @@
 
 Make 0.75 into one.> 
 
-💡 [什么让软件变酷？](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) —— add-coder 的设计哲学
+💡 [什么叫做酷，怎么让软件变酷？](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) —— add范式的设计哲学
 
 <p align="left" style="width: 100%;  background: linear-gradient(135deg, #b8a0a0ff 0%, #ce9674ff 100%); display: flex; justify-content: space-between; align-items: center; padding: 6px">
    <img src="https://img.shields.io/npm/dm/add-coder" alt="npm downloads">
