@@ -6,7 +6,8 @@ Make 0.75 into one.
 
 > [![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder) [![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder) [![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder) <br/>
 > [📈 趋势](https://www.npmcharts.com/compare/add-coder?interval=30)<br/>
-> 👍 如果你正在使用 `add-coder`，欢迎给 GitHub 点个 Star 支持一下！
+> 👍 星星之火可以燎原，让我们一起点赞
+[add-coder](https://github.com/xiaomingming92/add-coder)吧！
 
 ```bash
 # 0.1.0 发布于2026-07-10 04:11 UTC（北京时间当天上午 12:11）至 2026-07-28 累计突破 5000 次下载，**首次过死亡谷耗时 19 天**。
@@ -373,6 +374,7 @@ Make 0.75 into one.
 —— The design philosophy of the ADD paradigm.
 > [![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder) [![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder) [![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder) <br/>
 > [📈 trend](https://www.npmcharts.com/compare/add-coder?interval=30)<br/>
+> 👍 Please star it if you hope more people will know about [add-codee](https://github.com/xiaomingming92/add-coder)
 
 **AI Governance, Implemented** — The complete scaffolding from [codein2027](https://github.com/xiaomingming92/codein2027) for rapidly building the ADD programming paradigm. Built on the core principle of **Audit as Infrastructure**, it shatters the black-box programming process and cross-session amnesia, evolving the programming paradigm into an auditable, traceable, and convergent new era. [NPM](https://www.npmjs.com/package/add-coder) · [GitHub](https://github.com/xiaomingming92/add-coder)
 
