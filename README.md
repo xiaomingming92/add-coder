@@ -6,7 +6,8 @@ Make 0.75 into one.
 
 <p align="left" style="width: 100%;  background: linear-gradient(135deg, #b8a0a0ff 0%, #ce9674ff 100%); display: flex; justify-content: space-between; align-items: center; padding: 6px">
    <img src="https://img.shields.io/npm/dm/add-coder" alt="npm downloads">
-   <img src="https://img.shields.io/badge/npmcharts-4.9k%2Fmonth-blue" alt="npmcharts">
+   ![NPM Total Downloads](https://img.shields.io/npm/dt/add-coder)
+   ![NPM Weekly Downloads](https://img.shields.io/npm/dw/add-coder)
    <a href="https://www.npmcharts.com/compare/add-coder?interval=30" style="color:#c41a16;font-weight:700">📈 趋势</a>
  </p>
 
