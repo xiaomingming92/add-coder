@@ -4,16 +4,9 @@ Make 0.75 into one.
 
 💡 [什么叫做酷，怎么让软件变酷？](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) —— add范式的设计哲学
 
-<p align="left" style="width: 100%;  background: linear-gradient(135deg, #b8a0a0ff 0%, #ce9674ff 100%); display: flex; justify-content: space-between; align-items: center; padding: 6px">
-   # add-coder
-
-[![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder)
-[![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder)
-[![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder)
-
-   <a href="https://www.npmcharts.com/compare/add-coder?interval=30" style="color:#c41a16;font-weight:700">📈 趋势</a>
+> [![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder) [![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder) [![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder) [📈 趋势](https://www.npmcharts.com/compare/add-coder?interval=30)
+> 
 > ⭐ 如果你正在使用 `add-coder`，欢迎给 GitHub 点个 Star 支持一下！
- </p>
 
 ```bash
 # 0.1.0 发布于2026-07-10 04:11 UTC（北京时间当天上午 12:11）至 2026-07-28 累计突破 5000 次下载，**首次过死亡谷耗时 19 天**。
