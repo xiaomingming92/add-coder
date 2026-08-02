@@ -386,13 +386,6 @@ Make 0.75 into one.
 ```bash
 npx add-coder init
 ```
-
-<p align="left" style="width:100%;background:linear-gradient(135deg,#a0b8a0 0%,#74ce74 100%);display:flex;justify-content:space-between;align-items:center;padding:6px">
-  <img src="https://img.shields.io/npm/dm/add-coder" alt="npm downloads">
-  <img src="https://img.shields.io/badge/npmcharts-4.9k%2Fmonth-blue" alt="npmcharts">
-  <a href="https://www.npmcharts.com/compare/add-coder?interval=30" style="color:#1a6b1a;font-weight:700">📈 Trend</a>
-</p>
-
 ---
 
 ## Not a Template Tool — An Architectural Difference
