@@ -6,7 +6,7 @@ Make 0.75 into one.
 
 > [![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder) [![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder) [![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder) <br/>
 > [📈 趋势](https://www.npmcharts.com/compare/add-coder?interval=30)<br/>
-> ⭐ 如果你正在使用 `add-coder`，欢迎给 GitHub 点个 Star 支持一下！
+> 👍 如果你正在使用 `add-coder`，欢迎给 GitHub 点个 Star 支持一下！
 
 ```bash
 # 0.1.0 发布于2026-07-10 04:11 UTC（北京时间当天上午 12:11）至 2026-07-28 累计突破 5000 次下载，**首次过死亡谷耗时 19 天**。
