@@ -68,12 +68,12 @@ export function registerCheckRahs(server: McpServer) {
         } catch {}
         try {
           const logs = (await (
-            prisma.auditLog as Record<string, (...a: unknown[]) => unknown>
+            prisma.devOperation as Record<string, (...a: unknown[]) => unknown>
           ).findMany({
             where: {
               OR: [
+                { planKeyword: { contains: pp, mode: "insensitive" } },
                 { targetId: { contains: pp, mode: "insensitive" } },
-                { reason: { contains: pp, mode: "insensitive" } },
               ],
             },
             select: { id: true },

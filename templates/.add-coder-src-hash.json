@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.9",
+  "_version": "0.3.10",
   "adapters/claude/hooks/doc-format-guard.sh": "ec59ad3f",
   "adapters/claude/hooks/lib/common.sh": "db321ef6",
   "adapters/claude/hooks/lib/context-inject.sh": "4132f203",
@@ -209,7 +209,7 @@
   "core/scripts/mcp-server/tools/gateway/check_add_route_completeness.ts": "c205989d",
   "core/scripts/mcp-server/tools/gateway/check_add_route_status.ts": "3662b6dc",
   "core/scripts/mcp-server/tools/gateway/check_dps.ts": "12f3b375",
-  "core/scripts/mcp-server/tools/gateway/check_rahs.ts": "dc7e2a20",
+  "core/scripts/mcp-server/tools/gateway/check_rahs.ts": "c37f6810",
   "core/scripts/mcp-server/tools/gateway/check_spec_sync.ts": "a683697f",
   "core/scripts/mcp-server/tools/gateway/helpers.ts": "5ed11a3b",
   "core/scripts/mcp-server/tools/gateway/index.ts": "5a9fd5ed",
