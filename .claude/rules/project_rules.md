@@ -23,7 +23,7 @@
 | P2 | ADD-10 意图与实现的语义鸿沟 | 意图与实现是两层抽象，对齐只能靠显式对照 | ✅ 已实现 | |
 | P2 | ADD-11 证据的不可再生性 | 运行时上下文不可再生，证据必须优先持久化 | 🔶 待实现 | 需 runtime hook + predev 脚本 |
 | P2 | ADD-12 双源头漂移的必然性 | 代码与文档无同步必漂移，漂移代价由下一个接手者承担 | ✅ 已实现 | |
-| P2 | ADD-13 DPS 上游文档质量闸门 | Plan 概括度 → Review 注意力稀释 → Specs 遗漏 → 实现偏差。`check_dps`（DPS ≥ 85）在 Step 0 末尾量化阻断 | ✅ 已实现 | 2026-06-11 引入 |
+| P2 | ADD-13 DPS 上游文档质量闸门 | Plan 概括度 → Review 注意力稀释 → Specs 遗漏 → 实现偏差。`check_dps`（DPS ≥ {{dpsPass}}）在 Step 0 末尾量化阻断 | ✅ 已实现 | 2026-06-11 引入 |
 | P2 | ADD-14 RAHS 下游执行健康度闸门 | 范围保真度 + 类型安全 + 审计完整度 + Spec 合规 + 阶段对称性。`check_rahs`（RAHS ≥ 90）在 Step 4/8 量化阻断 | ✅ 已实现 | 2026-06-11 引入 |
 | P2 | ADD-15 add-route 闭环自检 | Step 3 代码完成后必须调用 `check_add_route_completeness` 扫描 add-route Step 完成度，防止执行遗漏。返回 complete 方可进入 Step 3.5 | ✅ 已实现 | 2026-06-11 引入 |
 | P2 | ADD-17 HITL 磋商临时文件机制 | doc-format-guard 要求 Plan/Review 文件包含完整章节才放行，HITL 第一步只写总览表会被 guard 阻断。用 `{name}.temporary.md` 做磋商（不受 guard 检查），人类拍板后再写正式文件并删除 temporary.md | ✅ 已实现 | 2026-07-23 引入 |

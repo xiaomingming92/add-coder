@@ -34,7 +34,7 @@ export function registerCheckDps(server: McpServer) {
     "check_dps",
     {
       description:
-        "DPS 闸门。四维复合评分: 语义相关性(TF-IDF/Jaccard) + 信息熵匹配(香农/Deng) + CPM关键路径 + 结构完整度 + FFT自适应权重。DPS >= 85 可进入 Step 1。",
+        `DPS 闸门。四维复合评分: 语义相关性(TF-IDF/Jaccard) + 信息熵匹配(香农/Deng) + CPM关键路径 + 结构完整度 + FFT自适应权重。DPS >= ${CFG.THRESHOLD_PASS} 可进入 Step 1。`,
       inputSchema: z.object({
         planKeyword: z.string().describe("Plan 文件的关键词"),
       }),
