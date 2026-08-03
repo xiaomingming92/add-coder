@@ -100,7 +100,7 @@ import { HITL_INTERACTION_CONFIG } from "../shared/hitl-interaction.strategy.js"
 
 ## 第三个案例：DPS 评分全参数
 
-**DPS（Documentation Precision Score）是 ADD 范式的上游质量闸门**——在 ADD 范式的rules的Step 0 末尾量化 Plan/Review/Specs 文档质量，≥85 才放行进入编码。它不是"建议"，是架构阻断。
+**DPS（Documentation Precision Score）是 ADD 范式的上游质量闸门**——在 ADD 范式的rules的Step 0 末尾量化 Plan/Review/Specs 文档质量，达到阈值（以 dps-scoring-rules.toml [thresholds] 为准，当前 PASS=80）才放行进入编码。它不是"建议"，是架构阻断。
 
 ### 为什么 DPS 参数要 caijuehub 化
 
@@ -126,8 +126,8 @@ sub_weights = [0.4, 0.35, 0.25]
 max_task_pairs = 200
 
 [thresholds]
-pass = 85
-warn = 70
+pass = 80
+warn = 65
 ```
 
 ### 消费（`gateway.ts`）

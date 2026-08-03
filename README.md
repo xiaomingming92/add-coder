@@ -124,7 +124,7 @@ ADD 范式 + Qoder:     cache 命中率 99.31%, 每次请求 MISS 仅 2,426 toke
 
 ```
 DPS (Documentation Precision Score) — TF-IDF/Jaccard 语义 + 香农/Deng 熵 + CPM 关键路径 + 结构完整度
-  → 四维复合评分 + FFT 自适应权重，≥ 85 进入 Step 1
+  → 四维复合评分 + FFT 自适应权重，≥ 阈值（以 dps-scoring-rules.toml 为准，当前 PASS=80）进入 Step 1
 RAHS (Runtime Architecture Health Score) — 运行时架构健康度
   → 五维判定：范围保真 + 类型安全 + 审计完整 + Spec 合规 + 阶段对称，≥ 90 通过
 ```
@@ -446,7 +446,7 @@ Traditional AI coding is "you say, I do" — quality depends entirely on the LLM
 
 ```
 DPS (Documentation Precision Score) — TF-IDF/Jaccard semantics + Shannon/Deng entropy + CPM critical path + structural completeness
-  → 4D composite scoring + FFT adaptive weights, ≥ 85 to enter Step 1
+  → 4D composite scoring + FFT adaptive weights, ≥ threshold (per dps-scoring-rules.toml, currently PASS=80) to enter Step 1
 RAHS (Runtime Architecture Health Score) — runtime architecture health
   → 5D assessment: scope fidelity + type safety + audit completeness + spec compliance + phase symmetry, ≥ 90 to pass
 ```

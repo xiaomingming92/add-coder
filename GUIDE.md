@@ -197,7 +197,7 @@ AI 自动进入 `add-paradigm` SKILL，按 Step 0→1→2→... 逐步执行。
 
 | 闸门 | 位置 | 阈值 | 不通过就 |
 |------|------|:--:|------|
-| DPS | Step 0 末尾 | ≥ 85 | 回退补齐文档 |
+| DPS | Step 0 末尾 | ≥ 阈值（以 dps-scoring-rules.toml 为准，当前 PASS=80） | 回退补齐文档 |
 | RAHS | Step 4 + Step 8 | ≥ 90 | 自检修复 |
 
 ### 4.4 每轮都有交接文档
@@ -265,7 +265,7 @@ docs/{项目}/knowledge/
     └─ §十一: 品种推荐策略 + topK 上限 进集中裁决层
 
 ② 产品对 AI 说: 生成plan
-    └─ AI 读 PRD → 生成 Plan → DPS ≥ 85 通过
+    └─ AI 读 PRD → 生成 Plan → DPS ≥ 阈值通过（以 dps-scoring-rules.toml 为准）
 
 ③ 开发者对 AI 说: 开始实施
     └─ AI 进入 add-paradigm → Step 0 生成 add-route
