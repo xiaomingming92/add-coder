@@ -87,7 +87,8 @@ published 2 weeks ago by wujixmm <wujixmm@gmail.com>
 > | **不收集用户隐私** | 不上传代码、对话与项目数据。审计与裁决默认留在本地 / 你自己的基础设施里，不做「默认共享、事后退出」。 |
 >
 > 目标不是再做一个「AI 编程 IDE」，而是让 **任意 IDE + 任意 LLM** 都能跑在同一套可审计、可收敛、且不拿你数据的 ADD 之上。
->
+
+---
 
 **AI 代码治理的落地方案** — [codein2027](https://github.com/xiaomingming92/codein2027) 快速构建 ADD 编程范式的完整脚手架。以「审计即基础设施」为核心，彻底打破编程过程黑盒与跨轮失忆，让编程范式进化为可审计、可追溯、可收敛的新时代。 [NPM](https://www.npmjs.com/package/add-coder) · [GitHub](https://github.com/xiaomingming92/add-coder)
 
