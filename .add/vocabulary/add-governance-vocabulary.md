@@ -56,7 +56,7 @@
 
 | 触发词 | LLM 默认操作 | 优先级 |
 |--------|-------------|--------|
-| `DPS` / `DPS闸门` | 调 `check_dps({ planKeyword: "..." })`，DPS ≥ 85 通过 | 🔴 P0 |
+| `DPS` / `DPS闸门` | 调 `check_dps({ planKeyword: "..." })`，DPS ≥ {{dpsPass}} 通过 | 🔴 P0 |
 | `RAHS` / `RAHS闸门` | 调 `check_rahs({ planKeyword: "..." })`，RAHS ≥ 90 通过 | 🔴 P0 |
 | `Guardian` / `门禁` / `add-flow-guardian` | 调 `add-flow-guardian` Subagent（入口或出口模式） | 🔴 P0 |
 | `add-route 闭环` / `闭环自检` | 调 `check_add_route_completeness({ planKeyword: "..." })` | 🟡 P1 |
@@ -197,7 +197,7 @@ LLM: "DPS 偏低，但不影响代码，继续 Step 1..." [忽略阻断]
 **正确输出**：
 ```
 LLM: "⛔ BLOCKED → 不得继续。修正 P0 阻断项后重新跑 DPS 门禁。"
-[回退到 Step 0，修复问题，重新 DPS，直到 ≥ 85]
+[回退到 Step 0，修复问题，重新 DPS，直到 ≥ {{dpsPass}}]
 ```
 
 ### 场景 6: "继续" 被误解为跳到代码
@@ -306,7 +306,7 @@ LLM: "验收通过 → 自动写 devlog日志(走mcp)（无需用户提醒）→
 
 | 优先级 | 触发词 | LLM 默认操作 |
 |:--:|------|-------------|
-| P0 | `DPS` / `DPS闸门` | 调 `check_dps({ planKeyword: "..." })`，DPS ≥ 85 通过 |
+| P0 | `DPS` / `DPS闸门` | 调 `check_dps({ planKeyword: "..." })`，DPS ≥ {{dpsPass}} 通过 |
 | P0 | `RAHS` / `RAHS闸门` | 调 `check_rahs({ planKeyword: "..." })`，RAHS ≥ 90 通过 |
 | P0 | `Guardian` / `门禁` / `add-flow-guardian` | 调 `add-flow-guardian` Subagent（入口或出口模式） |
 | P1 | `add-route 闭环` / `闭环自检` | 调 `check_add_route_completeness({ planKeyword: "..." })` |

@@ -24,7 +24,7 @@ ADD 不是"写代码时顺便打日志"，而是一套覆盖全开发周期的�
 │            │  产物：{{magicDir}}/plans/{需求域名}-plan-v{n}.md                        │
 │            │        {{magicDir}}/plans/{需求域名}-add-route-v{n}.md                   │
 │            │        {{magicDir}}/reviews/{需求域名}-review-v{n}.md                    │
-│            │  阈值：check_dps（DPS ≥ 85 方可进入 Step 1）                        │
+│            │  阈值：check_dps（DPS ≥ {{dpsPass}} 方可进入 Step 1）                        │
 ├────────────┼─────────────────────────────────────────────────────────────────┤
 │  Step 1    │  功能分析与审计阶段定义                                            │
 │  审计定义   │  分析业务阶段 → 扩展 AgentAuditPhase 联合类型 → 确认审计通道        │
