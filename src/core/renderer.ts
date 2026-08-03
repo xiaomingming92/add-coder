@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "fs";
 import { join, relative, dirname } from "path";
 import { fileURLToPath } from "url";
+import { parse } from "smol-toml";
 import type { AddCoderConfig } from "../config/schema";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,11 +20,42 @@ const PLACEHOLDERS: Record<string, keyof AddCoderConfig> = {
     "{{agentAuditImport}}": "agentAuditImport",
 };
 
+// 阈值占位符：直读 caijuehub TOML 真源 [thresholds] 段（P1-1：不新增 [display] 段，transcribe 不动）
+// TOML 缺失/解析失败时返回 null，调用方保留占位符并告警（不静默注入 0）
+function loadDpsThresholds(): { pass: string; warn: string } | null {
+    try {
+        const tomlPath = join(
+            __dirname,
+            "../caijuehub/dps-scoring-rules.toml",
+        );
+        const doc = parse(readFileSync(tomlPath, "utf-8")) as {
+            thresholds?: { pass?: number; warn?: number };
+        };
+        if (doc.thresholds && typeof doc.thresholds.pass === "number") {
+            return {
+                pass: String(doc.thresholds.pass),
+                warn: String(doc.thresholds.warn ?? doc.thresholds.pass),
+            };
+        }
+    } catch (e) {
+        console.warn(
+            `[renderer] DPS 阈值 TOML 读取失败，保留 dpsPass/dpsWarn 占位符: ${e}`,
+        );
+    }
+    return null;
+}
+
 export function render(content: string, config: AddCoderConfig): string {
     let result = content;
     for (const [placeholder, key] of Object.entries(PLACEHOLDERS)) {
         const value = config[key] as string;
         result = result.replaceAll(placeholder, value);
+    }
+    // 阈值占位符注入（直读 TOML 真源；缺失时保留占位符）
+    const thresholds = loadDpsThresholds();
+    if (thresholds) {
+        result = result.replaceAll("{{dpsPass}}", thresholds.pass);
+        result = result.replaceAll("{{dpsWarn}}", thresholds.warn);
     }
     return result;
 }

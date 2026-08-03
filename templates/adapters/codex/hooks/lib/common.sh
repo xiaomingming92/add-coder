@@ -214,7 +214,7 @@ Plan 不是"文档开销"——它是代码治理的基础设施。跳过 Plan �
 
 方案 A — 补 ADD 流程（招安）:
   Step 0: 读 .qoder/templates/plan-template.md → 生成 Plan
-          生成 add-route → check_dps ≥ 85
+          生成 add-route → check_dps ≥ {{dpsPass}}
   Step 1: 扩展 AgentAuditPhase（如需要）
   Step 2: 确认 agentAudit() 通道
   Step 3: 将已写代码关联到 tasks.md

@@ -161,7 +161,7 @@ export function registerContextTools(server: McpServer) {
             const planKw = activePlan.replace(/-plan-v\d+\.md$/, "")
             const sd = existsSync(specsDir) ? await readdir(specsDir) : []
             if (!sd.some(d => d.toLowerCase().includes(planKw.toLowerCase())) && reviewBackflowRate >= 70) { todoItems.push("3. [Step 0] 生成 Specs 三元组") }
-            if (todoItems.length === 0) { todoItems.push("✅ ADD 就绪 — check_dps ≥ 85 后可进入 Step 1") }
+            if (todoItems.length === 0) { todoItems.push("✅ ADD 就绪 — check_dps ≥ {{dpsPass}} 后可进入 Step 1") }
           }
           for (const item of todoItems) parts.push(item)
           parts.push(""); parts.push("快速指令: 说「执行 add-paradigm Step 0」进入文档先行流程")

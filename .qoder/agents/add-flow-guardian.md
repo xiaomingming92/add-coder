@@ -67,7 +67,7 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 #### Step 1 入口（功能分析）
 | 检查项 | 方法 | 不通过 |
 |--------|------|--------|
-| DPS 闸门 ≥ 85 | 读取 add-route §0.8 的最新 `check_dps` 结果（如无记录则提醒主 agent 先调用） | **BLOCKED** — 回退 Step 0 补齐文档 |
+| DPS 闸门 ≥ {{dpsPass}} | 读取 add-route §0.8 的最新 `check_dps` 结果（如无记录则提醒主 agent 先调用） | **BLOCKED** — 回退 Step 0 补齐文档 |
 | 0.6.5 Review 回流 | 检查 add-route Step 0 产出中是否已勾选 Review 回流项；如 add-route 无此勾选项但 reviews/ 下有 review 文件 → 提醒主 agent 先执行回流 | **BLOCKED** |
 | 原子闭包判定 | 检查 add-route 是否包含"原子闭包三可性判定"章节 | **BLOCKED** — 回退 Step 0.7 |
 
@@ -126,9 +126,9 @@ Step N-1 出口     ──→  Guardian 出口检查  ──→  BLOCKED? 回退
 | Review 文件存在 | 确认 `.qoder/reviews/` 下有对应的 review 文件 | 缺失 → **BLOCKED** |
 | add-route 已生成 | 确认 `.qoder/plans/` 下（含日期子目录）有 `*add-route*.md` | 缺失 → **BLOCKED** |
 | 项目文档已更新 | 检查 add-route Step 0 产出中是否勾选了"项目文档已更新"或"无需更新声明已记录" | 未勾选 → **FAIL** |
-| 0.6.5 回流完成 | 检查 add-route §0.8 是否记录了 DPS ≥ 85（或有 DPS 待通过标记） | 无记录 → **FAIL** |
+| 0.6.5 回流完成 | 检查 add-route §0.8 是否记录了 DPS ≥ {{dpsPass}}（或有 DPS 待通过标记） | 无记录 → **FAIL** |
 | 原子闭包判定已执行 | add-route 含"原子闭包三可性判定"章节且有结论 | 缺失 → **BLOCKED** |
-| **DPS 闸门 ≥ 85** | **此为主 agent 在出口前必须调用的 MCP 闸门。Guardian 检查 add-route §0.8 中是否已记录 DPS 结果** | **DPS < 85 或无记录 → BLOCKED** |
+| **DPS 闸门 ≥ {{dpsPass}}** | **此为主 agent 在出口前必须调用的 MCP 闸门。Guardian 检查 add-route §0.8 中是否已记录 DPS 结果** | **DPS < {{dpsPass}} 或无记录 → BLOCKED** |
 | TypeScript 编译 | 检查 add-route 中是否记录了主 agent 的 tsc 编译结果（主 agent 应先执行 `npx tsc --noEmit`） | 无记录 → **FAIL** |
 | eslint 检查 | 检查 add-route 中是否记录了主 agent 的 eslint 结果（主 agent 应先执行 `npx eslint`） | 无记录 → **FAIL** |
 
@@ -224,7 +224,7 @@ Plan: {✅ 存在 | ❌ 缺失}
 add-route: {文件路径 | ❌ 缺失 → BLOCKED}
 Specs 三元组: {spec/tasks/checklist 各状态}
 Review: {文件路径 | ❌ 缺失}
-DPS 记录: {已通过 ≥85 | 未通过 | 无记录}
+DPS 记录: {已通过 ≥{{dpsPass}} | 未通过 | 无记录}
 RAHS 记录: {已通过 ≥90 | 未通过 | 无记录}
 
 【add-route 勾选状态】

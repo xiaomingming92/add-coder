@@ -280,7 +280,7 @@ find_related_docs({ query: "功能关键词" })
 
 5. **验证回流完整性**：
    - 对 Review 中每个 P0/P1 问题，确认能在 Plan/Specs 中找到对应的"已修正后的文字"
-   - 调用 `check_dps({ planKeyword: "..." })` 确认 DPS ≥ 85——如果回流后 DPS 仍然不达标，说明 Review 本身覆盖度不足或回流遗漏
+   - 调用 `check_dps({ planKeyword: "..." })` 确认 DPS ≥ {{dpsPass}}——如果回流后 DPS 仍然不达标，说明 Review 本身覆盖度不足或回流遗漏
 
 6. **记录审计**：调用 `record_dev_operation`（`targetType: "PLAN"`，`action: "DOC_UPDATED"`，`beforeState`: Review 问题编号列表，`afterState`: 每个问题的回流位置）
 
@@ -399,7 +399,7 @@ Plan 级闭包: {业务功能描述}
 - [ ] 文档合约一致性已确认
 - [ ] **[0.6.5] Review 结论已回流至 Plan 与 Specs**——Review 中每个 P0/P1 问题在 Plan/Specs 中有对应的修正后文字
 - [ ] 原子闭包判定已执行（Plan 级：确认单一业务功能；轮次级：确认文件边界独立、无跨轮修改、每轮可独立验证），轮次拆分方案已写入 add-route
-- [ ] **DPS 上游文档质量闸门已通过**——调用 `check_dps({ planKeyword: "<Plan 核心关键词>" })`，DPS ≥ 85 方可进入 Step 1。未通过时回退补齐短板（Plan 粒度不足 / Review 覆盖维度缺失 / Specs Requirements 遗漏）。详见 [ADD 协同规范 §八]({{projectRoot}}/{{docsDir}}/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md#八双质量闸门dps-与-rahs)
+- [ ] **DPS 上游文档质量闸门已通过**——调用 `check_dps({ planKeyword: "<Plan 核心关键词>" })`，DPS ≥ {{dpsPass}} 方可进入 Step 1。未通过时回退补齐短板（Plan 粒度不足 / Review 覆盖维度缺失 / Specs Requirements 遗漏）。详见 [ADD 协同规范 §八]({{projectRoot}}/{{docsDir}}/knowledge/01-架构/《ADD开发工作路径与文档协同规范》.md#八双质量闸门dps-与-rahs)
 
 ---
 
