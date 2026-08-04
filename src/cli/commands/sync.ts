@@ -464,15 +464,15 @@ function injectFieldLines(
         const fieldLine = baseFields[fieldName];
         if (!fieldLine) continue;
 
-        // 字段已存在则跳过
-        if (new RegExp(`^\\s*${fieldName}\\s+`, "m").test(content)) continue;
-
-        // 找到模型块的最后一个闭合 }，在其前插入
-        const modelRegex = new RegExp(`(model\\s+${modelName}\\s*\\{[^}]*?)\\n(\\s*\\})`, "m");
+        // 找到目标模型块（限定检查范围，避免误匹配其他 model 的同名字段）
+        const modelRegex = new RegExp(`(model\\s+${modelName}\\s*\\{)([^}]*?)(\\n\\s*\\})`, "m");
         const m = content.match(modelRegex);
         if (!m) continue;
 
-        content = content.replace(modelRegex, `$1\n  ${fieldLine}\n$2`);
+        // 字段已存在（仅在当前模型块内检查）则跳过
+        if (new RegExp(`^\\s*${fieldName}\\s+`, "m").test(m[2])) continue;
+
+        content = content.replace(modelRegex, `$1$2\n  ${fieldLine}$3`);
         count++;
     }
 
