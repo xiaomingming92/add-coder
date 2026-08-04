@@ -626,6 +626,46 @@ npx add-coder init --adapter claude --force --dry-run
 | 验证 init 正确性 | `npm run build && npx add-coder init --dry-run` | 测试 init 产出是否和 git 一致 |
 | 发布到 npm | `npm run sync && npm run build && npm publish` | 确保 templates/ 和 magic dirs 对齐 |
 
+## 十一、依赖治理坑位记录
+
+### 坑：sharp GitHub 下载被墙 → 一级依赖升级避障
+
+**背景**：`@xenova/transformers@2.17.2` 硬依赖 `sharp@0.32.x`，sharp 0.32 通过 prebuild-install 从 **GitHub release** 下载二进制（国内 ssh 880 端口被墙），且 `.npmrc` 镜像配置不会透传到 prebuild-install 环境，安装必失败。
+
+**解决**：升级一级依赖 `@xenova/transformers` → `@huggingface/transformers@^3.8.1`（API 全兼容：`pipeline` / `env.remoteHost` / `feature-extraction` / `tolist()`），连带 sharp 升到 0.34.x。
+
+**为什么升级后不再走 GitHub**：
+
+| 包 | 二进制来源 | 说明 |
+|----|-----------|------|
+| sharp 0.34.x | `@img/sharp-*` 平台包 | 纯 npm registry 分发，无 GitHub |
+| onnxruntime-node 1.21+ | npm 包内自含（217MB） | CPU 二进制已打包；仅 CUDA 场景才从 GitHub 下载（本项目用不到） |
+
+**代价（已知坑，接受）**：`@huggingface/transformers` v3 将 `onnxruntime-node` 从可选改为**硬依赖**，安装体积增加约 **217MB**。AI 时代体积不是问题，但以下两点必须遵守：
+
+1. **不要试图降级 sharp 回 0.32.x**——会重新引入 GitHub 下载失败。
+2. **pnpm 11 的构建白名单在 `pnpm-workspace.yaml` 的 `allowBuilds` 字段**（`.npmrc` 的 `onlyBuiltDependencies` 已失效）。onnxruntime-node 必须为 `true`，否则其 postinstall 被忽略会触发 `ERR_PNPM_IGNORED_BUILDS` 阻断 install。
+
+### 提醒：停留在 sharp 0.32.x 的下游用户
+
+如果消费方项目仍依赖 `sharp@0.32.x`（旧版 add-coder 或未升级 transformers），prebuild-install 会直接从 **GitHub release** 下载二进制——此时必须显式处理，否则安装失败：
+
+```bash
+# ① 切 npm registry 镜像（nrm）
+nrm use tencent        # 或 nrm use taobao / npmmirror
+
+# ② 关键：pnpm 11 不会把 .npmrc 的 sharp_binary_host 透传给 prebuild-install，
+#    必须用真实环境变量指向 npmmirror 的 sharp 二进制镜像
+npm_config_sharp_binary_host=https://npmmirror.com/mirrors/sharp \
+  pnpm install
+
+# 或写入 shell 环境（bashrc / .bashrc）：
+export npm_config_sharp_binary_host=https://npmmirror.com/mirrors/sharp
+export npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips
+```
+
+**为什么只切 registry 不够**：sharp 0.32 的二进制不走 npm registry，而是 prebuild-install 从 GitHub 拉取；`.npmrc` 里的 `sharp_binary_host` 配置 pnpm 11 不透传，所以必须设置环境变量。升级到 sharp 0.34+ 后二进制改由 `@img/sharp-*` npm 包分发，才真正做到切 registry 即解决。
+
 ---
 
 ## 关联文档
