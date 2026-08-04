@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "fs";
+import { readFileSync, readdirSync, statSync, existsSync } from "fs";
 import { join, relative, dirname } from "path";
 import { fileURLToPath } from "url";
 import { parse } from "smol-toml";
@@ -24,10 +24,16 @@ const PLACEHOLDERS: Record<string, keyof AddCoderConfig> = {
 // TOML 缺失/解析失败时返回 null，调用方保留占位符并告警（不静默注入 0）
 function loadDpsThresholds(): { pass: string; warn: string } | null {
     try {
-        const tomlPath = join(
-            __dirname,
-            "../caijuehub/dps-scoring-rules.toml",
-        );
+        // 多路径回退：源码模式(src/core→src/caijuehub) / dist 单文件模式(dist→dist/caijuehub) / 包根模式
+        const candidates = [
+            join(__dirname, "../caijuehub/dps-scoring-rules.toml"),
+            join(__dirname, "caijuehub/dps-scoring-rules.toml"),
+            join(__dirname, "../../caijuehub/dps-scoring-rules.toml"),
+        ];
+        const tomlPath = candidates.find(existsSync);
+        if (!tomlPath) {
+            throw new Error(`候选路径均不存在: ${candidates.join(" | ")}`);
+        }
         const doc = parse(readFileSync(tomlPath, "utf-8")) as {
             thresholds?: { pass?: number; warn?: number };
         };
