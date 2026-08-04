@@ -55,22 +55,18 @@ if ! echo "$prompt" | grep -qiE "$dev_kw"; then
   exit 0
 fi
 
-# ─── Layer 2/3: 按活跃 ADD 分流（原 Layer 2/3，不修改） ───
+# ─── Layer 2/3: 按活跃 ADD 分流 ───
 state=$(detect_active_add 2>/dev/null || true)
 if [ -z "$state" ]; then
-  # Layer 2: 无活跃 ADD → 强制启动
+  # Layer 2: 无活跃 ADD → 提示启动（不阻断）
   cat >&2 <<'EOF'
-[ADD 强制规则] 检测到开发任务。你必须先执行 add-paradigm SKILL 完成 ADD 工作流:
+[ADD 提示] 检测到开发任务，但无活跃 ADD Plan。建议先执行 add-paradigm SKILL:
   Step 0: 文档先行 (Plan → Review → Specs)
-  Step 1: 扩展 AgentAuditPhase
-  Step 2: 确认 agentAudit() 通道
   Step 3: 代码实现 + 审计植入
-  ...
   Step 8: 收敛判断
-如果 add-paradigm SKILL 尚未激活，请先调用它。
 EOF
-  write_hook_event "prompt-submit" "deny" "$prompt" "无活跃 ADD Plan 下检测到开发任务" "no-active-plan" "none" 2>/dev/null || true
-  exit 2
+  write_hook_event "prompt-submit" "info" "$prompt" "无活跃 ADD Plan 下检测到开发任务" "no-active-plan" "none" 2>/dev/null || true
+  exit 0
 fi
 
 # Layer 3: 有活跃 ADD → 注入状态
@@ -88,9 +84,9 @@ if [ -f "$HOOK_JSONL" ]; then
   TOTAL=$(grep -c "\"ts\":\"${TODAY}" "$HOOK_JSONL" 2>/dev/null || echo 0)
   NO_PLAN=$(grep "\"ts\":\"${TODAY}" "$HOOK_JSONL" 2>/dev/null | grep -c '"planKeyword":"no-active-plan"' || echo 0)
   if [ "$TOTAL" -gt 0 ] 2>/dev/null; then
-    add_ctx="${add_ctx}\n[Hook 治理] 今日拦截: ${TOTAL} 次 | 无 Plan 违规: ${NO_PLAN} 次"
+    add_ctx="${add_ctx}\n[Hook 治理] 今日提示: ${TOTAL} 次 | 无 Plan 提示: ${NO_PLAN} 次"
     if [ "$NO_PLAN" -ge 10 ] 2>/dev/null; then
-      add_ctx="${add_ctx}\n[Hook ⚠️] 无 Plan 违规已达 ${NO_PLAN} 次（≥10），建议创建 Plan"
+      add_ctx="${add_ctx}\n[Hook ⚠️] 无 Plan 提示已达 ${NO_PLAN} 次（≥10），建议创建 Plan"
     fi
   fi
 fi

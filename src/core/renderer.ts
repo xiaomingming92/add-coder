@@ -38,8 +38,9 @@ function loadDpsThresholds(): { pass: string; warn: string } | null {
             };
         }
     } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
         console.warn(
-            `[renderer] DPS 阈值 TOML 读取失败，保留 dpsPass/dpsWarn 占位符: ${e}`,
+            `[renderer] DPS 阈值 TOML 读取失败，保留 dpsPass/dpsWarn 占位符: ${errorMessage}`,
         );
     }
     return null;
