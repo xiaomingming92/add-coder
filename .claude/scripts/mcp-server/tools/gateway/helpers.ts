@@ -105,7 +105,7 @@ let _embedPipeline: { embed: (texts: string[]) => Promise<number[][]> } | null =
 
 export async function getEmbeddings(texts: string[]): Promise<number[][]> {
   if (!_embedPipeline) {
-    const { pipeline, env } = await import("@xenova/transformers");
+    const { pipeline, env } = await import("@huggingface/transformers");
     env.remoteHost = "https://hf-mirror.com";
     env.remotePathTemplate = "{model}/resolve/{revision}/";
     const extractor = await pipeline("feature-extraction", CFG.EMBEDDING_MODEL);
