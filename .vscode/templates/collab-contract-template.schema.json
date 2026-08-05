@@ -87,7 +87,8 @@
         "properties": {
           "expert": { "type": "string" },
           "exclusiveDomain": { "type": "string", "description": "独占文件域" },
-          "forbidden": { "type": "string", "description": "禁改域" }
+          "forbidden": { "type": "string", "description": "禁改域" },
+          "isolationMode": { "type": "string", "enum": ["file", "worktree"], "description": "隔离模式：file=文件级独占 / worktree=工作树级隔离" }
         }
       }
     },

@@ -1,6 +1,6 @@
-# add-coder-collab-contract-plan-v1 — HITL 提案 (round 1)
+# add-coder-collab-contract-plan-v1 — HITL 提案 (round 3)
 
-> 创建: 2026-08-05T06:22:21.042Z  |  类型: PLAN  |  状态: DRAFT
+> 创建: 2026-08-05T11:03:37.020Z  |  类型: PLAN_REVIEW  |  状态: TONGYI
 
 ## HITL 计划总览
 
@@ -8,8 +8,7 @@
 
 | # | 维度 | 方案内容 | 决策 |
 |---|------|----------|:----:|
-| 1 | 影响模块 | 模板体系 + MCP 工具 + Prisma schema + Caijuehub（8 文件：4 修改/2 新建/2 模板） | 同意/驳回 |
-| 2 | 架构方案 | 从 htc 验证版反向移植：模板补全 + CollabContract 持久化 + contract_track MCP 工具 | 同意/驳回 |
-| 3 | 新增依赖 | 无 | 同意/驳回 |
-| 4 | 风险等级 | 🟡 中（schema 迁移 + MCP 新增，需回归 plan_track/hitl） | 同意/驳回 |
-| 5 | 预计轮次 | 3 轮（模板/schema → MCP/HITL → Caijuehub/发布） | 同意/驳回 |
+| 1 | 契约链路实证 | 契约链路全实证: contract_track v1 创建/v2 增量/status 查询/COLLAB_CONTRACT 审批 TONGYI/plan_status MASTER 展示/提案文件状态回写 | 同意/驳回 |
+| 2 | 根环境 | 根环境: schema 同步 + 迁移幂等化(DO块+IF NOT EXISTS,重放验证 exit=0) + generate 含模型 | 同意/驳回 |
+| 3 | 文档与模板 | 模板对齐: §7 删除(平台机制不承载) + isolationMode + docs 裁决入口 + Plan 模板 6 处对齐(DPS 84) | 同意/驳回 |
+| 4 | 回归验证 | 回归: tsc 0 + eslint 0 + plan_track 35 tasks 无破坏 | 同意/驳回 |

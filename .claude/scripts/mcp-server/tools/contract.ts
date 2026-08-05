@@ -80,15 +80,23 @@ export function registerContractTools(server: ToolRegistrar) {
       if (!existsSync(plansDir)) return errorResponse(`plans 目录不存在: ${plansDir}`)
 
       const allFiles = await readdirRecursive(plansDir)
-      // 契约文档命名：*-collab-contract-*.md（排除 .hitl.md）
-      let contractFiles = allFiles.filter(f => f.endsWith(".md") && !f.endsWith(".hitl.md") && f.includes("-collab-contract-"))
+      // 契约文档命名：*-collab-contract-*.md
+      // 严格过滤：排除 -plan- / add-route / handoff / .hitl（防止 Plan 体系文档被误扫为契约）
+      let contractFiles = allFiles.filter(f =>
+        f.endsWith(".md") &&
+        !f.endsWith(".hitl.md") &&
+        f.includes("-collab-contract-") &&
+        !f.includes("-plan-") &&
+        !f.includes("add-route") &&
+        !f.includes("handoff"),
+      )
       if (contractName) {
         const m = contractFiles.find(f => f.includes(contractName))
         contractFiles = m ? [m] : []
       }
 
       if (contractFiles.length === 0) {
-        return textResponse(`=== 并发协作契约追踪 ===\n\n未找到契约文档（条件: ${contractName || "全部"}）。\n\n扫描规则: plans/ 下 *-collab-contract-*.md 文件`)
+        return textResponse(`=== 并发协作契约追踪 ===\n\n未找到契约文档（条件: ${contractName || "全部"}）。\n\n扫描规则: plans/ 下 *-collab-contract-*.md 文件（排除 -plan-/add-route/handoff/.hitl）`)
       }
 
       const results: string[] = []
@@ -102,13 +110,25 @@ export function registerContractTools(server: ToolRegistrar) {
         const masterPlanName = mpMatch ? mpMatch[1].trim().replace(/\.md$/, "") : ""
 
         const parsed = parseContractDoc(content)
+        // P3 #6 健壮性：解析结果为空时告警（表头可能不匹配模板），并跳过该文件
+        if (parsed.stages.length === 0 || parsed.fileBoundaries.length === 0) {
+          console.warn(`[contract_track] 解析结果为空——表头可能不匹配模板（${f}）`)
+          results.push(`⚠️ ${name}  解析为空（stages=${parsed.stages.length}, fileBoundaries=${parsed.fileBoundaries.length}），跳过——检查表头是否与模板一致`)
+          continue
+        }
+        // 契约文档必须声明总控 Plan
+        if (!masterPlanName) {
+          console.warn(`[contract_track] 缺少「总控 Plan:」声明（${f}）`)
+          results.push(`⚠️ ${name}  缺少「总控 Plan:」声明，跳过`)
+          continue
+        }
         const existing = await db.collabContract.findFirst({ where: { contractName: name } }) as Record<string, unknown> | null
         const version = (existing?.version as number ?? 0) + 1
 
         const data = {
           contractName: name,
           contractPath: path,
-          masterPlanName: masterPlanName || undefined,
+          masterPlanName,
           participants: parsed.participants as never,
           abilityMatrix: parsed.abilityMatrix as never,
           stages: parsed.stages as never,

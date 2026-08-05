@@ -165,6 +165,7 @@ if (N < CFG.FFT_COLD_START) return [...CFG.FFT_DEFAULT_WEIGHTS];
 | `sync-patch` | `sync-rules.toml` | `sync.strategy.ts` | `sync.ts` |
 | `hitl-interaction` | `hitl-interaction-rules.toml` | `hitl-interaction.strategy.ts` | `hitl.ts` |
 | `dps-scoring` | `dps-scoring-rules.toml` | `dps-scoring.strategy.ts` | `gateway.ts` |
+| `collab-contract` | `collab-contract-rules.toml` | `collab-contract.strategy.ts` | `contract.ts`（契约裁决参数） |
 
 ## 原则
 

@@ -420,6 +420,13 @@ export function registerHitlTools(server: ToolRegistrar) {
       ].filter(Boolean).join("\n") + "\n"
       for (const n of markerNames) writeFileSync(join(markerDir, markerPrefix + n), markerContent, "utf-8")
       const marker = markerNames.map(n => join(markerDir, markerPrefix + n)).join(", ")
+      // P3 #6：回写 .hitl.md 提案文件状态（DRAFT → TONGYI/BOHUI），保证双通道校验一致
+      const proposalPath = findHitlFile(String(planName))
+      if (proposalPath) {
+        let proposal = readFileSync(proposalPath, "utf-8")
+        proposal = proposal.replace(/(状态:\s*)[A-Z_]+/, `$1${s}`)
+        writeFileSync(proposalPath, proposal, "utf-8")
+      }
       // 响应
       const lines = [
         `✅ update_hitl`,
