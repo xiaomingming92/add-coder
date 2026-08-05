@@ -9,7 +9,7 @@
 import { detectIDE, resolveAdapters } from "../detect";
 import { loadConfig } from "../config-loader";
 import { writeFiles } from "../writer";
-import { renderCore } from "../../core/renderer";
+import { renderCore, saveStack } from "../../core/renderer";
 import { renderAdapter as renderClaude } from "../../adapters/claude/renderer";
 import { renderAdapter as renderQoder } from "../../adapters/qoder/renderer";
 import { renderAdapter as renderVSCode } from "../../adapters/vscode/renderer";
@@ -24,7 +24,7 @@ import { resolve } from "path";
 import { spawnSync } from "child_process";
 import { createConnection } from "net";
 
-interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; }
+interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; stack?: string; }
 interface DbChoice { engine: "postgresql" | "sqlite" | "manual"; container?: "podman" | "docker" | "manual"; user?: string; password?: string; port?: string; reuseExisting?: boolean; }
 interface PackageJsonShape { scripts?: Record<string, string> }
 
@@ -42,6 +42,7 @@ interface InitContext {
     magicDir: string;
     config: AddCoderConfig;
     db: DbChoice;
+    stack: string;
 }
 
 // ════════════════════ 主流程 ════════════════════
@@ -53,6 +54,13 @@ interface InitContext {
 export async function initCommand(options: InitOptions) {
     const ctx = await prepare(options);
     writeComposeEnv(ctx);
+    // 技术栈状态落盘（D7/D4）：非 dry-run 时写 stack.json（渲染与状态一致）
+    if (!options.dryRun) {
+        saveStack(ctx.projectRoot, ctx.magicDir, ctx.stack);
+        if (ctx.stack) console.log(`技术栈状态已写入 ${ctx.magicDir}/stack.json → ${ctx.stack}`);
+    } else if (ctx.stack) {
+        console.log(`[dry-run] 将写入 ${ctx.magicDir}/stack.json → ${ctx.stack}`);
+    }
     const result = await renderAndWrite(ctx);
     await deployDatabase(ctx);
     deployDocs(ctx);
@@ -76,10 +84,12 @@ async function resolveAdapter(projectRoot: string, specified?: string): Promise<
     const detected = detectIDE(projectRoot);
     if (detected !== "auto") { console.log(`检测到 IDE: ${detected} (自动)`); return detected; }
     console.log("未检测到 IDE 环境");
-    const a = (await ask("请选择目标 IDE: [1] Qoder  [2] Claude  [3] VS Code → ")).trim();
+    const a = (await ask("请选择目标 IDE: [1] Qoder  [2] Claude  [3] VS Code  [4] Trae  [5] Codex → ")).trim();
     if (a === "1" || a === "qoder") return "qoder";
     if (a === "2" || a === "claude") return "claude";
     if (a === "3" || a === "vscode") return "vscode";
+    if (a === "4" || a === "trae") return "trae";
+    if (a === "5" || a === "codex") return "codex";
     console.log("输入无法识别，默认 qoder"); return "qoder";
 }
 
@@ -255,6 +265,28 @@ function injectDbExportScript(projectRoot: string, dryRun: boolean): void {
 
 // ════════════════════ 阶段: prepare ════════════════════
 
+/**
+ * @description: 技术栈申报（D7）：--stack 优先 → 交互提问 → 默认不设置（中性）
+ * @param {InitOptions} options - init 选项
+ * @return {Promise<string>} 技术栈 profile 名，空串 = 不设置
+ */
+async function resolveStack(options: InitOptions): Promise<string> {
+    if (options.stack) {
+        console.log(`技术栈约束: ${options.stack} (--stack)`);
+        return options.stack;
+    }
+    if (options.force) return "";
+    console.log(["", "技术栈约束（可选）:", "  [1] 不设置（中性，推荐）", "  [2] webapp", "  [3] machineserver", "  [4] 自定义（输入 profile 名）"].join("\n"));
+    const a = (await ask("请选择 [1/2/3/4] → ")).trim();
+    if (a === "2" || a === "webapp") return "webapp";
+    if (a === "3" || a === "machineserver") return "machineserver";
+    if (a === "4" || a === "custom") {
+        const name = (await ask("自定义 profile 名（需已在 .qoder/rules/profiles/ 存在）: ")).trim();
+        return name || "";
+    }
+    return ""; // 回车 / 1 → 不设置
+}
+
 async function prepare(options: InitOptions): Promise<InitContext> {
     const projectRoot = process.cwd();
     const target = await resolveAdapter(projectRoot, options.adapter);
@@ -264,6 +296,9 @@ async function prepare(options: InitOptions): Promise<InitContext> {
     config.projectRoot = projectRoot;
     config.magicDir = magicDir;
 
+    const stack = await resolveStack(options);
+    config.stack = stack;
+
     const db = await resolveDbEngine(!!options.force);
     if (db.engine === "postgresql") {
         db.container = await resolveContainer(!!options.force);
@@ -272,7 +307,7 @@ async function prepare(options: InitOptions): Promise<InitContext> {
         }
     }
 
-    return { projectRoot, options, target, magicDir, config, db };
+    return { projectRoot, options, target, magicDir, config, db, stack };
 }
 
 // ════════════════════ 阶段 A: compose / env ════════════════════

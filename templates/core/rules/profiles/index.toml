@@ -1,0 +1,12 @@
+# add-coder 技术栈 profile 注册表（内置）
+# 用户自定义: 在 {magicDir}/rules/profiles/ 下放置任意 *.md 即可被 `add-coder stack list` 识别
+
+[[profile]]
+name = "webapp"
+description = "Web 应用（前端/全栈）: LangGraph/Next.js/Prisma/TypeScript 案例栈"
+file = "webapp-profile.md"
+
+[[profile]]
+name = "machineserver"
+description = "后端服务（机器人→中间件→平台链路）: Kestra/HTTP API/事件驱动"
+file = "machineserver-profile.md"

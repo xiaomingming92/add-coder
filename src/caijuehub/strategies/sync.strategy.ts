@@ -3,7 +3,7 @@
 
 // >>> CAIJUE GENERATED START >>>
 export const SYNC_CONFIG = {
-    PATCH_GUARD: [/[/]plans[/]/, /[/]specs[/]/, /[/]reviews[/]/],
+    PATCH_GUARD: [/[/]plans[/]/, /[/]specs[/]/, /[/]reviews[/]/, /[/]rules[/]profiles[/]/],
     HASH_OUTPUT_FILE: ".add-coder-hash.json",
     HASH_SRC_FILE: "templates/.add-coder-src-hash.json",
     HASH_HEX_LENGTH: 8,
