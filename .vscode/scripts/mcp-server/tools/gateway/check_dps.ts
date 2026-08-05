@@ -7,7 +7,7 @@
  * @Description  : DPS 闸门 — 四维复合评分 + FFT 自适应权重
  */
 import * as z from "zod/v4";
-import type { McpServer } from "@modelcontextprotocol/server";
+import type { ToolRegistrar } from "../registrar.js";
 import { existsSync } from "fs";
 import { join, basename } from "path";
 import { textResponse, errorResponse } from "../../shared/response.js";
@@ -29,7 +29,7 @@ import {
   getEmbeddings,
 } from "./helpers.js";
 
-export function registerCheckDps(server: McpServer) {
+export function registerCheckDps(server: ToolRegistrar) {
   server.registerTool(
     "check_dps",
     {

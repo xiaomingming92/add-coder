@@ -7,7 +7,7 @@
  * @Description  : RAHS 闸门（Runtime Architecture Health Score）
  */
 import * as z from "zod/v4";
-import type { McpServer } from "@modelcontextprotocol/server";
+import type { ToolRegistrar } from "../registrar.js";
 import { existsSync } from "fs";
 import { join } from "path";
 import { textResponse, errorResponse } from "../../shared/response.js";
@@ -19,7 +19,7 @@ import {
 } from "../../shared/fs.js";
 import { prisma } from "../../shared/prisma.js";
 
-export function registerCheckRahs(server: McpServer) {
+export function registerCheckRahs(server: ToolRegistrar) {
   server.registerTool(
     "check_rahs",
     {

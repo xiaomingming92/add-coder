@@ -846,6 +846,10 @@ ADD-17 定义 HITL 如何在 guard 约束下运作（temporary.md 绕过 guard �
 
 ## 项目技术约束
 
+### 技术栈约束（profile 引用）
+
+{{stackReferenceLine}}
+
 ### 审计日志器模式
 
 每个业务域的审计日志器必须遵循 `audit-logger.ts` 的完整模式：
@@ -855,30 +859,6 @@ ADD-17 定义 HITL 如何在 guard 约束下运作（temporary.md 绕过 guard �
 - `audit()` / `auditPhaseStart()` / `auditPhaseEnd()` 三函数
 - `readRecentLogs()` / `clearLogs()` 读写函数
 - `ENABLE_FILE_LOG` 环境变量控制，开发环境默认启用
-
-### 数据库 Schema
-
-Prisma schema 修改时：
-- 新增模型必须有审计数据字段（Json 类型）
-- 关联关系必须定义 `onDelete: Cascade`
-- 使用 `@id @default(cuid())` 生成 ID
-- 使用 `@updatedAt` 自动更新时间戳
-
-### Agent 节点
-
-LangGraph 节点实现时：
-- 必须通过 `wrapNodeWithAudit` 包装
-- `inputSnapshot` 不能为空对象 `{}`
-- 路由决策必须调用 `agentAuditRoute()`
-- 检索节点必须记录证据链 diff
-
-### 代码质量
-
-- TypeScript 编译必须通过（`npx tsc --noEmit`）
-- ESLint 零 error（`npx eslint src/` 不得出现 error 级别问题，warning 逐步降低）
-- 禁止 `any` 类型（必须显式定义）
-- 禁止简化代码实现，一切以代码高质量为衡量标准
-- 新增文件必须在项目已有目录结构内，遵循现有命名规范
 
 ---
 
@@ -890,7 +870,7 @@ LangGraph 节点实现时：
 
 AI 助手在生成任何代码前，必须先调用以下工具获取真实信息，不得凭记忆假设：
 - `get_project_context` — 获取项目结构、技术栈、可用脚本
-- `get_db_schema` — 获取 Prisma Schema 模型定义
+- `get_db_schema` — 获取项目数据模型定义（如 Prisma Schema / ORM 模型）
 - `get_audit_logger_pattern` — 获取现有审计日志器模式
 - `find_related_docs` — 查找与变更相关的项目文档（ADD-0.1 文档先行）
 
@@ -961,34 +941,6 @@ Trae IDE 加载项目时自动连接 MCP 服务器。
 
 ### 附录
 
-#### A. add-coder ADD-0.3 实现（AuditCallback）
-
-add-coder 通过 **LangChain `BaseCallbackHandler` 继承模式** 实现自动审计：
-
-- `AuditCallback extends BaseCallbackHandler` — 继承 LangChain 标准回调接口
-- `handleChainStart()` / `handleChainEnd()` / `handleChainError()` — 节点进入/退出/异常自动记录
-- `handleLLMEnd()` — LLM 调用完成时记录 token 用量
-- `handleToolStart()` / `handleToolEnd()` — Tool 调用完成时记录输入/输出
-
-注入方式（`src/agents/index.ts`）：
-```typescript
-const callback = new AuditCallback(traceId, userId)
-agent.invoke(input, { callbacks: [callback] })
-```
-
-**与 Layer 1 dev-logger 的关系**：
-- Layer 1（`wrapNodeWithAudit`）：console + file，仅开发环境，AI 助手消费
-- Layer 2（`AuditCallback`）：AuditLog 表，所有环境始终开启，最终用户消费
-- 两者共存互补，互不干扰
-
-**设计目标达成情况**：
-
-| 目标 | 状态 |
-|------|:----:|
-| 自动记录 | ✅ |
-| 不阻塞响应 | ✅ |
-| 成功/失败等价 | ✅ |
-| 节点过滤 | ✅ |
-| traceId 全链追踪 | ✅ |
+> 附录 A（add-coder ADD-0.3 AuditCallback 实现，含 LangChain `BaseCallbackHandler` 模式）已移至技术栈 profile：`.add/rules/profiles/webapp-profile.md` §附录 A。未设置 webapp 技术栈时，该附录内容不构成约束。
 
 #### B. 历史参考（milktea 项目）

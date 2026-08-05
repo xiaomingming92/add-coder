@@ -104,8 +104,13 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "
 
   # §C: HITL tongyi 检查 — plans/ + PLAN_REVIEW reviews/ 写入前必须有 .hitl-tongyi-{planName} 哨兵
   # implementation/runtime review 不需要 HITL，走 §B 活跃 Plan 检查
+  # handoff 是 Step 8 收敛产物（多轮交接手册），不经 HITL 审批，同样豁免
   if echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(plans)/'; then
-    _do_hitl=true
+    if echo "$file_path" | grep -qE '\-handoff'; then
+      _do_hitl=false  # handoff 不被 HITL 拦截（Step 8 产物，无独立审批）
+    else
+      _do_hitl=true
+    fi
   elif echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(reviews)/'; then
     if echo "$file_path" | grep -qE '-(implementation|runtime)'; then
       _do_hitl=false  # implementation/runtime review 不被 HITL 拦截
