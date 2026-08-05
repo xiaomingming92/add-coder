@@ -23,7 +23,9 @@
   - [4.4 每轮都有交接文档](#44-每轮都有交接文档)
   - [4.5 Review 的 HITL 审核：先过总览再逐条分析](#45-review-的-hitl-审核先过总览再逐条分析)
 - [五、目录结构速查](#五目录结构速查)
+- [六、一条完整链路走一遍](#六一条完整链路走一遍)
 - [七、add-coder 升级后怎么更新本地文件](#七add-coder-升级后怎么更新本地文件)
+- [八、技术栈约束 profile（add-coder stack）](#八技术栈约束-profileadd-coder-stack)
 
 ---
 
@@ -310,3 +312,64 @@ npx add-coder sync --adapter=qoder --patch
 add-coder build 时记录每个模板文件的 hash（`templates/.add-coder-src-hash.json`），发布到 npm。你的项目 init 时记录产出 hash（`.qoder/.add-coder-hash.json`）。`sync --patch` 对比两个 hash + 版本号，精准判断哪些文件是 add-coder 更新的、哪些是你改的。
 
 代码细节： [DEVELOPMENT.md §八](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)。
+
+---
+
+## 八、技术栈约束 profile（add-coder stack）
+
+> 不同项目的技术栈不同（Web 前端 / 机器人后端链路 / 纯库开发……）。add-coder 默认不假设任何技术栈——技术栈约束由 profile 文件按需启用，AI 读到的规则与你的项目真实技术栈一致。
+
+### 8.1 核心概念
+
+- **profile**：一份技术栈约束文件（`{magicDir}/rules/profiles/{stack}-profile.md`），描述该技术栈下 AI 必须遵守的约束（数据库/框架/代码质量/错误处理……）
+- **注册表**：内置 profile 清单（`profiles/index.toml`），当前内置 `webapp`（前端案例栈）与 `machineserver`（后端服务链路）
+- **stack.json**：记录当前启用的技术栈（`{magicDir}/stack.json`），由 `add-coder stack` 命令读写
+- **中性语义**：未设置任何技术栈时，不施加任何技术栈假设——AI 通过 `get_project_context` 读项目实际代码推断真实技术栈
+
+### 8.2 常用命令
+
+```bash
+# 查看内置 + 自定义 profile 列表（当前启用的带 ← 标记）
+npx add-coder stack list
+
+# 启用/切换技术栈（如后端服务链路）
+npx add-coder stack set machineserver
+
+# 查看当前技术栈 + profile 文件路径 + 更新时间
+npx add-coder stack show
+
+# 清除技术栈设置（回到中性，不删除用户自建 profile 文件）
+npx add-coder stack set --clear
+```
+
+**`stack set <name>` 做了什么**：
+- 写入 `{magicDir}/stack.json`（stack 名 + 时间戳）
+- 重渲染 `project_rules.md` 引用行（指向对应 profile 文件）
+- 将 profile 文件写入 `.add/rules/profiles/` 与 `{magicDir}/rules/profiles/`
+- 刷新 `.add-coder-hash.json`，保持与 sync --patch 的 hash 链路一致
+
+### 8.3 初始化时申报
+
+```bash
+# 非交互：初始化时直接指定技术栈
+npx add-coder init --adapter=qoder --stack machineserver
+
+# 交互：init 过程中会提问「技术栈约束」，回车默认「不设置」（中性）
+npx add-coder init
+```
+
+### 8.4 自定义 profile
+
+内置之外的技术栈，直接在项目里自建 profile 文件即可被识别：
+
+1. 新建 `{magicDir}/rules/profiles/{my-stack}-profile.md`（内容为你的技术栈约束）
+2. `npx add-coder stack list` 会列出该自定义项
+3. `npx add-coder stack set my-stack` 启用它（注册表未命中时按自定义 profile 处理）
+
+> **同步保护**：`sync --patch` 的白名单包含 `rules/profiles/`——用户自建的自定义 profile 不会被同步覆盖或删除。
+
+### 8.5 效果
+
+- 启用 `machineserver` 后，MCP `get_project_context` 返回的规则会**追加 profile 全文**，AI 上下文可见后端链路约束（服务边界/幂等/契约/可观测）
+- 未设置时零技术栈假设，AI 依据项目实际代码推断
+- profile 文件缺失/stack.json 损坏时按中性处理，不阻断 init/sync
