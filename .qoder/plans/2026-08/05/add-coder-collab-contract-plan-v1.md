@@ -1,9 +1,9 @@
 # add-coder-collab-contract-plan-v1
 
-# add-coder 并发协作契约能力（Collab Contract）统筹需求
-
-> **性质**：功能统筹 Plan——将 htc_g13_extra_time 项目验证成熟的「并发协作契约」能力（模板/schema/持久化/HITL 配套）收敛为 add-coder 正式能力。
+> **性质**：功能统筹 Plan——将 htc_g13_extra_time 项目验证成熟的「并发协作契约」能力（模板/schema/持久化/MCP/HITL 配套）收敛为 add-coder 正式能力。
 > **来源**：htc 侧验证（`htc-g13-extra-time-quest-collab-contract-v1.md` + CollabContract 持久化已落地，HITL TONGYI）。
+>
+> **Plan/Spec 边界提醒**：Plan 回答"改什么、为什么改、改哪里"——写到让 Review 能判断方向对不对、有没有遗漏维度的程度（文件路径 + Task 验收标准 + 架构维度全覆盖）。**不要**在 Plan 中写完整 TS 类型定义、WHEN-THEN 场景、精确函数签名——那是 Spec 的职责（本节数据模型/工具设计已精简，完整定义见 Spec §2/§3）。
 
 ## PLAN 元信息
 
@@ -12,6 +12,9 @@
 - **主导 AI**: Qoder
 - **目标仓库**: `/home/xmm/ai/add-coder`
 - **关联文档**:
+  - ADD Route: `.qoder/plans/2026-08/05/add-coder-collab-contract-add-route-v1.md`
+  - Handoff: `.qoder/plans/2026-08/05/add-coder-collab-contract-handoff-v1.md`
+  - Review: `.qoder/reviews/add-coder-collab-contract-review-v1.md`
   - 验证实例: `/home/xmm/ai/htc_g13_extra_time/.qoder/plans/2026-08/05/htc-g13-extra-time-quest-collab-contract-v1.md`
   - 模板雏形: `templates/core/templates/collab-contract-template.md`（已提交 5875fa7，未发布）
 - **ADD-7 审计策略**:
@@ -104,54 +107,24 @@ htc 项目已把「并发协作契约」从概念验证到落地：
               └─────────────────────────────────────┘
 ```
 
-### 3.2 数据模型（对齐 htc 已迁移版）
+### 3.2 数据模型变更（对齐 htc 已迁移版）
 
-```prisma
-enum ContractRole {
-  MASTER  // 总控 Plan（契约持有者）
-  SUB     // 子 Plan（契约实施单元）
-}
+> 完整模型定义见 Spec §2（Plan 不承载类型定义——模板边界）。要点：
 
-model PlanRecord {
-  // ... 已有字段
-  contractRole   ContractRole?   // 该 Plan 在契约中的角色
-  contractName   String?         // 所属契约名
-  masterContract CollabContract? // 作为 MASTER 持有的契约
-  // @@index([contractName])
-}
-
-model CollabContract {
-  id                 String   @id @default(cuid())
-  contractName       String   @unique
-  contractPath       String
-  masterPlanName     String   @unique
-  masterPlan         PlanRecord @relation(fields: [masterPlanName], references: [planName], onDelete: Restrict)
-  participants       Json     // [{role, platformEntity, boundPlan, planKeyword, description}]
-  abilityMatrix      Json?
-  stages             Json     // [{stage, expert, trigger, parallelism}]
-  dependencyGraph    String?
-  fileBoundaries     Json     // [{expert, exclusiveDomain, forbidden, isolationMode}]
-  completionCriteria Json?
-  status             String   @default("ACTIVE")
-  version            Int      @default(1)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-}
-
-enum HitlType {
-  PLAN
-  PLAN_REVIEW
-  COLLAB_CONTRACT
-}
-```
+- **`CollabContract` 模型**（新增）：contractName(unique) / contractPath / **masterPlanName(unique, 外键→PlanRecord.planName, onDelete: Restrict)** / participants / stages / fileBoundaries(含 isolationMode) / status / version
+- **`ContractRole` 枚举**（新增）：`MASTER`（总控）/ `SUB`（子 Plan）
+- **`PlanRecord` 扩展**：`contractRole?` + `contractName?` + `masterContract?`（反查）+ `@@index([contractName])`
+- **`HitlType` 扩展**：`COLLAB_CONTRACT`（契约审批）
 
 ### 3.3 MCP 工具设计
 
-| 工具 | 功能 | 参数 |
+> 完整工具契约（参数/解析规则）见 Spec §3。架构层功能清单：
+
+| 工具 | 功能 | 状态 |
 |------|------|------|
-| `contract_track` | 扫描契约文档 → CollabContract 落库（按 contractName 去重，增量更新） | contractName? / scanAll? |
-| `contract_status` | 查询契约状态（版本/参与者/阶段/边界） | contractName（必填） |
-| `create_hitl` | 扩展 type=COLLAB_CONTRACT | 复用现有 |
+| `contract_track` | 扫描 `plans/*-collab-contract-*.md`（排除 -plan-/add-route/handoff）→ CollabContract 落库（按 contractName 去重，增量更新） | 已实施(977e976) + 本轮过滤/告警收尾 |
+| `contract_status` | 查询契约状态（版本/参与者/阶段/边界） | 已实施(977e976) |
+| `create_hitl/update_hitl` | 扩展 type=COLLAB_CONTRACT；update 回写 .hitl.md 提案状态 | 已实施(977e976) + 本轮回写收尾 |
 
 ### 3.4 Plan→Spec 实施映射
 
@@ -166,22 +139,33 @@ enum HitlType {
 
 ## 四、实施 Task 概要
 
+> **Plan/Tasks 边界**：本文是概要表（Task # + 文件 + 说明 + 验收），供 HITL 审核和架构概览。
+> 详细子任务拆解 + 验证证据见 `.qoder/specs/add-coder-collab-contract/tasks.md`（含 Plan→Task 映射表）。
+> 轮次 0 为 Review P1 #2 回流新增（见 §六点五）。
+
 ```
+轮次 0（前置，P1 #2 回流）: 根环境打通
+  ├── Task 0.1: 根 prisma/add.prisma 同步契约模型（prisma/add.prisma）
+  ├── Task 0.2: migrate dev --name add_collab_contract（migrations/）
+  ├── Task 0.3: prisma generate（src/generated/prisma/）
+  └── Task 0.4: contract_track 实证（本地契约样例）
+        │
+        ▼
 轮次 1: 模板 + Schema 完善（对齐 htc 验证版）
-  ├── Task 1.1: collab-contract-template.md 补 §3.6 HITL + §7 持久化
-  ├── Task 1.2: collab-contract-template.schema.json 补字段
-  └── Task 1.3: add.prisma 加 CollabContract + ContractRole（含迁移）
+  ├── Task 1.1: collab-contract-template.md 补 §3.6 HITL（已实施 977e976，§7 持久化由开发者决策删除）
+  ├── Task 1.2: collab-contract-template.schema.json 补 isolationMode（schema.json）
+  └── Task 1.3: hitl-template.md 契约审批说明核对（type 动态注入，无需补）
         │
         ▼
 轮次 2: MCP 工具 + HITL 扩展
-  ├── Task 2.1: tools/contract.ts（contract_track/status）
-  ├── Task 2.2: hitl.ts 支持 COLLAB_CONTRACT
-  └── Task 2.3: plan.ts 支持 contractRole/contractName
+  ├── Task 2.1: contract.ts 解析过滤 + 空结果告警（tools/contract.ts）
+  ├── Task 2.2: hitl.ts 提案文件状态回写（tools/hitl.ts）
+  └── Task 2.3: plan.ts plan_status 契约角色展示（tools/plan.ts）
         │
         ▼
 轮次 3: Caijuehub + 发布准备
-  ├── Task 3.1: caijue.toml 注册 CONTRACT 裁决
-  ├── Task 3.2: npm run sync 全 IDE 分发
+  ├── Task 3.1: docs/caijuehub.md 补契约裁决入口（docs/caijuehub.md）
+  ├── Task 3.2: npm run sync 全 IDE 分发（同步产物）
   └── Task 3.3: 验证（contract_track 实证 + lint + tsc）→ bump 版本
 ```
 
@@ -204,6 +188,64 @@ enum HitlType {
 
 | 文档 | 路径 |
 |------|------|
+| ADD Route | `.qoder/plans/2026-08/05/add-coder-collab-contract-add-route-v1.md` |
+| Handoff | `.qoder/plans/2026-08/05/add-coder-collab-contract-handoff-v1.md` |
+| Review | `.qoder/reviews/add-coder-collab-contract-review-v1.md` |
+| Spec | `.qoder/specs/add-coder-collab-contract/spec.md` |
+| Tasks | `.qoder/specs/add-coder-collab-contract/tasks.md` |
+| Checklist | `.qoder/specs/add-coder-collab-contract/checklist.md` |
 | htc 验证实例 | `/home/xmm/ai/htc_g13_extra_time/.qoder/plans/2026-08/05/htc-g13-extra-time-quest-collab-contract-v1.md` |
 | 模板雏形 | `templates/core/templates/collab-contract-template.md` |
 | Qoder 能力依据 | https://docs.qoder.com/zh/extensions/subagent + /quest/experts-mode |
+
+---
+
+## 六点五、Review 回流（2026-08-05，PLAN_REVIEW round 2 TONGYI）
+
+> 补充于 2026-08-05：`.qoder/reviews/add-coder-collab-contract-review-v1.md` 6 个发现（P1×2 / P2×2 / P3×2）全部经 HITL 同意。本 Plan 的 ADD-7 表与任务结构按现状校准，避免重复劳动。
+
+### 6.5.1 现状校准（[回流: Review P1 #1 状态脱节]）
+
+commit 977e976（08-05 14:30）已落地约 75%，ADD-7 表校准如下：
+
+| 文件 | 评审后状态 | 真实缺口 |
+|------|-----------|---------|
+| templates/core/scripts/mcp-server/tools/contract.ts | ✅ 已实施(977e976, 182 行) | parseContractDoc 空结果告警（P3 #6） |
+| templates/core/scripts/mcp-server/tools/hitl.ts | ✅ 已实施(977e976, COLLAB_CONTRACT) | update_hitl 提案文件状态回写核对（P3 #6） |
+| templates/core/prisma/add.prisma | ✅ 已实施(977e976, CollabContract+ContractRole) | 根环境未同步（P1 #2） |
+| caijuehub 注册(caijue.toml/transcribe) | ✅ 已实施(977e976) | docs/caijuehub.md 未同步（P3 #5） |
+| collab-contract-template.md | 🟡 部分实施(§3.6 HITL 已有) | **补 §7 持久化**（P2 #4） |
+| collab-contract-template.schema.json | 🟡 雏形 | **补 isolationMode**（P2 #4） |
+| tools/plan.ts | ❌ 未实施 | plan_status 补 contractRole/contractName（P3 #5） |
+| hitl-template.md | ❌ 未实施 | 契约审批类型说明 |
+
+### 6.5.2 新增 Task：根环境打通（[回流: Review P1 #2 环境可用性]）
+
+> 阻断性：add-coder 自身 `contract_track` 依赖根 `src/generated/prisma` client 含契约模型，否则验收无法达成。
+
+```
+轮次 0（前置，P1 #2）: 根环境打通
+  ├── Task 0.1: 根 prisma/add.prisma 同步模板真源契约模型
+  ├── Task 0.2: prisma migrate dev --name add_collab_contract（禁止 db push）
+  ├── Task 0.3: prisma generate → src/generated/prisma 含 collabContract
+  └── Task 0.4: contract_track 实证（本地契约样例）
+```
+
+### 6.5.3 验收标准修订（[回流: Review P2 #3 验收可执行性]）
+
+- ~~验收③ `contract_track` 扫描 htc 契约 → 落库成功~~ → **验收③ `contract_track` 扫描本地契约样例文档（plans/ 下 `*-collab-contract-*.md`）→ 落库成功** [2026-08-05 修订: 工具只扫描自身 plans/，跨仓库不可执行]
+
+### 6.5.4 模板/schema 补全细化（[回流: Review P2 #4 模板完整性]）
+
+- ~~Task 1.1 收尾：模板补 §7 持久化设计——§7.1 数据模型 / §7.2 HitlType 扩展 / §7.3 迁移指引（对齐 htc 验证版 §7.1/7.2/7.3）~~ → **Task 1.1 已由开发者决策关闭：模板不承载 §7 持久化**——持久化是平台机制（contract_track 自动落库 CollabContract，模型真源 templates/core/prisma/add.prisma），契约文档止于 §六 关联文档 [2026-08-05 修订: 开发者删除模板 §7]
+- Task 1.2 收尾：schema.json `fileBoundaries` items 补 `isolationMode`（enum: file/worktree）
+
+### 6.5.5 工具残留收尾（[回流: Review P3 #5 工具残留]）
+
+- Task 2.3：plan.ts `plan_status` 增补 `contractRole/contractName` 展示
+- Task 3.1 收尾：docs/caijuehub.md 补契约裁决入口说明（代码已注册）
+
+### 6.5.6 健壮性收尾（[回流: Review P3 #6 健壮性]）
+
+- Task 2.1 收尾：`parseContractDoc` 解析结果为空时输出告警（提示表头不匹配）
+- Task 2.2 收尾：核对 `update_hitl` 是否回写 `.hitl.md` 提案文件状态（DRAFT → TONGYI 一致性）
