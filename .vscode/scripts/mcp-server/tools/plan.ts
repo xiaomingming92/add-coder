@@ -136,6 +136,9 @@ export function registerPlanTools(server: ToolRegistrar) {
         `planKeyword:  ${plan.planKeyword || "—"}`,
         plan.specPath ? `spec:         ${plan.specPath}` : null,
         plan.addRoutePath ? `addRoute:     ${plan.addRoutePath}` : null,
+        // P3 #5 契约角色展示（PlanRecord 已设置时）
+        plan.contractRole ? `contractRole: ${plan.contractRole}` : null,
+        plan.contractName ? `contractName: ${plan.contractName}` : null,
       ].filter(Boolean)
       return textResponse(lines.join("\n"))
     } catch (e) {
