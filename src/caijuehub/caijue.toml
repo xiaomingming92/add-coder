@@ -89,3 +89,10 @@ type = "strategy"
 description = "magic 目录批量同步（bash 版）：独立 TOML 结构，产 shell config 供 sync-magic.sh source"
 rules = "benchmark/sync-magic-benchmark-bash-rules.toml"
 implementation = "scripts/sync-magic-config.sh"
+
+[[caijue]]
+id = "collab-contract"
+type = "strategy"
+description = "并发协作契约解析：参与者/阶段/文件边界从契约文档提取规则（contract_track 消费）"
+rules = "collab-contract-rules.toml"
+implementation = "src/caijuehub/strategies/collab-contract.strategy.ts"

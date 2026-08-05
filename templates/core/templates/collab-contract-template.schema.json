@@ -14,14 +14,36 @@
       "description": "参与者（Lead Agent + 自定义专家）",
       "items": {
         "type": "object",
-        "required": ["role", "platformEntity", "boundPlan", "responsibility", "planKeyword"],
+        "required": ["role", "platformEntity", "boundPlan", "responsibility", "planKeyword", "description"],
         "properties": {
           "role": { "type": "string", "description": "角色：Lead Agent / 专家 N" },
           "platformEntity": { "type": "string", "description": "平台实体（主智能体/自定义子智能体）" },
           "boundPlan": { "type": "string", "description": "绑定的子 Plan 名称" },
           "responsibility": { "type": "string", "description": "职责描述" },
-          "planKeyword": { "type": "string", "description": "审计归因 planKeyword" }
+          "planKeyword": { "type": "string", "description": "审计归因 planKeyword" },
+          "description": { "type": "string", "description": "Subagent 触发匹配描述（平台自动委派依据）" }
         }
+      }
+    },
+    "contractRole": {
+      "type": "object",
+      "description": "Plan 主/从角色（§3.6）：MASTER=总控 / SUB=子 Plan",
+      "properties": {
+        "masterPlan": { "type": "string", "description": "总控 Plan 名称（ContractRole=MASTER）" },
+        "subPlans": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "子 Plan 名称列表（ContractRole=SUB）"
+        }
+      }
+    },
+    "hitlApproval": {
+      "type": "object",
+      "description": "契约自身 HITL 审批配套（§3.6）",
+      "properties": {
+        "type": { "type": "string", "enum": ["COLLAB_CONTRACT"] },
+        "triggerTiming": { "type": "string" },
+        "sentinelPath": { "type": "string" }
       }
     },
     "abilityMatrix": {

@@ -68,6 +68,8 @@
 - 独立 Skills + MCP
 - 追加提示词：职责边界 + 文件边界 + 完成判定
 
+> **专家定义（2026-08-05 websearch 核实）**：平台 Subagent 本质是**任务委派单元**——通过 `description` 字段声明“何时被调用”，主智能体按任务描述自动匹配并委派。本项目将 Subagent 绑定为「Plan 实施单元」：description 即触发条件（§3.1），tools/skills/mcpServers 即能力边界（§2.1）。
+
 ### 2.1 能力矩阵（每个专家的能力边界）——必填
 
 | 能力 | 专家 1 | 专家 2 | ... | Lead |
@@ -112,6 +114,15 @@
 
 **仲裁**：跨边界修改必须经 Lead Agent 批准（记录仲裁事件，planKeyword=总控）。
 
+> **隔离强度（2026-08-05 websearch 核实）**：平台支持 Subagent 在独立 git worktree 运行（隔离工作区）。默认文件边界（软隔离），高风险/大改场景升级 worktree（硬隔离）：
+>
+> | 模式 | 适用 | 隔离强度 |
+> |------|------|---------|
+> | 文件边界（默认） | 常规实施 | 软隔离（git diff 检查交叉） |
+> | worktree 隔离 | 大改/高风险 | 硬隔离（独立 git worktree） |
+>
+> worktree 模式由 Lead Agent 判定启用。
+
 ### 3.3 审计归因（ADD-7）
 
 | 动作 | 归因规则 |
@@ -137,6 +148,20 @@
   → 裁决结果 record_dev_operation 落库
   → 专家 A 按裁决执行
 ```
+
+### 3.6 契约自身 HITL 审批配套——必填
+
+> 契约是文档类型，不是实施 Plan——但契约变更（参与者/边界/触发条件）直接影响并行秩序，必须走 HITL 审批。
+
+| 项 | 设计 |
+|----|------|
+| 审批类型 | `HitlType` 扩展 `COLLAB_CONTRACT`（与 PLAN/PLAN_REVIEW 并列） |
+| 审批对象 | 契约文件 + 变更 diff（参与者/能力矩阵/文件边界/依赖拓扑） |
+| 发起时机 | 契约新建 / 契约重大变更（参与者增减、边界重划、触发条件变更） |
+| round 机制 | 复用 HitlRecord.round（同一契约多次变更递增 round） |
+| 与子 Plan 审批关系 | 契约审批是**总控级**（planName=总控 Plan）；子 Plan 审批独立进行（互不阻塞） |
+| 哨兵 | `.qoder/hitl/.tongyi-{contractName}`（复用现有哨兵机制） |
+| 审计 | 契约审批记录入 HitlRecord（type=COLLAB_CONTRACT）→ query_audit_logs 可查 |
 
 ---
 

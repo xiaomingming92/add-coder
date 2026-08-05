@@ -102,7 +102,7 @@ export function registerHitlTools(server: McpServer) {
       "type: PLAN=计划审批, PLAN_REVIEW=方案评审",
     inputSchema: z.object({
       planName: z.string().describe("Plan 名称，不含 .md 后缀"),
-      type: z.enum(["PLAN", "PLAN_REVIEW"]).describe("审批类型"),
+      type: z.enum(["PLAN", "PLAN_REVIEW", "COLLAB_CONTRACT"]).describe("审批类型"),
       dimensions: z.array(z.object({
         name: z.string().describe("维度名称，如「实施主体」「数据模型」"),
         content: z.string().optional().describe("LLM 建议的方案内容"),
@@ -287,7 +287,7 @@ export function registerHitlTools(server: McpServer) {
       "已终态（TONGYI/BOHUI）不可再更新，BOHUI 后需 create_hitl 新建 round。",
     inputSchema: z.object({
       planName: z.string().describe("Plan 名称"),
-      type: z.enum(["PLAN", "PLAN_REVIEW"]).describe("审批类型"),
+      type: z.enum(["PLAN", "PLAN_REVIEW", "COLLAB_CONTRACT"]).describe("审批类型"),
       status: z.enum(["SUBMITTED", "TONGYI", "BOHUI"]).optional().describe("降级模式(_fallback)或 genui 模式(_use_genui)必填：目标状态"),
       reason: z.string().optional().describe("驳回原因（降级模式手动传，genui 模式从 widget 回调获取）"),
       _fallback: z.boolean().optional().default(false).describe("降级模式：跳过 inputRequired，按原始代码行为直接写哨兵+更新 DB"),
@@ -445,7 +445,7 @@ export function registerHitlTools(server: McpServer) {
     description: "HITL 审批：查询状态。返回最新 round 的状态、时间戳、拒绝原因等。与 .hitl-tongyi-{planName} 哨兵文件构成双通道校验。\n未发起时返回提示调用 create_hitl。",
     inputSchema: z.object({
       planName: z.string().describe("Plan 名称"),
-      type: z.enum(["PLAN", "PLAN_REVIEW"]).describe("审批类型（默认 PLAN）").default("PLAN"),
+      type: z.enum(["PLAN", "PLAN_REVIEW", "COLLAB_CONTRACT"]).describe("审批类型（默认 PLAN）").default("PLAN"),
     }),
   }, async (args: Record<string, unknown>) => {
     try {
