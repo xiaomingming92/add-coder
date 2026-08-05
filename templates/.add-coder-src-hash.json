@@ -234,6 +234,8 @@
   "core/templates/add-route-template.schema.json": "867a45c1",
   "core/templates/checklist-template.md": "d6b73a5c",
   "core/templates/checklist-template.schema.json": "fb3a73e8",
+  "core/templates/collab-contract-template.md": "b13ac06d",
+  "core/templates/collab-contract-template.schema.json": "24831a31",
   "core/templates/fix-verification-template.md": "9c9ed175",
   "core/templates/fix-verification-template.schema.json": "a18bc6a5",
   "core/templates/handoff-multi-round-template.md": "d3a2375d",
