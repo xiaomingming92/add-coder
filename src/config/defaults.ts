@@ -11,6 +11,7 @@ export const defaults: AddCoderConfig = {
     mcpServerCommand: "tsx",
     agentAuditImport: "@/lib/agent-audit-logger",
     magicDir: "",
+    stack: "",
     adapters: [],
     overrides: {},
 };

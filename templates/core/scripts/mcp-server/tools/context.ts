@@ -1,5 +1,5 @@
 import * as z from "zod/v4"
-import type { McpServer } from "@modelcontextprotocol/server"
+import type { ToolRegistrar } from "./registrar.js"
 import { readFile } from "fs/promises"
 import { readdir } from "fs/promises"
 import { stat } from "fs/promises"
@@ -9,7 +9,7 @@ import { textResponse, errorResponse } from "../shared/response.js"
 import { readFileSafe, readdirRecursive } from "../shared/fs.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 
-export function registerContextTools(server: McpServer) {
+export function registerContextTools(server: ToolRegistrar) {
 
   // ===== get_project_context (L166-430) =====
   server.registerTool(
@@ -65,6 +65,24 @@ export function registerContextTools(server: McpServer) {
               else if (line.startsWith("###") || line.startsWith("####")) { parts.push(line) }
             }
             parts.push("")
+          }
+          // 技术栈 profile 追加（D8）：stack.json → profiles/{stack}-profile.md 存在 → 追加全文
+          const stackRaw = await readFileSafe(join(PROJECT_ROOT, MAGIC_DIR, "stack.json"))
+          if (stackRaw) {
+            try {
+              const stackDoc = JSON.parse(stackRaw) as { stack?: unknown }
+              if (typeof stackDoc.stack === "string" && stackDoc.stack) {
+                const profileContent = await readFileSafe(join(PROJECT_ROOT, MAGIC_DIR, "rules", "profiles", `${stackDoc.stack}-profile.md`))
+                if (profileContent) {
+                  parts.push(`=== 技术栈约束 (${stackDoc.stack}-profile) ===`)
+                  parts.push(profileContent)
+                  parts.push("")
+                } else {
+                  parts.push(`⚠️ profile 文件缺失: ${MAGIC_DIR}/rules/profiles/${stackDoc.stack}-profile.md（技术栈约束未生效）`)
+                  parts.push("")
+                }
+              }
+            } catch { /* stack.json 损坏 → 中性处理，仅返回 project_rules.md */ }
           }
         }
 
