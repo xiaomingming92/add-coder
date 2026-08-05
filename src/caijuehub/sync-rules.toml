@@ -2,7 +2,8 @@
 
 [guard]
 # PATCH_GUARD: --patch 模式下也不写入的路径模式
-patterns = ["[/]plans[/]", "[/]specs[/]", "[/]reviews[/]"]
+# rules/profiles/ = 技术栈约束文件（含用户自建自定义 profile），sync 不覆盖不删除 [回流: Review P1 #1]
+patterns = ["[/]plans[/]", "[/]specs[/]", "[/]reviews[/]", "[/]rules[/]profiles[/]"]
 
 [hash]
 # 产出 hash 文件名

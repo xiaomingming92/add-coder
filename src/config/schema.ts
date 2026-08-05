@@ -22,6 +22,7 @@ export const AddCoderConfigSchema = z.object({
     mcpServerCommand: z.string().default("tsx"),
     agentAuditImport: z.string().default("@/lib/agent-audit-logger"),
     magicDir: z.string(),
+    stack: z.string().optional(),
     adapters: z.array(AdapterEnum).default([]),
     overrides: z.record(z.string(), z.string()).default({}),
 });
