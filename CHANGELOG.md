@@ -16,6 +16,9 @@
 
 ### 修复
 
+- **contract_track 扫描过滤**：排除 -plan-/add-route/handoff 误扫，空解析告警，masterPlan 必需校验
+- **迁移幂等化**：add_collab_contract 迁移 SQL 全幂等（DO 块+IF NOT EXISTS），已应用库重放 exit=0
+- **契约文档职责边界**：§7 持久化不承载于契约文档（平台机制），模板止于 §六
 - **audit.ts 基线 14 个 TS 错误**：args 窄化（string|number）+ 行类型断言，tsc 全项目归零
 - **pre-tool-use.sh HITL 豁免**：handoff/implementation/runtime review 不被 HITL 拦截（core + 5 适配器统一）
 - **CLI --adapter 提示**：补全 5 个 IDE（trae/codex）
