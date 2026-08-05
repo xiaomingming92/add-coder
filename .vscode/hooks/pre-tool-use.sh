@@ -67,9 +67,9 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "
     if type detect_active_add >/dev/null 2>&1; then
       state=$(detect_active_add 2>/dev/null || true)
       if [ -z "$state" ]; then
-        echo "⛔ 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——请先执行 add-paradigm" >&2
-        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan/Spec/Review 写入需要活跃 ADD Plan，请先执行 add-paradigm\"}}"
-        write_hook_event "pre-tool-use" "deny" "$file_path" "Plan/Spec/Review 写入需活跃 ADD Plan" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
+        echo "[ADD 提示] 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——首次创建场景放行，建议先执行 add-paradigm 生成 Plan+add-route" >&2
+        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"无活跃 ADD Plan 但为 Plan/Spec/Review 写入（首次创建场景），提示而非拦截\"}}"
+        write_hook_event "pre-tool-use" "info" "$file_path" "无活跃 ADD Plan 下写入 Plan/Spec/Review（首次创建放行）" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
         exit $EXIT_BLOCK
       fi
     fi
