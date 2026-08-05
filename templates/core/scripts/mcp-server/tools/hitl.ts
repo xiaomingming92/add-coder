@@ -1,5 +1,6 @@
 import * as z from "zod/v4"
-import { inputRequired, acceptedContent, type McpServer } from "@modelcontextprotocol/server"
+import { inputRequired, acceptedContent } from "@modelcontextprotocol/server"
+import type { ToolRegistrar } from "./registrar.js"
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
 import { join, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
@@ -11,7 +12,7 @@ const db = {
   get hitl() { return prisma.hitlRecord as unknown as Record<string, (...a: unknown[]) => unknown> },
 }
 
-export function registerHitlTools(server: McpServer) {
+export function registerHitlTools(server: ToolRegistrar) {
 
   // ═══════════════ 辅助：按安装环境裁决交互模式（caijuehub: hitl-interaction-rules.toml） ═══════════════
   const _interaction = (() => {
