@@ -8,7 +8,7 @@
  *                 tasks.md/checklist.md 进度由 plan_track 在 PlanRecord 中维护，此处不再重复扫描。
  */
 import * as z from "zod/v4";
-import type { McpServer } from "@modelcontextprotocol/server";
+import type { ToolRegistrar } from "../registrar.js";
 import { existsSync } from "fs";
 import { join, basename } from "path";
 import { textResponse, errorResponse } from "../../shared/response.js";
@@ -19,7 +19,7 @@ import {
   MAGIC_DIR,
 } from "../../shared/fs.js";
 
-export function registerCheckSpecSync(server: McpServer) {
+export function registerCheckSpecSync(server: ToolRegistrar) {
   server.registerTool(
     "check_spec_sync",
     {
