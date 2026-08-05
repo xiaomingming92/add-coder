@@ -45,6 +45,7 @@ model AuditLog {
 enum HitlType {
   PLAN
   PLAN_REVIEW
+  COLLAB_CONTRACT
 }
 
 enum HitlStatus {
@@ -94,6 +95,12 @@ model PlanRecord {
   checklistTDone Int           @default(0)
   checklistR     Int           @default(0)
   planKeyword    String?
+  // 并发协作契约：该 Plan 在契约中的角色（MASTER=总控 / SUB=子 Plan）
+  contractRole   ContractRole?
+  // 所属契约名（与 CollabContract.contractName 对应，反查用）
+  contractName   String?
+  // 作为总控 Plan 持有的契约（masterPlanName 外键方向）
+  masterContract CollabContract?
   // DPS 四维评分历史（check_dps 调用后回写，供 FFT 自适应权重消费）
   dpsSemScore    Int?          // 语义相关性 0-100
   dpsEntropyScore Int?         // 信息熵匹配 0-100
@@ -106,6 +113,7 @@ model PlanRecord {
   updatedAt      DateTime      @updatedAt
 
   @@index([planKeyword])
+  @@index([contractName])
 }
 
 model ReviewRecord {
@@ -122,4 +130,31 @@ model ReviewRecord {
 
   @@index([planName])
   @@index([type])
+}
+
+enum ContractRole {
+  MASTER  // 总控 Plan（契约持有者）
+  SUB     // 子 Plan（契约实施单元）
+}
+
+// 并发协作契约（多智能体并行实施规则集，对应 collab-contract 文档）
+model CollabContract {
+  id                 String   @id @default(cuid())
+  contractName       String   @unique
+  contractPath       String
+  // 外键：总控 Plan（契约持有者，ContractRole=MASTER，一对一）
+  masterPlanName     String   @unique
+  masterPlan         PlanRecord @relation(fields: [masterPlanName], references: [planName], onDelete: Restrict)
+  participants       Json     // [{role, platformEntity, boundPlan, planKeyword, description}]
+  abilityMatrix      Json?    // {能力: {专家: boolean}}
+  stages             Json     // [{stage, expert, trigger, parallelism}]
+  dependencyGraph    String?  // ASCII 图 + 机器可读声明
+  fileBoundaries     Json     // [{expert, exclusiveDomain, forbidden, isolationMode}]  isolationMode: file/worktree
+  completionCriteria Json?    // {专家: 完成标志}
+  status             String   @default("ACTIVE") // ACTIVE / SUPERSEDED
+  version            Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([masterPlanName])
 }

@@ -1,0 +1,28 @@
+# 并发协作契约解析规则（contract_track 消费）
+# 规则声明 ≠ 业务逻辑：契约文档的提取模式/默认值在此声明
+
+[file_pattern]
+# 契约文档命名（plans/ 下扫描）
+contract_suffix = "-collab-contract-"
+exclude_suffix = ".hitl.md"
+
+[parse]
+# §二 参与者表提取锚点
+participants_anchor = "**Lead Agent**"
+# §3.1 触发条件表锚点
+stages_anchor = "| 阶段 | 专家 | 触发条件 | 并行度 |"
+# §3.2 文件边界表锚点
+boundaries_anchor = "| 专家 | 独占文件域 | 禁区 |"
+# §3.1.1 依赖声明代码块前缀
+dependency_prefix = "依赖:"
+# masterPlan 提取（元信息"总控 Plan:" 行）
+master_plan_regex = "总控 Plan:[ ]*`?([^`]+)`?"
+
+[defaults]
+isolation_mode = "file"          # 默认软隔离（worktree 由 Lead 判定升级）
+status = "ACTIVE"
+version_start = 1
+
+[roles]
+master = "MASTER"
+sub = "SUB"

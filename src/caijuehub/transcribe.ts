@@ -158,6 +158,35 @@ interface SyncMagicRules {
     verify?: Array<{ src: string; dest: string; name: string }>;
 }
 
+function genCollabContractRules(rules: TomlData): string {
+    const d = rules as Record<string, Record<string, string | number>>;
+    const filePattern = d.file_pattern ?? {};
+    const parse = d.parse ?? {};
+    const defaults = d.defaults ?? {};
+    const roles = d.roles ?? {};
+
+    const str = (v: string | number | undefined, fallback: string): string =>
+        typeof v === "string" && v.length > 0 ? v : fallback;
+
+    return `// ⚠️ 自动生成，不要手动编辑！改 collab-contract-rules.toml 后重新运行: add-coder generate
+// >>> CAIJUE GENERATED START >>>
+export const COLLAB_CONTRACT_CONFIG = {
+    CONTRACT_SUFFIX: "${str(filePattern.contract_suffix, "-collab-contract-")}",
+    EXCLUDE_SUFFIX: "${str(filePattern.exclude_suffix, ".hitl.md")}",
+    PARTICIPANTS_ANCHOR: "${str(parse.participants_anchor, "**Lead Agent**")}",
+    STAGES_ANCHOR: "${str(parse.stages_anchor, "| 阶段 | 专家 | 触发条件 | 并行度 |")}",
+    BOUNDARIES_ANCHOR: "${str(parse.boundaries_anchor, "| 专家 | 独占文件域 | 禁区 |")}",
+    DEPENDENCY_PREFIX: "${str(parse.dependency_prefix, "依赖:")}",
+    MASTER_PLAN_REGEX: "${str(parse.master_plan_regex, "总控 Plan:[ ]*`?([^`]+)`?")}",
+    ISOLATION_MODE: "${str(defaults.isolation_mode, "file")}",
+    STATUS: "${str(defaults.status, "ACTIVE")}",
+    VERSION_START: ${typeof defaults.version_start === "number" ? defaults.version_start : 1},
+    ROLE_MASTER: "${str(roles.master, "MASTER")}",
+    ROLE_SUB: "${str(roles.sub, "SUB")}",
+};
+// <<< CAIJUE GENERATED END <<<`;
+}
+
 function genSyncMagicRules(rules: TomlData): string {
     const d = rules as SyncMagicRules;
     const core = d.core ?? {};
@@ -371,6 +400,7 @@ const GENERATORS: Record<string, RuleGenerator> = {
     "sync-magic": genSyncMagicRules,
     "hitl-interaction": genHitlInteractionRules,
     "dps-scoring": genDpsScoringRules,
+    "collab-contract": genCollabContractRules,
 };
 
 // ── Shell 配置生成器（产出 .sh 文件，不走 TS 策略路径）──
