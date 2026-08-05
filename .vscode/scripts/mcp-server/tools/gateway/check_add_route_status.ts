@@ -7,7 +7,7 @@
  * @Description  : ADD 范式守卫工具：交叉校验 add-route 文件
  */
 import * as z from "zod/v4";
-import type { McpServer } from "@modelcontextprotocol/server";
+import type { ToolRegistrar } from "../registrar.js";
 import { join } from "path";
 import { textResponse, errorResponse } from "../../shared/response.js";
 import {
@@ -60,7 +60,7 @@ function scanCheckboxes(content: string) {
   };
 }
 
-export function registerCheckAddRouteStatus(server: McpServer) {
+export function registerCheckAddRouteStatus(server: ToolRegistrar) {
   server.registerTool(
     "check_add_route_status",
     {

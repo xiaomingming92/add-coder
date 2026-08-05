@@ -1,8 +1,8 @@
 import * as z from "zod/v4"
-import type { McpServer } from "@modelcontextprotocol/server"
+import type { ToolRegistrar } from "./registrar.js"
 import { textResponse, errorResponse } from "../shared/response.js"
 
-export function registerQualityTools(server: McpServer) {
+export function registerQualityTools(server: ToolRegistrar) {
 
   // ===== check_phase_symmetry (L615-679) =====
   server.registerTool("check_phase_symmetry", {
