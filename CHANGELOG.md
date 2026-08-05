@@ -5,6 +5,147 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.17] - 2026-08-05
+
+### 新增（待发版）
+
+- **技术栈 profile 机制**：`project_rules.md` 去技术栈硬编码 → `profiles/` 注册表（webapp/machineserver）+ `add-coder stack list/set/show` CLI + `init --stack` 申报 + MCP context 按 stack.json 追加 profile 约束
+- **并发协作契约（collab-contract）**：契约模板（§3.6 HITL + §7 持久化 + 主从字段）+ `contract_track/contract_status` MCP 工具 + CollabContract 持久化 + Caijuehub 裁决入口
+- **多 MCP 工具路由安全（D9）**：`ToolRegistrar` 基类接口收敛 15 个注册函数，29 工具 description 注入 `[项目: {PROJECT_ID}]` 前缀；写操作落库项目声明
+- **sync --patch 白名单扩展**：`rules/profiles/`（用户自建自定义 profile 不覆盖不删除）
+
+### 修复
+
+- **audit.ts 基线 14 个 TS 错误**：args 窄化（string|number）+ 行类型断言，tsc 全项目归零
+- **pre-tool-use.sh HITL 豁免**：handoff/implementation/runtime review 不被 HITL 拦截（core + 5 适配器统一）
+- **CLI --adapter 提示**：补全 5 个 IDE（trae/codex）
+
+---
+## [0.3.16] - 2026-08-05
+
+### 修复
+
+- **plan_track 排除 .hitl.md 误扫为独立 Plan**（DPS 评分失真根因修复）
+- sync 烘焙 plan.ts 修复到 .add/.claude/.vscode
+
+## [0.3.15] - 2026-08-05
+
+### 变更
+
+- **pre-tool-use 无活跃 Plan 时 Plan/Spec/Review 写入改为提示放行**（治理策略从强制拦截升级为开发任务提示）
+
+## [0.3.14] - 2026-08-05
+
+### 新增
+
+- **PlanRecord DPS 评分字段**：add model + add dps fields（四维评分持久化，供 FFT 自适应权重消费）
+
+### 变更
+
+- **一级依赖升级避障**：`@xenova/transformers@2.17.2` → `@huggingface/transformers@^3.8.1`（API 全兼容：`pipeline` / `env.remoteHost` / `feature-extraction` / `tolist()`），连带 sharp 0.32.x → 0.34.x——背景：sharp 0.32 经 prebuild-install 从 GitHub release 下载二进制被墙；升级后 sharp 走 `@img/sharp-*` 平台包（纯 npm registry），onnxruntime-node 1.21+ 二进制自含（+217MB 体积代价）
+- **坑位文档化**：详见 [DEVELOPMENT.md §十一 依赖治理坑位记录](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)，含「不要降级 sharp 0.32.x」「pnpm 11 allowBuilds 白名单（onnxruntime-node 必须为 true）」两条强制约束
+
+## [0.3.13] - 2026-08-05
+
+### 修复
+
+- caijuehub build fix & patch fix
+
+## [0.3.12] - 2026-08-04
+
+### 变更
+
+- **取消无 Plan 对话时的强拦截**（前置提示代替强制阻断）
+- **DPS 阈值文案单一真源化**：dps-scoring-rules.toml `[thresholds]` 占位符渲染 + check_dps description 动态化（README/GUIDE/caijuehub.md 共 6 处声明式）
+- docs 验收闭环：handoff 按 multi-round 模板 + checklist 全绿
+
+## [0.3.11] - 2026-08-02
+
+### 修复
+
+- **check_rahs 查表纠正旧逻辑**
+
+## [0.3.10] - 2026-08-02
+
+### 新增
+
+- what-makes-software-cool 案例文档
+
+## [0.3.9] - 2026-08-01
+
+### 修复
+
+- **MCP server Prisma 客户端目录改为 PRISMA_CLIENT_DIR 显式配置**
+
+## [0.3.8] - 2026-08-01
+
+### 变更
+
+- 构建产物与发布基线
+
+## [0.3.7] - 2026-08-01
+
+### 变更
+
+- **peer 依赖必须化**：移除零引用 adapter-libsql
+- **prisma-sync post-sync 迁移指引策略化**：覆盖零修改/三场景边界
+
+## [0.3.6] - 2026-07-31
+
+### 新增
+
+- **DPS HITL 自动化**：DPS ≥ 80 自动建 `.tongyi-{plan}` 哨兵（post-tool-use）+ 5 端能力对齐
+- **gateway.ts 拆分为 gateway/ 子模块**：check_dps/check_rahs/check_spec_sync 等 5 守卫独立
+- **PlanRecord 五元组全覆盖**：plan_track/plan_status 扩容（addRoutePath/tasks/checklist 进度）
+- **Guardian 轻量化**：删除 Orchestrator subagent
+- **DPS 检查适配**：标准版 Plan 与精简版 Plan 双格式兼容
+
+### 变更
+
+- **record_dev_operation beforeState/afterState 改为必填**
+- 5 模板 + 3 schema：plan_track 落库步骤 + 格式守卫对齐
+
+### 修复
+
+- ESLint CI：required() 返回 unknown 导致模板字符串类型错误
+
+## [0.3.5] - 2026-07-25
+
+### 变更
+
+- README 更新（版本同步）
+
+## [0.3.4] - 2026-07-25
+
+### 变更
+
+- **caijuehub 中文表述统一**（decision → adjudication 语义对齐）
+- 新增案例文档
+
+## [0.3.3] - 2026-07-25
+
+### 新增
+
+- **PROJECT_ROOT 三级优先级解析策略**：caijuehub 驱动 `project-root-strategy.ts`（env_var → dirname_fallback → cwd_fallback），mcp.json 兜底
+- **VS Code MCP settings.json 补 PROJECT_ROOT env**
+
+### 变更
+
+- 脱敏处理 + any cast 替换为 typed interface
+
+## [0.3.2] - 2026-07-25
+
+### 修复
+
+- **npm link / pnpm link 后 env.ts 无法指向正确项目地址**：mcp.json 做兜底
+
+## [0.3.1] - 2026-07-25
+
+### 变更
+
+- 文档纠错 + GUIDE 表述更新
+
+---
 ## [0.3.0] - 2026-07-24
 
 ### Caijuehub 集中裁决层 — 首次 TOML 直驱业务代码
