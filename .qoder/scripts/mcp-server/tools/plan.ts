@@ -32,7 +32,8 @@ export function registerPlanTools(server: McpServer) {
       let targets: { name: string; path: string; keyword: string }[] = []
       const newPlans: string[] = []
       const allFiles = await readdirRecursive(plansDir)
-      const planFiles = allFiles.filter(f => f.endsWith(".md") && f.includes("-plan-v"))
+      // 排除 .hitl.md（HITL 提案不是 Plan 本体，避免 plan_track 误扫为独立 Plan）
+      const planFiles = allFiles.filter(f => f.endsWith(".md") && !f.endsWith(".hitl.md") && f.includes("-plan-v"))
 
       if (pn) {
         const m = planFiles.find(f => f.includes(pn))
