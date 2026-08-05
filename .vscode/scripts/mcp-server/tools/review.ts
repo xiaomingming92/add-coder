@@ -1,5 +1,5 @@
 import * as z from "zod/v4"
-import type { McpServer } from "@modelcontextprotocol/server"
+import type { ToolRegistrar } from "./registrar.js"
 import { existsSync, readFileSync, writeFileSync } from "fs"
 import { join, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
@@ -30,7 +30,7 @@ function countIssueType(content: string): { p0: number; p1: number; backflow: nu
   return { p0, p1, backflow }
 }
 
-export function registerReviewTools(server: McpServer) {
+export function registerReviewTools(server: ToolRegistrar) {
 
   // ===== review_track =====
   server.registerTool("review_track", {

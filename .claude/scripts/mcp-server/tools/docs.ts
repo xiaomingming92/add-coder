@@ -1,5 +1,5 @@
 import * as z from "zod/v4"
-import type { McpServer } from "@modelcontextprotocol/server"
+import type { ToolRegistrar } from "./registrar.js"
 import { readdir } from "fs/promises"
 import { existsSync } from "fs"
 import { join } from "path"
@@ -7,7 +7,7 @@ import { textResponse, errorResponse } from "../shared/response.js"
 import { readFileSafe } from "../shared/fs.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 
-export function registerDocsTools(server: McpServer) {
+export function registerDocsTools(server: ToolRegistrar) {
 
   server.registerTool("find_related_docs", {
     description: `搜索与当前变更相关的项目文档（ADD-0.1 广义文档先行）。搜索范围:\n1. docs/ 目录 — 需求文档、架构文档、规范文档\n2. ${MAGIC_DIR}/ 产物 — plans/(Plan+add-route+handoff)、specs/(三元组)、reviews/(方案审查+实现审查+运行时审查)\n\nAI 助手在 ADD 范式 Step 0 中应调用此工具查找需要更新的 docs/ 文档。`,

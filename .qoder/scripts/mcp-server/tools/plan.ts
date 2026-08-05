@@ -1,5 +1,5 @@
 import * as z from "zod/v4"
-import type { McpServer } from "@modelcontextprotocol/server"
+import type { ToolRegistrar } from "./registrar.js"
 import { existsSync, readFileSync, writeFileSync } from "fs"
 import { join, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
@@ -10,7 +10,7 @@ const db = {
   get plan() { return prisma.planRecord as unknown as Record<string, (...a: unknown[]) => unknown> },
 }
 
-export function registerPlanTools(server: McpServer) {
+export function registerPlanTools(server: ToolRegistrar) {
 
   // ===== plan_track =====
   server.registerTool("plan_track", {

@@ -1,9 +1,9 @@
 import * as z from "zod/v4"
-import type { McpServer } from "@modelcontextprotocol/server"
+import type { ToolRegistrar } from "./registrar.js"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { prisma } from "../shared/prisma.js"
 
-export function registerHookEventTools(server: McpServer) {
+export function registerHookEventTools(server: ToolRegistrar) {
 
   server.registerTool("get_hook_events", {
     description:

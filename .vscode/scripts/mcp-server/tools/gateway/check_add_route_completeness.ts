@@ -7,7 +7,7 @@
  * @Description  : ADD 范式守卫工具：扫描 add-route 文件的 Step 完成度
  */
 import * as z from "zod/v4";
-import type { McpServer } from "@modelcontextprotocol/server";
+import type { ToolRegistrar } from "../registrar.js";
 import { existsSync } from "fs";
 import { join } from "path";
 import { textResponse, errorResponse } from "../../shared/response.js";
@@ -18,7 +18,7 @@ import {
   MAGIC_DIR,
 } from "../../shared/fs.js";
 
-export function registerCheckAddRouteCompleteness(server: McpServer) {
+export function registerCheckAddRouteCompleteness(server: ToolRegistrar) {
   server.registerTool(
     "check_add_route_completeness",
     {

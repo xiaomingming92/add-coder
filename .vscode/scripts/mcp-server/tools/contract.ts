@@ -1,5 +1,5 @@
 import * as z from "zod/v4"
-import type { McpServer } from "@modelcontextprotocol/server"
+import type { ToolRegistrar } from "./registrar.js"
 import { existsSync, readFileSync } from "fs"
 import { join, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
@@ -64,7 +64,7 @@ function parseContractDoc(content: string): ParsedContract {
   return { participants, stages, fileBoundaries, dependencyGraph, abilityMatrix, completionCriteria }
 }
 
-export function registerContractTools(server: McpServer) {
+export function registerContractTools(server: ToolRegistrar) {
 
   // ===== contract_track =====
   server.registerTool("contract_track", {
