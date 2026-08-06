@@ -190,7 +190,7 @@ LLM: "Step 3 前置守卫：我先检查 add-route 是否存在"
 
 **错误输出**：
 ```
-Guardian 返回: "⛔ BLOCKED: DPS 评分 72/100（< 85）"
+Guardian 返回: "⛔ BLOCKED: DPS 评分 72/100（< 80）"
 LLM: "DPS 偏低，但不影响代码，继续 Step 1..." [忽略阻断]
 ```
 

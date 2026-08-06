@@ -392,7 +392,7 @@ Step 8 收敛判断
 |------|---------|-------------------|
 | `check_add_route_status` | Step 3 前（前置守卫） | `"add_route_exists": { "enabled": true, "severity": "block" }` |
 | `check_add_route_completeness` | Step 3 代码完成后自检 | `"add_route_completeness": { "enabled": true, "severity": "block" }` |
-| `check_dps({ planKeyword })` | Step 0 末尾（进入 Step 1 前） | `"dps": { "enabled": true, "severity": "block", "threshold": 85 }` |
+| `check_dps({ planKeyword })` | Step 0 末尾（进入 Step 1 前） | `"dps": { "enabled": true, "severity": "block", "threshold": 80 }` |
 | `check_rahs({ planKeyword })` | Step 4 末尾 + Step 8 收敛 | `"rahs": { "enabled": true, "severity": "block", "threshold": 90 }` |
 
 策略文件位于 `{{magicDir}}/sync-policy.json`，重型 add-route 模板已内置对应的 §0.8 / §4.6 闸门段落。

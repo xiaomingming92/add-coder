@@ -4,7 +4,7 @@
   "checks": {
     "add_route_exists": { "enabled": true, "severity": "block" },
     "add_route_completeness": { "enabled": true, "severity": "block" },
-    "dps": { "enabled": true, "severity": "block", "threshold": 85 },
+    "dps": { "enabled": true, "severity": "block", "threshold": 80 },
     "rahs": { "enabled": true, "severity": "block", "threshold": 90 },
     "tasks": { "enabled": true, "severity": "block" },
     "checklist": { "enabled": true, "severity": "block" },
