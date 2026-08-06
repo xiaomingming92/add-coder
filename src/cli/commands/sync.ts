@@ -24,7 +24,7 @@ import { selectFiles } from "../../lib/select-files";
 import { ask } from "../../lib/utils";
 import { SYNC_CONFIG } from "../../caijuehub/strategies/sync.strategy";
 import { SYNC_PRISMA_CONFIG } from "../../caijuehub/strategies/prisma-sync.strategy";
-import { diffPrisma } from "../writer";
+import { diffPrisma, parseSchemaBlocks } from "../writer";
 
 const ADAPTER_RENDERERS: Record<string, (config: AddCoderConfig, targetDir: string, dryRun: boolean, magicDir: string) => Map<string, string>> = {
     claude: renderClaude, qoder: renderQoder, vscode: renderVSCode, trae: renderTrae, codex: renderCodex,
@@ -411,7 +411,7 @@ async function handleDiffAction(
 /**
  * 将缺失的模型/枚举块追加到目标 schema 文件。
  */
-function injectMissingModels(
+export function injectMissingModels(
     targetPath: string,
     models: { type: string; name: string; body: string }[],
 ): number {
@@ -427,57 +427,98 @@ function injectMissingModels(
 
 /**
  * 提取基准 schema 中指定模型的字段完整定义行。
+ * 复用 parseSchemaBlocks（行级扫描，注释括号安全）；
+ * enum 类型“值行直取”（Review P0-1）：单 token 值无“类型”部分，旧正则匹配不到。
  */
 function getBaseFieldLines(basePath: string, modelName: string): Record<string, string> {
     const content = readFileSync(basePath, "utf-8");
-    const blockRegex = /^(model|enum)\s+(\w+)\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/gm;
-    let match;
-    while ((match = blockRegex.exec(content)) !== null) {
-        if (match[2] !== modelName) continue;
-        const fields: Record<string, string> = {};
-        for (const line of match[3].split("\n")) {
+    const blocks = parseSchemaBlocks(content);
+    const block = blocks.get(`model:${modelName}`) ?? blocks.get(`enum:${modelName}`);
+    if (!block) return {};
+
+    const fields: Record<string, string> = {};
+    for (const line of block.body.split("\n")) {
+        const clean = line.replace(/\/\/.*$/, "").trim();
+        if (!clean) continue;
+        if (block.type === "enum") {
+            // enum 值行直取：单 token，无类型部分；保留原行（含注释）供注入
+            if (/^\w+$/.test(clean)) fields[clean] = line.trim();
+        } else {
             const fm = line.match(/^\s*(\w+)\s+/);
             if (fm) fields[fm[1]] = line.trim();
         }
-        return fields;
     }
-    return {};
+    return fields;
 }
 
 /**
- * 将缺失字段注入到目标模型块中（插入在最后一个字段后）。
+ * 将缺失字段注入到目标模型块中：
+ * - 支持 model 与 enum 双类型块（RPT-20260806-01）
+ * - 字段插入在最后一个 `@@` 属性行之前（RPT-20260806-02，Prisma 要求字段在 @@ 之前）
+ * - 零注入告警：要求注入但写入 0 → 显式 warn，不静默
  */
-function injectFieldLines(
+export function injectFieldLines(
     targetPath: string,
     basePath: string,
     modelName: string,
     fieldKeys: string[],
 ): number {
     const baseFields = getBaseFieldLines(basePath, modelName);
-    if (Object.keys(baseFields).length === 0) return 0;
+    if (Object.keys(baseFields).length === 0) {
+        console.warn(`⚠️  注入失败：${modelName} 在基准中未找到字段定义（${fieldKeys.length} 个字段未写入）`);
+        return 0;
+    }
 
-    let content = readFileSync(targetPath, "utf-8");
-    let count = 0;
+    const content = readFileSync(targetPath, "utf-8");
+    const lines = content.split("\n");
+    const blocks = parseSchemaBlocks(content);
+    const target = blocks.get(`model:${modelName}`) ?? blocks.get(`enum:${modelName}`);
+    if (!target) {
+        console.warn(`⚠️  注入失败：目标中不存在 ${modelName} 块（${fieldKeys.length} 个字段未写入）`);
+        return 0;
+    }
 
+    // 按 body 首行定位块在原文中的行范围
+    const bodyLines = target.body.split("\n");
+    const startIdx = lines.findIndex((l) => l === bodyLines[0]);
+    if (startIdx < 0) {
+        console.warn(`⚠️  注入失败：无法定位 ${modelName} 块位置（${fieldKeys.length} 个字段未写入）`);
+        return 0;
+    }
+    const endIdx = startIdx + bodyLines.length - 1;
+
+    // 组装待注入字段行（去重：块内已存在则跳过）
+    const existingNames = new Set(
+        target.fields.map((f) => f.split(":")[0]),
+    );
+    const newFieldLines: string[] = [];
     for (const key of fieldKeys) {
         const fieldName = key.split(":")[0];
         const fieldLine = baseFields[fieldName];
         if (!fieldLine) continue;
-
-        // 找到目标模型块（限定检查范围，避免误匹配其他 model 的同名字段）
-        const modelRegex = new RegExp(`(model\\s+${modelName}\\s*\\{)([^}]*?)(\\n\\s*\\})`, "m");
-        const m = content.match(modelRegex);
-        if (!m) continue;
-
-        // 字段已存在（仅在当前模型块内检查）则跳过
-        if (new RegExp(`^\\s*${fieldName}\\s+`, "m").test(m[2])) continue;
-
-        content = content.replace(modelRegex, `$1$2\n  ${fieldLine}$3`);
-        count++;
+        if (existingNames.has(fieldName)) continue;
+        newFieldLines.push(`  ${fieldLine}`);
     }
 
-    if (count > 0) writeFileSync(targetPath, content, "utf-8");
-    return count;
+    if (newFieldLines.length === 0) {
+        if (fieldKeys.length > 0) {
+            console.warn(`⚠️  注入失败：${modelName} 的 ${fieldKeys.length} 个字段未写入（可能已存在或定义不匹配）`);
+        }
+        return 0;
+    }
+
+    // 插入点：块内最后一个 @@ 属性行之前；无 @@ 则块尾（endIdx 为闭合行）
+    let insertIdx = endIdx;
+    for (let k = startIdx + 1; k < endIdx; k++) {
+        if (/^\s*@@/.test(lines[k])) insertIdx = k;
+    }
+    const merged = [
+        ...lines.slice(0, insertIdx),
+        ...newFieldLines,
+        ...lines.slice(insertIdx),
+    ];
+    writeFileSync(targetPath, merged.join("\n"), "utf-8");
+    return newFieldLines.length;
 }
 
 /**

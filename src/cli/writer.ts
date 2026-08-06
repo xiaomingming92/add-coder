@@ -39,33 +39,66 @@ export interface PrismaDiffResult {
     fieldDiffs: FieldDiff[];
 }
 
+export interface SchemaBlock {
+  type: "model" | "enum";
+  name: string;
+  /** 完整块原文（含注释行），供 injectMissingModels 原样注入 */
+  body: string;
+  /** model: "fieldName:fieldType"；enum: 值行（trim 后） */
+  fields: string[];
+}
+
 /**
  * 解析 Prisma schema 提取 model/enum 定义块（包括整个 block 原文）。
+ * 行级扫描实现：剥离行内 `//` 注释后做括号深度计数，
+ * 避免注释中的 `{`/`}` 截断块边界（RPT-20260806-03）。
  */
-function parseSchemaBlocks(content: string): Map<string, { type: string; name: string; body: string; fields: string[] }> {
-    const blocks = new Map<string, { type: string; name: string; body: string; fields: string[] }>();
-    // 匹配 model/enum 块
-    const blockRegex = /^(model|enum)\s+(\w+)\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/gm;
-    let match;
-    while ((match = blockRegex.exec(content)) !== null) {
-        const [, type, name, inner] = match;
-        let fields: string[] = [];
-        if (type === "enum") {
-            // enum 值：每一行去掉空格和注释
-            fields = inner.split("\n")
-                .map(l => l.replace(/#.*$/, "").trim())
-                .filter(l => l.length > 0);
-        } else {
-            // model 字段：提取 fieldName fieldType 前缀
-            const fieldRegex = /^\s*(\w+)\s+(\w+(?:\([^)]*\))?(?:\[\])?\??)/gm;
-            let fm;
-            while ((fm = fieldRegex.exec(inner)) !== null) {
-                fields.push(`${fm[1]}:${fm[2]}`);
-            }
-        }
-        blocks.set(`${type}:${name}`, { type, name, body: match[0], fields });
+export function parseSchemaBlocks(content: string): Map<string, SchemaBlock> {
+  const blocks = new Map<string, SchemaBlock>();
+  const lines = content.split("\n");
+  let i = 0;
+  while (i < lines.length) {
+    const head = lines[i].match(/^(model|enum)\s+(\w+)\s*\{/);
+    if (!head) {
+      i++;
+      continue;
     }
-    return blocks;
+    const type = head[1] as "model" | "enum";
+    const name = head[2];
+    const bodyLines: string[] = [lines[i]];
+    let depth = 1;
+    let j = i + 1;
+    while (j < lines.length && depth > 0) {
+      const line = lines[j];
+      bodyLines.push(line);
+      // 剥离行内注释后再计数括号，避免 `// [{...}]` 中的括号干扰
+      const commentless = line.split("//")[0];
+      for (const ch of commentless) {
+        if (ch === "{") depth++;
+        else if (ch === "}") depth--;
+      }
+      j++;
+    }
+    const body = bodyLines.join("\n");
+    const inner = bodyLines.slice(1, -1).join("\n");
+    let fields: string[] = [];
+    if (type === "enum") {
+      // enum 值：每行去掉注释（// 与 # 兼容）并 trim
+      fields = inner.split("\n")
+        .map((l) => l.replace(/\/\/.*$/, "").replace(/#.*$/, "").trim())
+        .filter((l) => l.length > 0);
+    } else {
+      // model 字段：提取 fieldName fieldType 前缀
+      const fieldRegex = /^\s*(\w+)\s+(\w+(?:\([^)]*\))?(?:\[\])?\??)/gm;
+      let fm;
+      while ((fm = fieldRegex.exec(inner)) !== null) {
+        fields.push(`${fm[1]}:${fm[2]}`);
+      }
+    }
+    blocks.set(`${type}:${name}`, { type, name, body, fields });
+    i = j;
+  }
+  return blocks;
 }
 
 /**
