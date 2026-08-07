@@ -5,6 +5,14 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.21] - 2026-08-07（待发版）
+
+### 新增
+
+- **模板运行时依赖清单（基建）**：新增 [`templates/core/DEPENDENCIES.md`](./templates/core/DEPENDENCIES.md)（随 `sync` 同步到消费项目 `.add/DEPENDENCIES.md`）——`@huggingface/transformers` 等 9 个基建依赖在**安装期**解决（`npm i add-coder` 已默认安装，见 [package.json](./package.json)），`check_dps` 只保留模型降级提示（说明见 [GUIDE.md](./GUIDE.md)）
+- **onnxruntime 解析错位说明**：新版 transformers（^3.8.x 依赖 `onnxruntime-node@1.21.0`）与 langchain 生态 optional 依赖（`1.14.0`）并存时 pnpm 解析错位（`onnxruntime-common` 双版本）→ 提供 `pnpm overrides` 1.14.0→1.21.0 配置与验证命令（见 [`templates/core/DEPENDENCIES.md`](./templates/core/DEPENDENCIES.md) §二）
+
+---
 ## [0.3.20] - 2026-08-07
 
 ### 修复（[issue #10](https://github.com/xiaomingming92/add-coder/issues/10) Windows 稳定性——5 问题 + 1 补充全部修复）

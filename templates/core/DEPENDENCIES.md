@@ -40,7 +40,42 @@ npm i @huggingface/transformers@^3.8.1 vector-cosine-similarity@^1.8.0 \
 
 ---
 
-## 二、运行时资源（非基建，可延迟）
+## 二、已知版本冲突：onnxruntime 解析错位（pnpm overrides）
+
+**场景**：升级到新版 `@huggingface/transformers`（^3.8.x，依赖 `onnxruntime-node@1.21.0`）后，若项目同时存在 langchain 生态的 optional 依赖（其声明 `onnxruntime-node/web@1.14.0`），pnpm 会同时解析出 `onnxruntime-common@1.14.0` 与 `1.21.0` 两套——transformers 加载时拿到错位的 `common@1.14.0`，导致 embedding 初始化异常。
+
+**症状**：`check_dps` 延续性降级为 0（embedding pipeline 初始化抛错进 catch，现象与模型未下载相同，不易区分）。
+
+**解决**：用 pnpm overrides 将 1.14.0 强制替换为 1.21.0。
+
+```json
+// package.json
+{
+  "pnpm": {
+    "overrides": {
+      "onnxruntime-node@1.14.0": "1.21.0",
+      "onnxruntime-web@1.14.0": "1.21.0",
+      "onnxruntime-common@1.14.0": "1.21.0"
+    }
+  }
+}
+```
+
+```yaml
+# pnpm-workspace.yaml（等效，pnpm 9+ 推荐）
+packages:
+  - .
+overrides:
+  onnxruntime-node@1.14.0: 1.21.0
+  onnxruntime-web@1.14.0: 1.21.0
+  onnxruntime-common@1.14.0: 1.21.0
+```
+
+验证：`pnpm install` 后 `pnpm list onnxruntime-node onnxruntime-common` 应只见 1.21.x，无 1.14.0。
+
+---
+
+## 三、运行时资源（非基建，可延迟）
 
 | 资源 | 获取方式 | 缺失时的行为 |
 |------|---------|-------------|
@@ -50,7 +85,7 @@ npm i @huggingface/transformers@^3.8.1 vector-cosine-similarity@^1.8.0 \
 
 ---
 
-## 三、新增依赖的维护规则
+## 四、新增依赖的维护规则
 
 - 模板脚本引入新的 npm 包时，**必须同步更新本清单**（依赖 / 版本 / 用途 / 缺失后果四列）
 - 版本号与 add-coder 根 `package.json` 保持一致（`dependencies` 是权威来源，本清单是消费项目视图）
