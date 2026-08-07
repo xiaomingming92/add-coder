@@ -220,7 +220,18 @@ Plan 里的 Task 不应该停留在文档里。add-coder 将 tasks.md 末尾的 
 tasks.md §IDE JSON → TodoWrite → IDE 面板
 ```
 
+### ⑩ 并发协作契约：多智能体协作即契约
 
+多个 Agent 同时改一个仓库，没有契约必然冲突——改同一批文件、审计归因混乱。add-coder 把并行协作变成一份**经 HITL 审批的契约**：
+
+| 机制 | 实现 |
+|------|------|
+| **总控 Plan + N 个子 Plan** | Lead Agent 调度，专家按 description 触发条件委派，满足即拉起 |
+| **文件边界** | 默认软隔离（git diff 交叉检查），大改升级 git worktree 硬隔离 |
+| **仲裁链路** | 跨边界修改走 BOUNDARY_REQUEST → Lead 裁决 → 落库可查 |
+| **审计分桶** | 每个专家独立 planKeyword，query_audit_logs 各域各查 |
+
+> 契约模板：`templates/core/templates/collab-contract-template.md`（init 后同步到项目 `.add/templates/`），契约新建/重大变更走 `COLLAB_CONTRACT` 审批。
 
 ---
 
@@ -550,6 +561,19 @@ Tasks in Plan docs shouldn't stay in docs. add-coder loads the JSON task list fr
 ```
 tasks.md §IDE JSON → TodoWrite → IDE panel
 ```
+
+### ⑩ Concurrency Contract: Multi-Agent Collaboration, Contractualized
+
+Multiple agents working one repository without a contract is a guaranteed conflict storm — overlapping file edits, tangled audit attribution. add-coder turns parallel collaboration into a **HITL-approved contract**:
+
+| Mechanism | Implementation |
+|------|------|
+| **Master Plan + N sub-Plans** | A Lead Agent orchestrates; experts are delegated by description-matched trigger conditions |
+| **File boundaries** | Soft isolation by default (git diff cross-check), upgrading to git worktree hard isolation for large changes |
+| **Arbitration chain** | Cross-boundary edits go through BOUNDARY_REQUEST → Lead's ruling → recorded to DB |
+| **Audit bucketing** | Each expert holds its own planKeyword; query_audit_logs retrieves per domain |
+
+> Contract template: `templates/core/templates/collab-contract-template.md` (synced into the project's `.add/templates/` after init); contract creation/major changes go through `COLLAB_CONTRACT` approval.
 
 ---
 
