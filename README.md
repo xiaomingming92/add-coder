@@ -4,7 +4,7 @@ Make 0.75 into one.
 
 > 🀄中文 | 🔤[English](#-english-readme)
 
-💡 [什么叫做酷，怎么让软件变酷？](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) —— add范式的设计哲学
+💡 [酷 = 标准符合度 × 熵值管控 —— 我把"酷"从形容词算成了可验证的工程属性](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md)（ADD 范式设计哲学，附 benchmark 实证）
 
 > [![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder) [![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder) [![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder) <br/>
 > [📈 趋势](https://www.npmcharts.com/compare/add-coder?interval=30)<br/>
@@ -232,6 +232,8 @@ tasks.md §IDE JSON → TodoWrite → IDE 面板
 | **审计分桶** | 每个专家独立 planKeyword，query_audit_logs 各域各查 |
 
 > 契约模板：`templates/core/templates/collab-contract-template.md`（init 后同步到项目 `.add/templates/`），契约新建/重大变更走 `COLLAB_CONTRACT` 审批。
+>
+> 📜 溯源：并发契约原创时间戳 → [CHANGELOG v0.3.18「并发协作契约」](https://github.com/xiaomingming92/add-coder/blob/main/CHANGELOG.md#0318---2026-08-05)；"酷"的工程学定义 → [what-makes-software-cool.md](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md)——契约的审计分桶与完成判定（DPS ≥ 80）正长在"熵值管控"四维上。
 
 ---
 
@@ -422,8 +424,7 @@ Tasks (实验性)     双向              ✅ 已实现      长任务持久化 
 
 Make 0.75 into one.
 
-💡[What is cool, and how do you make software cool?](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) 
-—— The design philosophy of the ADD paradigm.
+💡 [Cool = Standard Conformance × Entropy Control — I turned "cool" from an adjective into a verifiable engineering property](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) (design philosophy of the ADD paradigm, with benchmark evidence)
 > [![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder) [![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder) [![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder) <br/>
 > [📈 trend](https://www.npmcharts.com/compare/add-coder?interval=30)<br/>
 > 👍 Please star it if you hope more people will know about [add-coder](https://github.com/xiaomingming92/add-coder)
@@ -574,6 +575,8 @@ Multiple agents working one repository without a contract is a guaranteed confli
 | **Audit bucketing** | Each expert holds its own planKeyword; query_audit_logs retrieves per domain |
 
 > Contract template: `templates/core/templates/collab-contract-template.md` (synced into the project's `.add/templates/` after init); contract creation/major changes go through `COLLAB_CONTRACT` approval.
+>
+> 📜 Provenance: concurrency-contract original timestamp → [CHANGELOG v0.3.18 "collab-contract"](https://github.com/xiaomingming92/add-coder/blob/main/CHANGELOG.md#0318---2026-08-05); the engineering definition of "cool" → [what-makes-software-cool.md](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) — the contract's audit bucketing and completion criteria (DPS ≥ 80) are built directly on the four dimensions of "entropy control".
 
 ---
 
