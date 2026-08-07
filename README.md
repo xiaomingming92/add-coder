@@ -103,6 +103,8 @@ published 2 weeks ago by wujixmm <wujixmm@gmail.com>
 npx add-coder init
 ```
 
+> 💾 **embedding 模型预下载**（v0.3.20+）：`add-coder init` 自动预下载 DPS 评分用的 embedding 模型（约 90MB，`--skip-model` 跳过）；`add-coder sync` 缓存缺失时提示、`--model` 触发下载；独立命令 `add-coder model:download`（`--force` 强制重下）。缓存于 `~/.cache/huggingface/hub/`（多仓库共享，仅需一次下载，首次 DPS 调用也会自动下载）。
+
 ---
 
 ## 这不是模板工具，这是架构差异
