@@ -74,8 +74,8 @@
   ".qoder/reports/index.md": "5e57dde6",
   ".add/reports/runtime-report/gateway.md": "1fa64c07",
   ".qoder/reports/runtime-report/gateway.md": "1fa64c07",
-  ".add/rules/project_rules.md": "b7bd0234",
-  ".qoder/rules/project_rules.md": "b7bd0234",
+  ".add/rules/project_rules.md": "fc2d8819",
+  ".qoder/rules/project_rules.md": "fc2d8819",
   ".add/rules/theory-practice-map.toml": "b1db99fd",
   ".qoder/rules/theory-practice-map.toml": "b1db99fd",
   ".add/scripts/db-ensure.sh": "faeb6b92",
@@ -262,5 +262,7 @@
   ".qoder/vocabulary/add-governance-vocabulary.md": "e005e771",
   ".qoder/mcp.json": "6f958357",
   ".qoder/settings.json": "4bae3c9a",
-  ".qoder/sync-policy.json": "7454e335"
+  ".qoder/sync-policy.json": "7454e335",
+  ".add/rules/profiles/machineserver-profile.md": "8a36cf39",
+  ".qoder/rules/profiles/machineserver-profile.md": "8a36cf39"
 }
