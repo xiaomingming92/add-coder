@@ -39,7 +39,7 @@
 ---
 ## [0.3.18] - 2026-08-05
 
-### 新增（待发版）
+### 新增
 
 - **技术栈 profile 机制**：`project_rules.md` 去技术栈硬编码 → `profiles/` 注册表（webapp/machineserver）+ `add-coder stack list/set/show` CLI + `init --stack` 申报 + MCP context 按 stack.json 追加 profile 约束
 - **并发协作契约（collab-contract）**：契约模板（§3.6 HITL + §7 持久化 + 主从字段）+ `contract_track/contract_status` MCP 工具 + CollabContract 持久化 + Caijuehub 裁决入口
