@@ -41,8 +41,18 @@ npx add-coder init
 # → ADD 治理模型已就绪 ✓
 ```
 
+> **init 失败语义（v0.3.20+）**：`init` 只有在 `db push + generate` 都成功后才返回成功。
+> 任一环节失败会输出 `✗ 治理模型未就绪: <原因>` 并以**非零退出码**结束——不会像旧版本那样"失败仍显示完成"。
+> 修复错误后重新运行 `npx add-coder init` 即可。
+
 > PostgreSQL 默认端口 5433，数据卷在 `./data/postgres/{项目名}/`。
 > 环境文件优先级：`.env.development.local` > `.env.development` > `.env.local` > `.env`
+
+> **SQLite 支持状态（v0.3.20+ 完整链路）**：选择 SQLite 后，Prisma schema 的 generator 自动输出到 `src/generated/prisma`（与 MCP 探测路径一致），
+> MCP 服务在 `DATABASE_URL` 以 `file:` 开头时自动加载 `@prisma/adapter-better-sqlite3`（需安装该依赖，缺失时 MCP 启动会明确报错）。
+> 旧版本（<0.3.20）SQLite 为"仅模板模式"，需人工完成 Prisma/Client/MCP 配置。
+
+> **embedding 模型预下载（v0.3.20+）**：`init` 自动预下载 DPS 评分用 embedding 模型（约 90MB，`--skip-model` 跳过）；`sync` 缓存缺失时提示、`--model` 触发下载；独立命令 `add-coder model:download`（`--force` 强制重下）。缓存于 `~/.cache/huggingface/hub/`（多仓库共享，仅需一次下载）。下载失败不影响主流程（首次 DPS 调用会自动补下载；网络不通时 check_dps 降级为纯结构分并提示预下载入口）。
 
 ---
 
@@ -347,6 +357,7 @@ npx add-coder stack set --clear
 - 重渲染 `project_rules.md` 引用行（指向对应 profile 文件）
 - 将 profile 文件写入 `.add/rules/profiles/` 与 `{magicDir}/rules/profiles/`
 - 刷新 `.add-coder-hash.json`，保持与 sync --patch 的 hash 链路一致
+- **写后断言（v0.3.20+）**：profile 文件与 `project_rules.md` 引用行未实际写入时命令返回失败（非零退出码）——不会再出现"提示成功但什么都没写"的假成功
 
 ### 8.3 初始化时申报
 

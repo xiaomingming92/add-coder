@@ -416,6 +416,23 @@ on_hash_lost = "conflict"     # 丢失
 
 改 TOML → `npm run generate` → 策略生效。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
 
+### 8.6 hash 全量基线语义（v0.3.20+，issue #10 P0-2）
+
+`.add-coder-hash.json` 是**完整渲染结果的全量基线**，不是本轮差异快照：
+
+- 保存 = 旧 hash 全量保留 + 本轮处理后磁盘当前内容刷新（`mergeFullHash` 纯函数，`sync.ts`）
+- 用户 `[a]` 跳过保留其修改 → hash 记录用户版本 → 下一轮不再误判冲突
+- 读取时 key 统一 POSIX（`loadHashFile` 内 normalize，兼容旧 Windows 反斜杠 key）
+- 修复前缺陷：只保存 missing+conflict → 300 项缩成 1 项 → 下一轮全量误判冲突
+
+### 8.7 跨平台约束（v0.3.20+，issue #10）
+
+Windows 下渲染路径为反斜杠、npm/npx/git 为 `.cmd`、无 bash/which——以下三条为本仓强制约束（详见 [docs/跨平台兼容开发规范.md](./docs/跨平台兼容开发规范.md)）：
+
+1. 相对路径比较/存储 MUST 先 `normalizeRelPath()`（PATCH_GUARD、stack 筛选、hash key）
+2. CLI 子进程 MUST 走 `runCommand()` 单入口（win32 .cmd 解析 + 退出码检查 + ENOENT 显式抛错）
+3. env 传递 MUST 用对象（`{ env: {...process.env, ...} }`），禁止 shell 内联（不引入 cross-env）
+
 ---
 
 ## 九、常见开发场景

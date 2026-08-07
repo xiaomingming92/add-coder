@@ -5,6 +5,30 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.20] - 2026-08-07
+
+### 修复（[issue #10](https://github.com/xiaomingming92/add-coder/issues/10) Windows 稳定性——5 问题 + 1 补充全部修复）
+
+- **init 假成功**：npm 子进程调用错误（缺 `exec` 语义 + Windows `.cmd` 无法 spawn → status=null）→ 新增 `runCommand` 跨平台封装（.cmd 解析/退出码/stderr/commandExists）；`prisma generate` 退出码检查；失败输出 `✗ 治理模型未就绪` 并以**非零退出码**结束
+- **sync --patch hash 基线丢失**：hash 文件改为**全量基线**（旧 hash 保留 + 磁盘刷新 `mergeFullHash`），用户跳过保留的修改不再下一轮误判冲突；Windows 反斜杠 key 读取时统一 POSIX
+- **PATCH_GUARD 分隔符失效**：比较前统一 `normalizeRelPath()`（反斜杠→POSIX），toml/transcribe 零改动（改 sync.ts 一处）
+- **stack 筛选 Windows 空集假成功**：筛选先规范化 + 写后断言（profile 双路径 + project_rules 引用未写入即非零退出）
+- **SQLite MCP 无法启动**：模板 `shared/prisma.ts` 增加 SQLite adapter（better-sqlite3 完整链路）+ `patchGeneratorOutput` 统一注入 generator output
+- **status 缺失文件仅打印**：缺失时 `process.exit(1)`（CI 门禁可用）
+- **bash 依赖失败检测**：db-ensure.sh / doc-format-guard 经 runCommand 显式报错（Windows 无 bash 不再静默 status=null）
+
+### 新增
+
+- **embedding 模型预下载**：`add-coder model:download`（`--force` 强制重下）+ `init --skip-model` + `sync --model`；模型名从 `dps-scoring-rules.toml` 零硬编码读取；缓存与运行时同源（`HF_HUB_CACHE` → `HF_HOME/hub` → `os.homedir()`，Windows 兼容）；下载超时 5 分钟兜底，失败不阻断主流程
+- **check_dps 模型缺失提示**：embedding 不可用时降级纯结构分并提示 `add-coder model:download` 预下载入口（网络不通不卡死）
+
+### 变更
+
+- **runCommand 统一封装**：src + 模板双侧（git/npx/npm/bash 4 处迁移），本项目子进程调用 MUST 走单入口（详见 `docs/跨平台兼容开发规范.md`）
+- **helpers.ts 缓存同源锚定**：运行时 `env.cacheDir` 与 CLI 预下载同解析链（transformers v3 默认包内 .cache 陷阱修复）
+- **Windows CI**：GitHub Actions 双平台矩阵（ubuntu-latest + windows-latest）
+
+---
 ## [0.3.18] - 2026-08-05
 
 ### 新增（待发版）
