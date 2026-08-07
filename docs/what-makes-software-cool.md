@@ -1,6 +1,6 @@
 # 什么是酷的软件 / What Makes Software Cool
 
-> 中文 | [English](#what-makes-software-cool-1)
+> 🀄中文 | 🔤[English](#what-makes-software-cool)
 
 > 本文从 [sync-magic benchmark](https://github.com/xiaomingming92/add-coder/blob/main/docs%2Fsync-magic-benchmark-report.md) 出发，抽象一套衡量"酷"的工程美学框架。
 >
@@ -255,7 +255,7 @@ add-coder 自身案例：
 
 # What Makes Software Cool
 
-> [中文](#什么是酷的软件) | English
+> 🀄[中文](#什么是酷的软件--what-makes-software-cool) | 🔤English
 
 > Starting from the [sync-magic benchmark](https://github.com/xiaomingming92/add-coder/blob/main/docs%2Fsync-magic-benchmark-report.md), this article abstracts an engineering-aesthetics framework for measuring "cool".
 >
