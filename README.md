@@ -263,7 +263,7 @@ npx add-coder init
 
 | 命令 | 说明 |
 |------|------|
-| `init` | 初始化 ADD 模板，支持 `--adapter claude\|qoder\|vscode\|auto` |
+| `init` | 初始化 ADD 模板，支持 `--adapter claude\|qoder\|vscode\|trae\|codex\|auto` |
 | `sync` | 增量同步缺失文件 |
 | `status` | 检查模板完整性 |
 
@@ -283,7 +283,7 @@ npx add-coder init
 
 | 选项 | 说明 |
 |------|------|
-| `--adapter <type>` | 目标 IDE：claude / qoder / vscode / auto（默认） |
+| `--adapter <type>` | 目标 IDE：claude / qoder / vscode / trae / codex / auto（自动检测，默认） |
 | `--config <path>` | 指定配置文件 |
 | `--yes` | 跳过交互，只创建新文件 |
 | `--force` | 覆盖已有文件 |
@@ -297,6 +297,8 @@ npx add-coder init
 | `.claude/` | Claude Code 适配（hooks、settings.json） |
 | `.qoder/` | Qoder 适配（hooks、settings.json、mcp.json） |
 | `.vscode/` | VS Code 适配（settings.json、tasks.json） |
+| `.trae/` | Trae 适配（hooks.json、settings.json） |
+| `.codex/` | Codex 适配（hooks.json、settings.json） |
 
 ## MCP 审计工具链
 
@@ -590,7 +592,7 @@ npx add-coder init
 
 | Command | Description |
 |---------|-------------|
-| `init` | Initialize ADD templates, supports `--adapter claude\|qoder\|vscode\|auto` |
+| `init` | Initialize ADD templates, supports `--adapter claude\|qoder\|vscode\|trae\|codex\|auto` |
 | `sync` | Incrementally sync missing files |
 | `status` | Check template integrity |
 
