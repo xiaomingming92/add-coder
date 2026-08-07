@@ -169,8 +169,11 @@ export function registerCheckDps(server: ToolRegistrar) {
               continuityCount++;
             }
           } catch {
-            // embedding 加载失败 → 降级纯结构分
+            // embedding 加载失败 → 降级纯结构分；提示预下载入口（不阻断、不报错，issue 关切：网络不通用户不卡死）
             continuityCount = 0;
+            parts.push(
+              "  ⚠️ embedding 不可用（模型未下载或网络不通）：语义延续性降级为 0——可运行 `add-coder model:download` 提前预下载",
+            );
           }
         }
         const structSem = mappingTotal > 0 ? (mappingMatched / mappingTotal) * 100 : 0;

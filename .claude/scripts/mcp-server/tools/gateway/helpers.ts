@@ -7,6 +7,8 @@
  * @Description  : 
  */
 import { DPS_SCORING_CONFIG as CFG } from "../../shared/dps-scoring.strategy.js";
+import { homedir } from "os";
+import { join } from "path";
 
 // ═══════════════ DPS 算法：共享辅助函数 ═══════════════
 
@@ -106,6 +108,11 @@ let _embedPipeline: { embed: (texts: string[]) => Promise<number[][]> } | null =
 export async function getEmbeddings(texts: string[]): Promise<number[][]> {
   if (!_embedPipeline) {
     const { pipeline, env } = await import("@huggingface/transformers");
+    // 与 add-coder CLI `model:download` 预下载同源：锚定用户级缓存（HF_HUB_CACHE → HF_HOME/hub → ~/.cache/huggingface/hub）
+    // ⚠️ transformers v3 默认 cacheDir 指向包内 .cache（重装即丢）——不锚定则 CLI 预下载的模型无法复用
+    const hubCache = process.env.HF_HUB_CACHE;
+    const home = process.env.HF_HOME || join(homedir(), ".cache", "huggingface");
+    env.cacheDir = hubCache || join(home, "hub");
     env.remoteHost = "https://hf-mirror.com";
     env.remotePathTemplate = "{model}/resolve/{revision}/";
     const extractor = await pipeline("feature-extraction", CFG.EMBEDDING_MODEL);
