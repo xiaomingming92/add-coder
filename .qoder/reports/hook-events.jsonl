@@ -37,3 +37,4 @@
 {"ts":"2026-08-06T02:27:23Z","hook":"pre-tool-use","decision":"ask","cmd":"/home/xmm/ai/htc_g13_extra_time/.qoder/plans/2026-08/06/htc-g13-extra-time-cache5-ruu-plan-v1.md","reason":"HITL 未 tongyi: /home/xmm/ai/add-coder/.qoder/hitl/.tongyi-htc-g13-extra-time-cache5-ruu","planKeyword":"add-coder-npm-package","planStatus":"active"}
 =======
 >>>>>>> Stashed changes
+{"ts":"2026-08-07T08:57:58Z","hook":"pre-tool-use","decision":"ask","cmd":"/home/xmm/ai/add-coder/.qoder/plans/2026-08/07/spec-deviation-上游交接协议与多模态偏差检测-plan-v1.md","reason":"HITL 未 tongyi: /home/xmm/ai/add-coder/.qoder/hitl/.tongyi-spec-deviation-上游交接协议与多模态偏差检测","planKeyword":"add-coder-npm-package","planStatus":"active"}
