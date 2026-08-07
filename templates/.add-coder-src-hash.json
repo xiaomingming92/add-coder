@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.18",
+  "_version": "0.3.19",
   "adapters/claude/hooks/doc-format-guard.sh": "ec59ad3f",
   "adapters/claude/hooks/lib/common.sh": "4f3e64ad",
   "adapters/claude/hooks/lib/context-inject.sh": "cfc8c65e",
@@ -74,7 +74,7 @@
   "adapters/qoder/hooks/subagent-stop.sh": "5a2c78c6",
   "adapters/qoder/mcp.json": "b2075957",
   "adapters/qoder/settings.json": "4bae3c9a",
-  "adapters/qoder/sync-policy.json": "a4bcbbaf",
+  "adapters/qoder/sync-policy.json": "9cb6ff90",
   "adapters/trae/hooks/doc-format-guard.sh": "9b99f253",
   "adapters/trae/hooks/lib/common.sh": "4f3e64ad",
   "adapters/trae/hooks/lib/context-inject.sh": "cfc8c65e",
@@ -232,7 +232,7 @@
   "core/specs/add-coder-npm-package/checklist.md": "ed92032c",
   "core/specs/add-coder-npm-package/spec.md": "c7d0f235",
   "core/specs/add-coder-npm-package/tasks.md": "c34301e5",
-  "core/templates/01-架构/《ADD开发工作路径与文档协同规范》.md": "c86814d0",
+  "core/templates/01-架构/《ADD开发工作路径与文档协同规范》.md": "c7e2ac6a",
   "core/templates/TERMINOLOGY.md": "e9f4f781",
   "core/templates/add-route-template-heavyweight.md": "0e107ac0",
   "core/templates/add-route-template.md": "da7022df",
@@ -274,6 +274,6 @@
   "core/templates/tasks-template.md": "2b9d0d52",
   "core/templates/tasks-template.schema.json": "fff6eb47",
   "core/tools/README.md": "26a63460",
-  "core/vocabulary/add-governance-vocabulary.md": "62d71481",
+  "core/vocabulary/add-governance-vocabulary.md": "ee9e2bd2",
   "shared/hooks-lib/common.sh": "441eee52"
 }
