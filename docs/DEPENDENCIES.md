@@ -1,6 +1,8 @@
 # 模板运行时依赖清单（Template Runtime Dependencies）
 
-> 本文件随 `sync` 同步到项目的 `.add/`（或对应 magic 目录）。**基建依赖必须在安装期解决，不要等到运行时（如 DPS 评分）才发现缺失。**
+> 本文件是仓库级文档（`docs/DEPENDENCIES.md`），服务于**未安装 add-coder 包、仅同步模板脚本**的消费项目。**基建依赖必须在安装期解决，不要等到运行时（如 DPS 评分）才发现缺失。**
+>
+> 依赖治理的历史坑位（sharp 被墙、transformers 升级决策）见 [DEVELOPMENT.md 第十一章「依赖治理坑位记录」](../DEVELOPMENT.md#十一依赖治理坑位记录)，本清单是其消费项目视图。
 >
 > 两类资源的责任边界：
 >
@@ -42,7 +44,7 @@ npm i @huggingface/transformers@^3.8.1 vector-cosine-similarity@^1.8.0 \
 
 ## 二、已知版本冲突：onnxruntime 解析错位（pnpm overrides）
 
-**场景**：升级到新版 `@huggingface/transformers`（^3.8.x，依赖 `onnxruntime-node@1.21.0`）后，若项目同时存在 langchain 生态的 optional 依赖（其声明 `onnxruntime-node/web@1.14.0`），pnpm 会同时解析出 `onnxruntime-common@1.14.0` 与 `1.21.0` 两套——transformers 加载时拿到错位的 `common@1.14.0`，导致 embedding 初始化异常。
+**场景**：升级到新版 `@huggingface/transformers`（^3.8.x，依赖 `onnxruntime-node@1.21.0`）后，若项目同时存在 langchain 生态的 optional 依赖（其声明 `onnxruntime-node/web@1.14.0`），pnpm 会同时解析出 `onnxruntime-common@1.14.0` 与 `1.21.0` 两套——transformers 加载时拿到错位的 `common@1.14.0`，导致 embedding 初始化异常。上游决策背景（为何升级 transformers、217MB 体积代价）见 [DEVELOPMENT.md §十一](../DEVELOPMENT.md#十一依赖治理坑位记录)。
 
 **症状**：`check_dps` 延续性降级为 0（embedding pipeline 初始化抛错进 catch，现象与模型未下载相同，不易区分）。
 

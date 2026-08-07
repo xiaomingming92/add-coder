@@ -647,6 +647,8 @@ npx add-coder init --adapter claude --force --dry-run
 
 ## 十一、依赖治理坑位记录
 
+> 消费项目视角的依赖清单与 onnxruntime 解析错位解决方案，见 [docs/DEPENDENCIES.md](./docs/DEPENDENCIES.md)（本章是其上游决策记录）。
+
 ### 坑：sharp GitHub 下载被墙 → 一级依赖升级避障
 
 **背景**：`@xenova/transformers@2.17.2` 硬依赖 `sharp@0.32.x`，sharp 0.32 通过 prebuild-install 从 **GitHub release** 下载二进制（国内 ssh 880 端口被墙），且 `.npmrc` 镜像配置不会透传到 prebuild-install 环境，安装必失败。
@@ -695,6 +697,7 @@ export npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-
 | [GUIDE.md](./GUIDE.md) | 实践指南：从零上手 ADD 工作流 |
 | [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md) | 能力清单 & 调试指南 |
 | [docs/interaction-spec.md](./docs/interaction-spec.md) | CLI 交互规范（键盘命令统一标准） |
+| [docs/DEPENDENCIES.md](./docs/DEPENDENCIES.md) | 模板运行时依赖清单（基建依赖 + onnxruntime 坑位，第十一章的消费项目视图） |
 | [docs/caijuehub.md](./docs/caijuehub.md) | Caijuehub 集中裁决层（TOML 驱动策略） |
 | [scripts/sync-magic-dirs.sh](./scripts/sync-magic-dirs.sh) | 自举同步脚本 |
 | [.qoder/plans/.../add-coder-selfhost-sync-plan-v1.md](./.qoder/plans/2026-07/23/add-coder-selfhost-sync-plan-v1.md) | 同步方案 Plan |

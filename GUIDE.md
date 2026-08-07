@@ -54,7 +54,7 @@ npx add-coder init
 
 > **embedding 模型预下载（v0.3.20+）**：`init` 自动预下载 DPS 评分用 embedding 模型（约 90MB，`--skip-model` 跳过）；`sync` 缓存缺失时提示、`--model` 触发下载；独立命令 `add-coder model:download`（`--force` 强制重下）。缓存于 `~/.cache/huggingface/hub/`（多仓库共享，仅需一次下载）。下载失败不影响主流程（首次 DPS 调用会自动补下载；网络不通时 check_dps 降级为纯结构分并提示预下载入口）。
 
-> **模板运行时依赖（基建，v0.3.21+）**：`@huggingface/transformers` 等模板脚本依赖已随 `npm i add-coder` 默认安装（add-coder `dependencies`）。**未安装 add-coder 包本体、仅同步模板脚本的项目**，须按 `.add/DEPENDENCIES.md`（同步自 `templates/core/DEPENDENCIES.md`）安装基建依赖——基建在安装期解决，不要等到 DPS 运行时才发现缺失（缺失时 check_dps 延续性会静默降级为 0）。
+> **模板运行时依赖（基建，v0.3.21+）**：`@huggingface/transformers` 等模板脚本依赖已随 `npm i add-coder` 默认安装（add-coder `dependencies`）。**未安装 add-coder 包本体、仅同步模板脚本的项目**，须按 [`docs/DEPENDENCIES.md`](./docs/DEPENDENCIES.md) 安装基建依赖——基建在安装期解决，不要等到 DPS 运行时才发现缺失（缺失时 check_dps 延续性会静默降级为 0）。
 
 ---
 
