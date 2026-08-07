@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.20",
+  "_version": "0.3.21",
   "adapters/claude/hooks/doc-format-guard.sh": "ec59ad3f",
   "adapters/claude/hooks/lib/common.sh": "4f3e64ad",
   "adapters/claude/hooks/lib/context-inject.sh": "cfc8c65e",
@@ -135,7 +135,6 @@
   "adapters/vscode/launch.json": "f2b79855",
   "adapters/vscode/settings.json": "7cabd00e",
   "adapters/vscode/tasks.json": "654d7fbd",
-  "core/DEPENDENCIES.md": "88d01954",
   "core/agents/add-flow-guardian.md": "c3e650d2",
   "core/docs/ADD-governance-claude-code.md": "0f582a7e",
   "core/docs/ADD-governance-codex.md": "289e8b71",
