@@ -41,6 +41,16 @@ if (url.startsWith("postgresql://") || url.startsWith("postgres://")) {
     adapter = new Pg({ connectionString: url })
   } catch { /* optional dep */ }
 }
+if (url.startsWith("file:")) {
+  // SQLite 完整链路（issue #10 P1-5）：DATABASE_URL 为 file: → 加载 better-sqlite3 adapter
+  try {
+    const bsql = require("@prisma/adapter-better-sqlite3") as Record<string, unknown>
+    const Bsql = bsql.PrismaBetterSQLite3 as new (opts: Record<string, unknown>) => Record<string, unknown>
+    adapter = new Bsql({ url })
+  } catch {
+    throw new Error("SQLite 模式需要安装 @prisma/adapter-better-sqlite3（npm install @prisma/adapter-better-sqlite3）")
+  }
+}
 
 export const prisma: Record<string, Record<string, (...a: unknown[]) => unknown>> = new PrismaClient({
   ...(adapter ? { adapter } : {}),

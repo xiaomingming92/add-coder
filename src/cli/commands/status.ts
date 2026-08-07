@@ -34,6 +34,8 @@ export async function statusCommand() {
     if (missing.length > 0) {
         console.log(`  缺失: ${missing.length} 文件`);
         missing.forEach((f) => console.log(`    - ${f}`));
+        // issue #10 补充-6：缺失时非零退出码，CI 门禁可用
+        process.exit(1);
     } else {
         console.log("  所有文件完整。");
     }

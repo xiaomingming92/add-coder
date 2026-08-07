@@ -11,6 +11,7 @@ import { createHash } from "crypto";
 import { renderCore, saveStack, loadStack, loadProfileRegistry } from "../../core/renderer";
 import { defaults } from "../../config/defaults";
 import { detectIDE } from "../detect";
+import { normalizeRelPath } from "../../lib/path-normalize";
 import type { AddCoderConfig } from "../../config/schema";
 
 const MAGIC_DIR_MAP: Record<string, string> = { claude: ".claude", qoder: ".qoder", vscode: ".vscode", trae: ".trae", codex: ".codex" };
@@ -146,8 +147,10 @@ function applyStack(projectRoot: string, magicDir: string, name: string) {
     const coreFiles = renderCore(config, false);
     const stackRelated = new Map<string, string>();
     for (const [relPath, content] of coreFiles) {
-        if (relPath.includes("/rules/profiles/") || relPath.endsWith("/rules/project_rules.md")) {
-            stackRelated.set(relPath, content);
+        // Windows 渲染路径为反斜杠，先 normalize 再匹配（issue #10 P1-4）
+        const rp = normalizeRelPath(relPath);
+        if (rp.includes("/rules/profiles/") || rp.endsWith("/rules/project_rules.md")) {
+            stackRelated.set(rp, content);
         }
     }
 
@@ -166,6 +169,20 @@ function applyStack(projectRoot: string, magicDir: string, name: string) {
             written++;
         }
     }
+
+    // 写后断言（issue #10 P1-4）：profile 文件与 project_rules.md 引用必须实际写入，否则返回失败
+    const fail = (msg: string): never => { console.error(`✗ stack set 失败: ${msg}`); process.exit(1); };
+    const registry = loadProfileRegistry();
+    const isBuiltin = registry.some((p) => p.name === name);
+    const profilePathMagic = resolve(projectRoot, magicDir, "rules", "profiles", `${name}-profile.md`);
+    const profilePathAdd = resolve(projectRoot, ".add", "rules", "profiles", `${name}-profile.md`);
+    const projectRulesPath = resolve(projectRoot, magicDir, "rules", "project_rules.md");
+    const projectRulesContent = existsSync(projectRulesPath) ? readFileSync(projectRulesPath, "utf-8") : "";
+    if (written === 0) fail(`未渲染任何 stack 相关文件（${name}）——Windows 路径匹配失效遗留问题`);
+    if (isBuiltin && !existsSync(profilePathAdd)) fail(`profile 未写入 .add: ${profilePathAdd}`);
+    if (!existsSync(profilePathMagic)) fail(`profile 未写入 ${magicDir}: ${profilePathMagic}`);
+    if (!projectRulesContent.includes("**当前技术栈**") || !projectRulesContent.includes(name)) fail(`project_rules.md 未包含 ${name} 引用`);
+
     writeFileSync(resolve(projectRoot, magicDir, HASH_OUTPUT_FILE), JSON.stringify(hashMap, null, 2) + "\n", "utf-8");
 
     console.log(`✅ 技术栈已设置为 ${name}`);

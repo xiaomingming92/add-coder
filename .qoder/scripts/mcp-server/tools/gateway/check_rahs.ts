@@ -18,6 +18,7 @@ import {
   MAGIC_DIR,
 } from "../../shared/fs.js";
 import { prisma } from "../../shared/prisma.js";
+import { runCommand } from "../../shared/run-command.js";
 
 export function registerCheckRahs(server: ToolRegistrar) {
   server.registerTool(
@@ -51,10 +52,9 @@ export function registerCheckRahs(server: ToolRegistrar) {
           specScore = 80,
           symScore = 80;
         try {
-          const { spawnSync } = await import("child_process");
-          const tsc = spawnSync("npx", ["tsc", "--noEmit"], {
+          // win32 下 npx 为 .cmd → runCommand 自动解析（issue #10 跨端修复）
+          const tsc = runCommand("npx", ["tsc", "--noEmit"], {
             cwd: PROJECT_ROOT,
-            encoding: "utf-8",
             timeout: 30000,
           });
           typeScore =
@@ -62,8 +62,7 @@ export function registerCheckRahs(server: ToolRegistrar) {
               ? 100
               : Math.max(
                   0,
-                  100 -
-                    (tsc.stderr || "").split("\n").filter(Boolean).length * 5,
+                  100 - tsc.stderr.split("\n").filter(Boolean).length * 5,
                 );
         } catch {}
         try {
