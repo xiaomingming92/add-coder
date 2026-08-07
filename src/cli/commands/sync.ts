@@ -22,6 +22,8 @@ import { detectIDE, resolveAdapters } from "../detect";
 
 import { selectFiles } from "../../lib/select-files";
 import { ask } from "../../lib/utils";
+import { normalizeRelPath } from "../../lib/path-normalize";
+import { resolveEmbeddingModel, isModelCached, ensureEmbeddingModel } from "../../lib/model-predownload";
 import { SYNC_CONFIG } from "../../caijuehub/strategies/sync.strategy";
 import { SYNC_PRISMA_CONFIG } from "../../caijuehub/strategies/prisma-sync.strategy";
 import { diffPrisma, parseSchemaBlocks } from "../writer";
@@ -43,10 +45,16 @@ function resolveAdapter(projectRoot: string, specified?: string): Adapter {
     return "qoder";
 }
 
-function isUserData(p: string) { return SYNC_CONFIG.PATCH_GUARD.some(r => r.test(p)); }
+export function isUserData(p: string) { return SYNC_CONFIG.PATCH_GUARD.some(r => r.test(normalizeRelPath(p))); }
 function hash8(c: string) { return createHash("sha256").update(c).digest("hex").slice(0, SYNC_CONFIG.HASH_HEX_LENGTH); }
-function loadHashFile(root: string, magic: string): Record<string, string> {
-    try { return JSON.parse(readFileSync(resolve(root, magic, SYNC_CONFIG.HASH_OUTPUT_FILE), "utf-8")) as Record<string, string>; } catch { return {}; }
+export function loadHashFile(root: string, magic: string): Record<string, string> {
+    try {
+        const raw = JSON.parse(readFileSync(resolve(root, magic, SYNC_CONFIG.HASH_OUTPUT_FILE), "utf-8")) as Record<string, string>;
+        // key 统一 POSIX：兼容既有 Windows 反斜杠 key（issue #10 P0-2 配套）
+        const normalized: Record<string, string> = {};
+        for (const [k, v] of Object.entries(raw)) normalized[normalizeRelPath(k)] = v;
+        return normalized;
+    } catch { return {}; }
 }
 function loadVersionFile(root: string, magic: string): string {
     try { return readFileSync(resolve(root, magic, SYNC_CONFIG.VERSION_SENTINEL), "utf-8").trim(); } catch { return ""; }
@@ -54,10 +62,40 @@ function loadVersionFile(root: string, magic: string): string {
 function saveVersionFile(root: string, magic: string, version: string) {
     writeFileSync(resolve(root, magic, SYNC_CONFIG.VERSION_SENTINEL), version + "\n", "utf-8");
 }
-function saveHashFile(root: string, magic: string, files: Map<string, string>) {
+/**
+ * 写 hash 文件。
+ * ⚠️ 契约（Review-implementation #1 双重 hash 修复）：files 的 value 必须是**最终 hash 值**，
+ * 直接写盘、禁止再次 hash8——上游 mergeFullHash 已产出最终 hash（outHash 旧值原样 + 磁盘刷新值）。
+ * 历史上曾在此处二次 hash8 导致写盘 hash8(hash8(content))，下次 patch 全量误判 conflict。
+ */
+export function saveHashFile(root: string, magic: string, files: Map<string, string>) {
     const m: Record<string, string> = {};
-    for (const [p, c] of files) m[p] = hash8(c);
+    for (const [p, c] of files) m[p] = c;
     writeFileSync(resolve(root, magic, SYNC_CONFIG.HASH_OUTPUT_FILE), JSON.stringify(m, null, 2) + "\n", "utf-8");
+}
+
+/**
+ * 全量基线合并（issue #10 P0-2）：旧 hash 全量保留 + candidates 磁盘当前内容刷新。
+ * 覆盖/跳过/新建均以磁盘为准——用户 [a] 跳过保留其修改，下一轮不再误判冲突。
+ * ⚠️ 契约（Review-implementation #1）：返回值 value 为**最终 hash 值**（旧值原样、新值由 readDiskHash 提供），
+ * 消费方（saveHashFile）直接写盘，禁止再次 hash。
+ * @param outHash 旧 hash（key 已 POSIX 规范化，value 为 hash8 值）
+ * @param candidates 本轮全部候选文件（relPath 可能含 Windows 反斜杠）
+ * @param readDiskHash 读取磁盘当前内容并返回 **hash8 值**（文件不存在返回 null）
+ */
+export function mergeFullHash(
+    outHash: Record<string, string>,
+    candidates: { relPath: string; absPath: string }[],
+    readDiskHash: (absPath: string) => string | null,
+): Map<string, string> {
+    const finalHash = new Map<string, string>();
+    for (const [k, v] of Object.entries(outHash)) finalHash.set(k, v);
+    for (const { relPath, absPath } of candidates) {
+        const key = normalizeRelPath(relPath);
+        const h = readDiskHash(absPath);
+        if (h !== null) finalHash.set(key, h);
+    }
+    return finalHash;
 }
 
 /**
@@ -67,8 +105,36 @@ function saveHashFile(root: string, magic: string, files: Map<string, string>) {
  * @param {string} [options.adapter]
  * @param {boolean} [options.patch]
  * @param {boolean} [options.interactive]
+ * @param {boolean} [options.model] 缓存缺失时下载 embedding 模型（review-implementation #1）
  */
-export async function syncCommand(options: { adapter?: string; interactive?: boolean; patch?: boolean } = {}) {
+/**
+ * embedding 模型检测/下载（model-predownload Plan）：
+ * - 默认：缓存缺失时仅提示 `model:download` 入口（不自动下载）
+ * - `--model`：缓存缺失时触发下载；失败 warn 不阻断主流程（降级边界，Review P2 #3）
+ * - resolveEmbeddingModel 抛错（toml 缺失）→ warn 后跳过检测
+ */
+async function maybeModelDownload(options: { model?: boolean }) {
+    let model: string;
+    try {
+        model = resolveEmbeddingModel();
+    } catch (e) {
+        console.warn(`⚠️ 模型配置缺失（跳过检测）: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+    }
+    if (isModelCached(model)) return;
+    if (options.model) {
+        try {
+            const r = await ensureEmbeddingModel();
+            console.log(`模型预下载: ${r.status} (${r.model})`);
+        } catch (e) {
+            console.warn(`⚠️ 模型预下载失败（首次 DPS 调用会自动补下载）: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    } else {
+        console.log(`模型未预下载: 运行 \`add-coder model:download\` 提前下载（首次 DPS 调用也会自动下载）`);
+    }
+}
+
+export async function syncCommand(options: { adapter?: string; interactive?: boolean; patch?: boolean; model?: boolean } = {}) {
     const projectRoot = process.cwd();
     const target = resolveAdapter(projectRoot, options.adapter);
     const magicDir = MAGIC_DIR_MAP[target];
@@ -130,16 +196,18 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
         const conflictFiles = new Map<string, string>();
         let sameCount = 0;
         for (const [relPath, content] of candidates) {
+            // key 统一 POSIX（Windows 渲染路径为反斜杠，先 normalize 再参与比较/存储）
+            const key = normalizeRelPath(relPath);
             const absPath = resolve(projectRoot, relPath);
             if (!existsSync(absPath)) {
-                missingFiles.set(relPath, content);
+                missingFiles.set(key, content);
             } else if (establishBaseline) {
-                missingFiles.set(relPath, content);
+                missingFiles.set(key, content);
             } else {
                 const curH = hash8(readFileSync(absPath, "utf-8"));
-                const storedH = outHash[relPath];
+                const storedH = outHash[key];
                 if (storedH && curH === storedH) { sameCount++; }
-                else { conflictFiles.set(relPath, content); }
+                else { conflictFiles.set(key, content); }
             }
         }
         console.log(`patch: ${allFiles.size} → skip user ${skipped} | missing ${missingFiles.size} | conflict ${conflictFiles.size} | same ${sameCount}`);
@@ -159,11 +227,19 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
         if (missingFiles.size === 0 && conflictFiles.size === 0) {
             console.log(SYNC_CONFIG.PROMPT_PATCH_DONE);
         }
-        saveHashFile(projectRoot, magicDir, new Map([...missingFiles, ...conflictFiles]));
+        // 全量基线保存（issue #10 P0-2）：旧 hash 全量保留 + 本轮处理后磁盘当前内容刷新
+        const finalHash = mergeFullHash(
+            outHash,
+            [...candidates].map(([relPath]) => ({ relPath, absPath: resolve(projectRoot, relPath) })),
+            (absPath) => (existsSync(absPath) ? hash8(readFileSync(absPath, "utf-8")) : null),
+        );
+        saveHashFile(projectRoot, magicDir, finalHash);
         saveVersionFile(projectRoot, magicDir, npmVersion);
         
         // Prisma schema diff
         await checkPrismaDiff(projectRoot, options);
+        // embedding 模型检测/下载（model-predownload Plan）：patch 分支末尾
+        await maybeModelDownload(options);
         return;
     }
 
@@ -194,6 +270,8 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
 
     // ════════════ Prisma schema diff ════════════
     await checkPrismaDiff(projectRoot, options);
+    // embedding 模型检测/下载（model-predownload Plan）：普通分支末尾
+    await maybeModelDownload(options);
 }
 
 /** 迁移命令指引：从 caijuehub POST_SYNC 策略渲染场景化后续命令（按宿主 migrations 状态分流） */

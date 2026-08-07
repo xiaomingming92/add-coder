@@ -21,10 +21,11 @@ import type { Adapter, AddCoderConfig } from "../../config/schema";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync } from "fs";
 import { createHash } from "crypto";
 import { resolve } from "path";
-import { spawnSync } from "child_process";
 import { createConnection } from "net";
+import { runCommand, commandExists } from "../../lib/run-command";
+import { ensureEmbeddingModel } from "../../lib/model-predownload";
 
-interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; stack?: string; }
+interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; stack?: string; skipModel?: boolean; }
 interface DbChoice { engine: "postgresql" | "sqlite" | "manual"; container?: "podman" | "docker" | "manual"; user?: string; password?: string; port?: string; reuseExisting?: boolean; }
 interface PackageJsonShape { scripts?: Record<string, string> }
 
@@ -62,9 +63,19 @@ export async function initCommand(options: InitOptions) {
         console.log(`[dry-run] 将写入 ${ctx.magicDir}/stack.json → ${ctx.stack}`);
     }
     const result = await renderAndWrite(ctx);
-    await deployDatabase(ctx);
+    // issue #10 P0-1：数据库部署失败必须传播到 finalize（非零退出码 + "治理模型未就绪"）
+    const dbFail = await deployDatabase(ctx);
     deployDocs(ctx);
-    finalize(ctx, result);
+    finalize(ctx, result, dbFail);
+    // embedding 模型预下载（model-predownload Plan）：非 dry-run；skip 也打印状态（Review P2 #5）；失败 warn 不阻断（降级边界）
+    if (!options.dryRun) {
+        try {
+            const r = await ensureEmbeddingModel({ skip: options.skipModel });
+            console.log(`模型预下载: ${r.status}${r.model ? ` (${r.model})` : ""}`);
+        } catch (e) {
+            console.warn(`⚠️ 模型预下载失败（不影响主流程，首次 DPS 调用会自动补下载）: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    }
 }
 
 // ════════════════════ helpers ════════════════════
@@ -142,11 +153,12 @@ function portInUse(port: number): Promise<boolean> {
 function hasPgIsready(): boolean {
     // 优先用容器内置的 pg_isready
     try {
-        const containers = spawnSync("podman", ["ps", "--filter", "publish=5433", "--format", "{{.Names}}"], { timeout: 3000 });
+        const containers = runCommand("podman", ["ps", "--filter", "publish=5433", "--format", "{{.Names}}"], { timeout: 3000 });
         const name = containers.stdout.toString().trim().split("\n")[0];
-        if (name && spawnSync("podman", ["exec", name, "pg_isready", "--version"], { timeout: 2000 }).status === 0) return true;
+        if (name && runCommand("podman", ["exec", name, "pg_isready", "--version"], { timeout: 2000 }).status === 0) return true;
     } catch { /* ignore */ }
-    return spawnSync("which", ["pg_isready"], { timeout: 2000 }).status === 0;
+    // Windows 无 which → commandExists（win32: where）（issue #10 已知边界）
+    return commandExists("pg_isready");
 }
 
 /**
@@ -162,18 +174,22 @@ function testPostgresConnection(port: string, user: string, password: string, db
         console.log("  ⚠️  无法验证凭据（容器未运行且 pg_isready 未安装），信任输入");
         return true;
     }
-    // 优先用容器内的 pg_isready，不行再用宿主机
-    const containers = spawnSync("podman", ["ps", "--filter", "publish=5433", "--format", "{{.Names}}"], { timeout: 3000 });
-    const containerName = containers.stdout.toString().trim().split("\n")[0];
-    const args = containerName
-        ? ["exec", containerName, "pg_isready", "-U", user, "-d", dbName]
-        : ["-h", "localhost", "-p", port, "-U", user, "-d", dbName];
-    const cmd = containerName ? "podman" : "pg_isready";
-    const r = spawnSync(cmd, args, {
-        timeout: 5000,
-        env: containerName ? process.env : { ...process.env, PGPASSWORD: password },
-    });
-    return r.status === 0;
+    try {
+        // 优先用容器内的 pg_isready，不行再用宿主机
+        const containers = runCommand("podman", ["ps", "--filter", "publish=5433", "--format", "{{.Names}}"], { timeout: 3000 });
+        const containerName = containers.stdout.toString().trim().split("\n")[0];
+        const args = containerName
+            ? ["exec", containerName, "pg_isready", "-U", user, "-d", dbName]
+            : ["-h", "localhost", "-p", port, "-U", user, "-d", dbName];
+        const cmd = containerName ? "podman" : "pg_isready";
+        const r = runCommand(cmd, args, {
+            timeout: 5000,
+            env: containerName ? undefined : { ...process.env, PGPASSWORD: password },
+        });
+        return r.status === 0;
+    } catch {
+        return false;
+    }
 }
 
 /**
@@ -399,24 +415,37 @@ async function renderAndWrite(ctx: InitContext) {
 
 // ════════════════════ 阶段 C: 数据库部署 ════════════════════
 
-async function deployDatabase(ctx: InitContext): Promise<void> {
+async function deployDatabase(ctx: InitContext): Promise<string | null> {
     const { projectRoot, options, magicDir, config, db } = ctx;
-    if (options.dryRun) return;
+    if (options.dryRun) return null;
+
+    // issue #10 P0-1：任一部署环节失败 → 返回失败原因，finalize 非零退出 + "治理模型未就绪"
+    let fail: string | null = null;
 
     if (db.engine === "postgresql" && db.container && db.container !== "manual") {
         const dbScript = resolve(projectRoot, magicDir, "scripts", "db-ensure.sh");
         const dbEnv = { ...process.env, DATABASE_USER: db.user, DATABASE_PASSWORD: db.password, DATABASE_PORT: db.port, PROJECT_NAME: config.projectName };
         const mode = db.reuseExisting ? "manual" : db.container;
         console.log(db.reuseExisting ? "复用已有 PostgreSQL ..." : `部署数据库 (${db.container}) ...`);
-        spawnSync("bash", [dbScript, "postgresql", mode, "--migrate"], { cwd: projectRoot, stdio: "inherit", env: dbEnv });
+        // bash 依赖（Windows 无 bash 时 runCommand 抛"命令不可用"→ 纳入失败检测；bash 替代为 P2）
+        // stdio: "inherit" 保持原实时输出（Review-implementation #2 输出被吞修复）
+        try {
+            const bashRun = runCommand("bash", [dbScript, "postgresql", mode, "--migrate"], { cwd: projectRoot, env: dbEnv, stdio: "inherit" });
+            if (bashRun.status !== 0) fail = `db-ensure.sh 退出码: ${bashRun.status}${bashRun.stderr ? `\n${bashRun.stderr.trim().split("\n").slice(0, 5).join("\n")}` : ""}`;
+        } catch (e) { fail = e instanceof Error ? e.message : String(e); }
         try {
             await injectPrisma(projectRoot, { force: !!options.force });
-        } catch (e) { console.log(`Prisma 同步失败: ${e instanceof Error ? e.message : String(e)}`); }
+        } catch (e) { fail = `Prisma 同步失败: ${e instanceof Error ? e.message : String(e)}`; }
     }
 
     if (db.engine === "postgresql" && db.container === "manual") {
         const dbScript = resolve(projectRoot, magicDir, "scripts", "db-ensure.sh");
-        if (existsSync(dbScript)) spawnSync("bash", [dbScript, "postgresql", "manual"], { cwd: projectRoot, stdio: "inherit" });
+        if (existsSync(dbScript)) {
+            try {
+                const bashRun = runCommand("bash", [dbScript, "postgresql", "manual"], { cwd: projectRoot, stdio: "inherit" });
+                if (bashRun.status !== 0) fail = `db-ensure.sh 退出码: ${bashRun.status}${bashRun.stderr ? `\n${bashRun.stderr.trim().split("\n").slice(0, 5).join("\n")}` : ""}`;
+            } catch (e) { fail = e instanceof Error ? e.message : String(e); }
+        }
         console.log(["", "━".repeat(30), "ADD 模板已就位。在完成以下操作前 MCP 不可用：", "",
             "1. 编辑 .env.development，配置 DATABASE_URL", "2. 重新运行 add-coder init 完成迁移", "",
             `⚠️  非 PG 数据库需编辑 ${magicDir}/scripts/mcp-server.ts 手动配 Prisma 7 adapter`, "━".repeat(30)].join("\n"));
@@ -433,8 +462,10 @@ async function deployDatabase(ctx: InitContext): Promise<void> {
         injectDbExportScript(projectRoot, false);
         try {
             await injectPrisma(projectRoot, { force: !!options.force, datasource: "sqlite" });
-        } catch (e) { console.log(`SQLite 同步失败: ${e instanceof Error ? e.message : String(e)}`); }
+        } catch (e) { fail = `SQLite 同步失败: ${e instanceof Error ? e.message : String(e)}`; }
     }
+
+    return fail;
 }
 
 // ════════════════════ 阶段 D: 文档落地 ════════════════════
@@ -462,12 +493,13 @@ function deployDocs(ctx: InitContext): void {
 
 // ════════════════════ 阶段 E: 摘要 + 依赖安装 ════════════════════
 
-function finalize(ctx: InitContext, result: { created: number; skipped: number; overwritten: number }): void {
+function finalize(ctx: InitContext, result: { created: number; skipped: number; overwritten: number }, dbFail: string | null): void {
     const { projectRoot, options, db } = ctx;
 
-    console.log(`\n完成: 新建 ${result.created}, 跳过 ${result.skipped}, 覆盖 ${result.overwritten}`);
-
-    if (options.dryRun) return;
+    if (options.dryRun) {
+        console.log(`\n完成: 新建 ${result.created}, 跳过 ${result.skipped}, 覆盖 ${result.overwritten}`);
+        return;
+    }
 
     if (db.engine === "sqlite") console.log("数据备份: npm run db:export → data/exports/");
 
@@ -476,9 +508,22 @@ function finalize(ctx: InitContext, result: { created: number; skipped: number; 
     if (peerNames.length > 0) {
         console.log(`\n安装 peer 依赖 (${peerNames.join(" ")}) ...`);
         const pm = detectPm(projectRoot);
-        spawnSync(pm, pm === "pnpm" ? ["add", ...peerNames] : ["install", ...peerNames], { cwd: projectRoot, stdio: "inherit" });
+        const installArgs = pm === "pnpm" ? ["add", ...peerNames] : ["install", ...peerNames];
+        try {
+            const ir = runCommand(pm, installArgs, { cwd: projectRoot });
+            if (ir.status !== 0) console.warn(`⚠️ peer 依赖安装失败（退出码: ${ir.status}），后续 MCP 启动可能报错`);
+        } catch (e) { console.warn(`⚠️ peer 依赖安装失败: ${e instanceof Error ? e.message : String(e)}`); }
     }
     if (db.engine !== "manual" && (db.engine !== "postgresql" || db.container !== "manual")) {
         console.log("提示: 重启 IDE 以加载 hook 配置");
     }
+
+    // issue #10 P0-1：数据库部署失败 → 明确"治理模型未就绪" + 非零退出码
+    // Review-implementation #3："完成"打印必须在失败检查之后（失败时不输出误导性"完成"）
+    if (dbFail) {
+        console.error(`\n✗ 治理模型未就绪: ${dbFail}`);
+        console.error("  请按错误提示修复后重新运行 add-coder init。");
+        process.exit(1);
+    }
+    console.log(`\n完成: 新建 ${result.created}, 跳过 ${result.skipped}, 覆盖 ${result.overwritten}`);
 }

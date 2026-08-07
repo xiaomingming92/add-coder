@@ -13,10 +13,11 @@ export const PRISMA_CONFIG = {
 };
 // <<< CAIJUE GENERATED END <<<
 // >>> USER CODE >>>
-import { spawnSync } from "child_process";
 import { copyFileSync, existsSync, readFileSync, unlinkSync, writeFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
 import { ask, detectPm } from "../../lib/utils";
+import { runCommand, commandExists } from "../../lib/run-command";
+import type { RunResult } from "../../lib/run-command";
 
 function ensurePrismaConfig(projectRoot: string): void {
     const configPath = resolve(projectRoot, "prisma.config.ts");
@@ -38,11 +39,11 @@ function ensurePrismaConfig(projectRoot: string): void {
 }
 
 function backupAddTables(projectRoot: string): string | null {
-    const pgDump = spawnSync("which", ["pg_dump"], { timeout: 2000 });
-    if (pgDump.status !== 0) return null;
+    // Windows 无 which → commandExists 内部 win32 用 where（issue #10 已知边界）
+    if (!commandExists("pg_dump")) return null;
     const bak = resolve(projectRoot, `add-backup-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}.sql`);
-    const r = spawnSync("pg_dump", ["--table=AddUser", "--table=DevOperation", "--table=AuditLog", "--if-exists"], {
-        cwd: projectRoot, stdio: ["ignore", "pipe", "pipe"], timeout: 30000,
+    const r = runCommand("pg_dump", ["--table=AddUser", "--table=DevOperation", "--table=AuditLog", "--if-exists"], {
+        cwd: projectRoot, timeout: 30000,
     });
     if (r.stdout.length > 0) {
         writeFileSync(bak, r.stdout, "utf-8");
@@ -53,16 +54,23 @@ function backupAddTables(projectRoot: string): string | null {
 }
 
 function runPrismaInit(projectRoot: string, provider: string, schemaPath: string): boolean {
-    console.log("执行 npx prisma init ...");
+    console.log("执行 prisma init ...");
     const pm = detectPm(projectRoot);
-    const initArgs = pm === "pnpm" ? ["dlx", "prisma", "init", "--datasource-provider", provider]
-        : ["prisma", "init", "--datasource-provider", provider];
-    const initResult = spawnSync(pm, initArgs, {
-        cwd: projectRoot, stdio: "inherit", shell: false,
-    });
+    // issue #10 P0-1：npm 场景必须 npm exec prisma -- init（旧实现 spawnSync("npm", ["prisma", ...]) 在 Windows 下 ENOENT → status=null）
+    const initArgs = pm === "pnpm"
+        ? ["dlx", "prisma", "init", "--datasource-provider", provider]
+        : ["exec", "prisma", "--", "init", "--datasource-provider", provider];
+    let initResult: RunResult;
+    try {
+        initResult = runCommand(pm, initArgs, { cwd: projectRoot });
+    } catch (e) {
+        console.error(`✗ prisma init 无法执行: ${e instanceof Error ? e.message : String(e)}`);
+        initResult = { status: null, stdout: "", stderr: "" };
+    }
 
     if (initResult.status !== 0 || !existsSync(schemaPath)) {
-        console.log("prisma init 失败，手动创建 schema.prisma ...");
+        // Review #3：失败显式说明回退原因（不再静默手动建 schema 假装成功）
+        console.error(`⚠️ prisma init 未完成（退出码: ${initResult.status}），回退手动创建 schema.prisma——db push 将验证其可用性`);
         const prismaDir = resolve(projectRoot, "prisma");
         if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
         const content = `generator client {\n  provider = "prisma-client-js"\n}\n\ndatasource db {\n  provider = "${provider}"\n}\n`;
@@ -76,7 +84,7 @@ function runPrismaInit(projectRoot: string, provider: string, schemaPath: string
             writeFileSync(devEnvPath, defaultUrl + "\n", "utf-8");
             console.log("已创建 .env.development");
         }
-        return false; // migration not done yet
+        return false; // init 未成功——db push/generate 将作为最终验收
     }
     return true; // prisma init succeeded, .env created
 }
@@ -99,6 +107,31 @@ function postInitSetup(projectRoot: string, schemaPath: string, addPrismaTemplat
 
     copyFileSync(addPrismaTemplate, destPath);
     console.log("已复制 add.prisma");
+
+    // issue #10 P1-5 / Review P0 #2：统一注入 generator output（init 成功+失败路径全覆盖）
+    patchGeneratorOutput(schemaPath);
+}
+
+/**
+ * 统一注入 generator output（issue #10 P1-5 / Review P0 #2）。
+ * 无论 prisma init 成功（CLI 生成 schema.prisma，generator 无 output）或失败（fallback 手动 schema），
+ * 最终生效 schema 的 generator client 块都必须输出到 src/generated/prisma，与 MCP 模板探测路径对齐。
+ * 幂等：已有 output 不重复注入；无 generator 块（异常）时追加标准块。
+ */
+export function patchGeneratorOutput(schemaPath: string): void {
+    if (!existsSync(schemaPath)) return;
+    let content = readFileSync(schemaPath, "utf-8");
+    const genBlock = content.match(/generator\s+\w+\s*\{[\s\S]*?\}/);
+    if (!genBlock) {
+        content += `\ngenerator client {\n  provider = "prisma-client-js"\n  output = "../src/generated/prisma"\n}\n`;
+        writeFileSync(schemaPath, content, "utf-8");
+        console.log("已追加 generator client（含 output → src/generated/prisma）");
+        return;
+    }
+    if (genBlock[0].includes("output")) return; // 幂等
+    const patched = genBlock[0].replace(/\}\s*$/, `  output = "../src/generated/prisma"\n}`);
+    writeFileSync(schemaPath, content.replace(genBlock[0], patched), "utf-8");
+    console.log("已注入 generator output → src/generated/prisma");
 }
 
 export async function injectPrisma(
@@ -158,10 +191,14 @@ export async function injectPrisma(
         ensurePrismaConfig(projectRoot);
         backupAddTables(projectRoot);
         const pm = detectPm(projectRoot);
-        const args = pm === "pnpm" ? ["dlx", "prisma", "db", "push"] : ["prisma", "db", "push"];
+        // issue #10 P0-1：npm 场景 npm exec prisma -- db push；pnpm 维持 dlx
+        const args = pm === "pnpm"
+            ? ["dlx", "prisma", "db", "push"]
+            : ["exec", "prisma", "--", "db", "push"];
         if (C.schemaArg) args.push(C.schemaArg);
         console.log(`执行 ${pm} ${args.join(" ")} ...`);
-        const r = spawnSync(pm, args, { cwd: projectRoot, stdio: "inherit", shell: false });
+        const r = runCommand(pm, args, { cwd: projectRoot });
+        // status 为 null（Windows 极端/ENOENT）时 null !== 0 → 判失败（现状语义保持，回归锁定）
         if (r.status !== 0) throw new Error(`prisma db push 退出码: ${r.status}`);
     } catch (err) {
         if (C.onMigrateFail === "keep") { console.log("迁移失败，保留文件"); return true; }
@@ -172,8 +209,16 @@ export async function injectPrisma(
 
     if (C.autoGenerate) {
         const pm = detectPm(projectRoot);
+        const genArgs = pm === "pnpm"
+            ? ["dlx", "prisma", "generate"]
+            : ["exec", "prisma", "--", "generate"];
         console.log("执行 prisma generate ...");
-        spawnSync(pm, pm === "pnpm" ? ["dlx", "prisma", "generate"] : ["prisma", "generate"], { cwd: projectRoot, stdio: "inherit", shell: false });
+        const g = runCommand(pm, genArgs, { cwd: projectRoot });
+        // issue #10 P0-1 / Review #3：generate 失败 = Client 缺失 = MCP 不可用，必须显式失败
+        if (g.status !== 0) {
+            const detail = g.stderr.trim().split("\n").slice(0, 5).join("\n");
+            throw new Error(`prisma generate 退出码: ${g.status}${detail ? `\n${detail}` : ""}`);
+        }
     }
     console.log("ADD 治理模型已就绪");
     return true;

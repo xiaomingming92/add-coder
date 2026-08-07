@@ -18,6 +18,7 @@ import {
   PROJECT_ROOT,
   MAGIC_DIR,
 } from "../../shared/fs.js";
+import { runCommand } from "../../shared/run-command.js";
 
 export function registerCheckSpecSync(server: ToolRegistrar) {
   server.registerTool(
@@ -72,16 +73,14 @@ export function registerCheckSpecSync(server: ToolRegistrar) {
             .map((f: string) => f.replace(/`/g, ""));
           lines.push(`附录文件: ${appendixFiles.length} 个`);
 
-          // git diff 变更文件
+          // git diff 变更文件（win32 下 git 为 .cmd → runCommand 自动解析，issue #10 跨端修复）
           let diffFiles: string[] = [];
           try {
-            const { spawnSync } = await import("child_process");
-            const diff = spawnSync("git", ["diff", "--name-only"], {
+            const diff = runCommand("git", ["diff", "--name-only"], {
               cwd: PROJECT_ROOT,
-              encoding: "utf-8",
               timeout: 5000,
             });
-            diffFiles = (diff.stdout || "").trim().split("\n").filter(Boolean);
+            diffFiles = diff.stdout.trim().split("\n").filter(Boolean);
           } catch {
             lines.push("Git diff: 无法获取");
           }

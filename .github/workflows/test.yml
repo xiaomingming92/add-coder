@@ -1,0 +1,34 @@
+name: test
+
+on:
+  push:
+    branches: ["main", "feature/**", "fix/**", "feat/**", "enhance/**"]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install
+      - run: pnpm build
+
+      # src/generated 为本地生成物（gitignore），CI 需先 regenerate 才能跑依赖它的测试
+      # （Review-implementation #6：本地 18 个 pre-existing 失败源自 createRequire 加载
+      #  Prisma 生成物 + Node ESM 无扩展名 import，与本次改动无关，CI 保持一致环境即可）
+      - run: pnpm exec prisma generate
+
+      # 单测：路径规范化 / hash 全量基线 / runCommand win32 分支 为纯函数逻辑，
+      # windows-latest 上真实执行验证 .cmd 解析语义（issue #10 建议第 5 条）
+      - run: pnpm test
