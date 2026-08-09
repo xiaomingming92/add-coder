@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.21",
+  "_version": "0.3.22",
   "adapters/claude/hooks/doc-format-guard.sh": "ec59ad3f",
   "adapters/claude/hooks/lib/common.sh": "4f3e64ad",
   "adapters/claude/hooks/lib/context-inject.sh": "cfc8c65e",
@@ -225,7 +225,7 @@
   "core/scripts/mcp-server/tools/plan.ts": "477fd80d",
   "core/scripts/mcp-server/tools/quality.ts": "c4634453",
   "core/scripts/mcp-server/tools/registrar.ts": "efd81b3a",
-  "core/scripts/mcp-server/tools/review.ts": "4d72ca19",
+  "core/scripts/mcp-server/tools/review.ts": "370f84f2",
   "core/scripts/mcp-server/types.ts": "6c5e60bc",
   "core/scripts/mcp-server.ts": "99cc6833",
   "core/skills/add-paradigm/SKILL.md": "5d4fa389",
