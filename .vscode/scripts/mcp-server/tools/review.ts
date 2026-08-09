@@ -58,7 +58,9 @@ export function registerReviewTools(server: ToolRegistrar) {
           .replace(/-review-.*$/, "")
           .replace(/-implementation.*$/, "")
           .replace(/-runtime.*$/, "")
-        if (pn && !derivedPlan.includes(pn)) continue
+        // [2026-08-09 修复] 过滤方向颠倒：derivedPlan 是前缀，pn 是完整 planName（{prefix}-plan-v{n}），
+        // 应为 pn.includes(derivedPlan)；原实现 derivedPlan.includes(pn) 永远 false → 传入 planName 时全部跳过
+        if (pn && !pn.includes(derivedPlan)) continue
 
         // 查找匹配的 PlanRecord：PlanRecord.planName 格式为 {planPrefix}-plan-v{n}
         // 而 derivedPlan 为 {planPrefix}（从 review 文件名中去掉了 -review-v{n}）
