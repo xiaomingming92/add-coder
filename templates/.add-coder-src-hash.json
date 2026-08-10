@@ -180,7 +180,7 @@
   "core/rules/profiles/webapp-profile.md": "e493ae7b",
   "core/rules/project_rules.md": "82b25e08",
   "core/rules/theory-practice-map.toml": "b1db99fd",
-  "core/scripts/db-ensure.sh": "faeb6b92",
+  "core/scripts/db-ensure.sh": "1ef7a9f3",
   "core/scripts/gen-plan-index.sh": "bfc6ad3e",
   "core/scripts/mcp-server/elicitation/confirm.ts": "924857b8",
   "core/scripts/mcp-server/elicitation/index.ts": "44c5dc3f",
