@@ -31,6 +31,10 @@
 - [十二、常见开发场景](#十二常见开发场景)
 - [十三、鸡生蛋蛋生鸡：自举的时间边界](#十三鸡生蛋蛋生鸡自举的时间边界)
 - [十四、依赖治理坑位记录](#十四依赖治理坑位记录)
+- [十五、多 IDE 并发契约联动](#十五多-ide-并发契约联动)
+  - [15.1 数据库生命周期拆分](#151-数据库生命周期拆分)
+  - [15.2 连接模型与并发兜底](#152-连接模型与并发兜底)
+  - [15.3 与协作层契约的关系](#153-与协作层契约的关系)
 - [关联文档](#关联文档)
 
 ---
@@ -877,3 +881,33 @@ export npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-
 **为什么只切 registry 不够**：sharp 0.32 的二进制不走 npm registry，而是 prebuild-install 从 GitHub 拉取；`.npmrc` 里的 `sharp_binary_host` 配置 pnpm 11 不透传，所以必须设置环境变量。升级到 sharp 0.34+ 后二进制改由 `@img/sharp-*` npm 包分发，才真正做到切 registry 即解决。
 
 ---
+
+## 十五、多 IDE 并发契约联动
+
+> 完整契约定义见 [docs/multi-ide-concurrency-contract.md](./multi-ide-concurrency-contract.md)（进程层 v2）。本节是开发侧联动说明。
+
+### 15.1 数据库生命周期拆分
+
+| 阶段 | 操作 | 执行者 | 并发保护 |
+|------|------|--------|---------|
+| 安装/升级 | 迁移（Atlas/prisma）、Schema Patch、初始化数据 | `db-ensure.sh`（安装时执行一次） | `pg_try_advisory_lock(0xADD001)` 非阻塞拿锁，失败 exit 1（自身脚本 + 消费方模板双改） |
+| 每次启动 | 只读检查（连接可用性、表存在性） | mcp-server 启动路径 | 无写操作，无需锁 |
+| 运行期 | 业务写入（Plan/Contract/Audit/DevOperation） | MCP 工具 | 幂等键 + DB 唯一索引 |
+
+> **原则**：迁移只执行一次（锁 + 幂等）；启动只做只读检查；迁移失败必须真实非零退出，不得显示"已就绪"假成功。
+
+### 15.2 连接模型与并发兜底
+
+- **进程边界**：1 IDE = 1 mcp-server 子进程（stdio），进程间无共享内存——任一 IDE 断开/重启不影响其他 IDE。
+- **PG 连接**：每进程 1 个 PrismaClient 单例；`connection_limit = max(1, floor(100 / N_IDE))`（N_IDE ≤ 3 时 limit=10）。
+- **读写分级信号量**（`mcp-server/tools/index.ts` 装饰器）：读工具共享 8 并发、写工具共享 4 并发，超限排队（MCP 协议允许延迟响应，排队即天然反压）；429 指数退避 3 次（250ms 起步）。
+- **日志脱敏**：`shared/redact.ts` 统一出口（`textResponse`/`errorResponse`/入口 catch），连接串密码段输出 `****`。
+
+### 15.3 与协作层契约的关系
+
+| 层 | 契约 | 职责 | 开发侧落点 |
+|----|------|------|-----------|
+| 协作层 v1 | collab-contract（v0.3.18） | 多智能体协作秩序（文件边界/仲裁/审计分桶） | `templates/core/templates/collab-contract-template.md` + contract_track/contract_status |
+| 进程层 v2 | 本文档（v0.3.25） | MCP Server 并发行为承诺 | `docs/multi-ide-concurrency-contract.md` + 节流/脱敏/锁 |
+
+**衔接点**：协作层的"文件边界 + 审计分桶"能成立，依赖进程层的"幂等写入 + 防串线"保证。

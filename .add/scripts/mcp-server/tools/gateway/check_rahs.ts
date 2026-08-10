@@ -9,7 +9,7 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar } from "../registrar.js";
 import { existsSync } from "fs";
-import { join } from "path";
+import { join, basename } from "path";
 import { textResponse, errorResponse } from "../../shared/response.js";
 import {
   readFileSafe,
@@ -42,7 +42,9 @@ export function registerCheckRahs(server: ToolRegistrar) {
         );
         const pm = apf.find(
           (f) =>
-            f.toLowerCase().includes(pp.toLowerCase()) && f.includes("-plan-v"),
+            f.toLowerCase().includes(pp.toLowerCase()) &&
+            f.includes("-plan-v") &&
+            !f.includes(".hitl"),
         );
         if (!pm)
           return errorResponse(`未找到匹配的 Plan 文件（关键词: ${pp}）`);
@@ -79,6 +81,71 @@ export function registerCheckRahs(server: ToolRegistrar) {
             take: 20,
           })) as Array<{ id: string }>;
           auditScore = Math.min(100, logs.length * 10);
+        } catch {}
+        // ── 范围保真度 / Spec 合规 / 阶段对称性：从静态基线改为动态计算（修复：
+        //    三个维度原为固定 80，任何 Plan 的 RAHS 上限 88 永远无法通过）──
+        try {
+          const arFile = apf.find(
+            (f) =>
+              f.toLowerCase().includes(pp.toLowerCase()) &&
+              f.toLowerCase().includes("add-route"),
+          );
+          if (arFile) {
+            const arContent =
+              (await readFileSafe(join(plansDir, arFile))) || "";
+            const checks = arContent.match(/^- \[[ x]\]/gm) || [];
+            const done = checks.filter((c) => c.includes("[x]")).length;
+            // 阶段对称性：add-route Step 产出项勾选率（Handoff/Report Closure 等
+            //    条件项未勾选时按比例折算，不阻塞）
+            symScore = checks.length > 0
+              ? Math.max(70, Math.round((done / checks.length) * 100))
+              : 70;
+          }
+        } catch {}
+        try {
+          // Spec 合规：checklist [T] 项勾选率（[R] 运行时项不计入）
+          const specDir = join(PROJECT_ROOT, MAGIC_DIR, "specs");
+          const sn = basename(pm, ".md").replace(/-plan-v\d+$/i, "");
+          const clPath = join(specDir, sn, "checklist.md");
+          if (existsSync(clPath)) {
+            const cl = (await readFileSafe(clPath)) || "";
+            const tItems = cl.match(/^- \[[ x]\] \[T\]/gm) || [];
+            const tDone = tItems.filter((c) => c.includes("[x]")).length;
+            specScore = tItems.length > 0
+              ? Math.max(70, Math.round((tDone / tItems.length) * 100))
+              : 70;
+          }
+        } catch {}
+        try {
+          // 范围保真度：git diff 变更文件与 add-route 附录清单匹配率
+          const arFile = apf.find(
+            (f) =>
+              f.toLowerCase().includes(pp.toLowerCase()) &&
+              f.toLowerCase().includes("add-route"),
+          );
+          if (arFile) {
+            const arContent =
+              (await readFileSafe(join(plansDir, arFile))) || "";
+            const appendix = (
+              arContent.match(/`[^`]+\.(ts|js|sh|md|tsx|json|yml|yaml)`/g) ||
+              []
+            ).map((f: string) => f.replace(/`/g, "").toLowerCase());
+            const diff = runCommand("git", ["diff", "--name-only"], {
+              cwd: PROJECT_ROOT,
+              timeout: 5000,
+            });
+            const diffFiles = diff.stdout
+              .trim()
+              .split("\n")
+              .filter(Boolean)
+              .map((f: string) => f.toLowerCase());
+            if (appendix.length > 0 && diffFiles.length > 0) {
+              const matched = diffFiles.filter((f) =>
+                appendix.some((a) => f === a || f.endsWith(`/${a}`)),
+              ).length;
+              scopeScore = Math.max(70, Math.round((matched / diffFiles.length) * 100));
+            }
+          }
         } catch {}
         const parts = [
           "=== RAHS：Runtime Architecture Health Score ===",

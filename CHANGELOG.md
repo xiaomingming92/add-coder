@@ -5,6 +5,27 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.25] - 2026-08-10
+
+### 新增（[issue #12](https://github.com/xiaomingming92/add-coder/issues/12) Codex 原生适配 + 多 IDE 并行稳定）
+
+- **Codex MCP 官方配置输出**：`init --adapter=codex --print-mcp-config` stdout 输出可直接使用的 config.toml 片段（`[mcp_servers.add_coder]` 区块，win32 自动 `.cmd` 分支）；`--write-user-config` 显式确认后写入 `~/.codex/config.toml`（先备份 + 防重复）；config.toml 真源模板 `templates/adapters/codex/config.toml.example`（renderAdapterBase 自动分发）
+- **进程层并发契约 v2**：`docs/multi-ide-concurrency-contract.md`——连接模型（连接池公式）/ 幂等键 / PROJECT_ID 校验 / 断开隔离四态 / 数据库生命周期拆分 / client 编排行为差异矩阵（Codex Parallel MCP / TAgent / Claude Code / Qoder CN 待调研）；与协作层 v1（collab-contract）构成双层契约体系
+- **MCP Server 并发加固**：读写分级信号量节流（读 8 / 写 4，超限排队反压）+ 429 指数退避重试（关闭 RPT-20260717-01，issue #6 遗留）；DATABASE_URL 日志脱敏（`shared/redact.ts` 统一出口，密码段 `****`）
+- **db-ensure 迁移锁双改**：自身脚本 + 消费方模板均加 `pg_try_advisory_lock(0xADD001)` 非阻塞拿锁（多 IDE 并发 init 仅一次迁移）
+- **Adapter 所有权矩阵**：进程层契约附录（5 目录归属 + codex→`.claude/` 双通道例外 + sync --patch hash 保护）
+
+### 文档
+
+- README ⑩ 升级为「并发契约体系：协作层 + 进程层双层」；新增 ⑪「Codex MCP 原生接入」（6 步闭环 + 模板 vs 端到端验证状态区分）
+- DEVELOPMENT.md 新增 §十五「多 IDE 并发契约联动」（生命周期拆分 / 连接模型与并发兜底 / 与协作层契约关系）
+- CI 双平台（ubuntu + windows）新增 Codex 配置生成断言与 `.cmd` 分支断言
+
+### 变更
+
+- `init --adapter=codex` 行为：新增两个轻量参数分支（print/write 在完整 init 流程前置处理，非交互）
+
+---
 ## [0.3.22] - 2026-08-10
 
 ### 新增

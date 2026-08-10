@@ -156,6 +156,14 @@ apply_atlas_diff() {
 # ⑦ Atlas 同步主流程（探测 → dev-url → 目标 → baseline → diff → apply）
 atlas_sync() {
   [ "$ENGINE" = "sqlite" ] && return 0
+  # 迁移锁（进程层契约 v2 §6）：多 IDE 并发 init 时仅一个进程执行迁移
+  # 非阻塞拿锁（pg_try_advisory_lock），会话级锁——脚本退出连接断开自动释放
+  LOCK_KEY="0xADD001"
+  LOCKED="$(podman exec "${PROJECT_NAME:-add-project}-postgres" psql -U "${DATABASE_USER:-admin}" -d "${PROJECT_NAME:-add-project}" -tAc "SELECT pg_try_advisory_lock(${LOCK_KEY});" 2>/dev/null || true)"
+  if [ "$LOCKED" != "t" ]; then
+    echo "!!! 另一个进程正在迁移，请稍后重试"
+    return 1
+  fi
   if ! atlas_cmd version > /dev/null 2>&1; then
     echo "!!! Atlas 不可用。add-coder sync --patch 可自动安装 @ariga/atlas；或手动: pnpm add -D @ariga/atlas"
     echo "    降级路径: prisma-diff（免 shadow）→ db-push + 强制备份；文档: README「Atlas 数据库同步能力」"

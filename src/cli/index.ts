@@ -44,6 +44,8 @@ program
     .option("--dry-run", "预览模式，不实际写入")
     .option("--stack <name>", "技术栈约束 profile 名（如 machineserver，可选）")
     .option("--skip-model", "跳过 embedding 模型预下载")
+    .option("--print-mcp-config", "Codex: stdout 输出 config.toml 片段（不写盘，不初始化项目）")
+    .option("--write-user-config", "Codex: 显式确认后写入 ~/.codex/config.toml（先备份）")
     .action(initCommand);
 
 program

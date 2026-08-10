@@ -1,0 +1,20 @@
+# Codex MCP 配置模板（真源）
+# 渲染后分发到 .codex/ 与各 magic dirs templates/，供 --print-mcp-config 输出
+# 使用方式:
+#   npx add-coder init --adapter=codex --print-mcp-config   # stdout 输出片段
+#   npx add-coder init --adapter=codex --write-user-config  # 显式确认后写入 ~/.codex/config.toml
+#
+# Windows 分支（renderer 按平台注入，无需手动修改）:
+#   win32: command = "cmd /c"  args = ["npx.cmd", "tsx", "..."]   # .cmd 分支
+#   posix: command = "npx"     args = ["tsx", "..."]
+#
+# 安全约定:
+#   - env 只引用环境变量（{{projectRoot}} 由渲染时注入，密码/连接串禁止写入模板）
+#   - DATABASE_URL 请通过消费方 .env 或 IDE 环境传入，模板不包含任何连接串
+
+[mcp_servers.add_coder]
+command = "{{codexCommand}}"
+args = ["tsx", "{{magicDir}}/scripts/mcp-server.ts"]
+env = {
+  PROJECT_ROOT = "{{projectRoot}}",
+}
