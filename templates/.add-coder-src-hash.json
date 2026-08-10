@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.22",
+  "_version": "0.3.23",
   "adapters/claude/hooks/doc-format-guard.sh": "ec59ad3f",
   "adapters/claude/hooks/lib/common.sh": "4f3e64ad",
   "adapters/claude/hooks/lib/context-inject.sh": "cfc8c65e",
@@ -252,6 +252,7 @@
   "core/templates/hitl-template.md": "44989804",
   "core/templates/hitl-template.schema.json": "e7ecc53e",
   "core/templates/index.md": "0fb42ea5",
+  "core/templates/ports.example.md": "f5a7e436",
   "core/templates/prd-incremental-template.md": "4a996ad5",
   "core/templates/prd-incremental-template.schema.json": "bb44f022",
   "core/templates/prd-standard-template.md": "abf639c2",
