@@ -82,3 +82,98 @@ fi
 if [ "$DO_MIGRATE" = "true" ]; then
   backup_add_tables
 fi
+
+# ════ Atlas 声明式同步模块（函数式；消费方日常变更同步入口，与 v2 引擎同源逻辑）════
+# 触发：--migrate（init 流程）或宿主手动 `bash db-ensure.sh <engine> <container> --migrate`
+# 依赖环境变量：DB_URL / ADD_DATABASE_URL(可选) / ATLAS_DEV_URL / PROJECT_NAME / DATABASE_USER
+
+# ① atlas 可执行解析（三路径：add-coder 包内 → 顶层 .bin → PATH；无则走 npx --no-install）
+resolve_atlas_bin() {
+  local b
+  for b in \
+    "$PROJECT_DIR/node_modules/add-coder/node_modules/.bin/atlas" \
+    "$PROJECT_DIR/node_modules/.bin/atlas" \
+    "$(command -v atlas 2>/dev/null || true)"; do
+    [ -n "$b" ] && [ -x "$b" ] && { echo "$b"; return 0; }
+  done
+  return 1
+}
+
+# ② atlas 命令执行器（本地 bin 或 npx --no-install）
+atlas_cmd() {
+  local bin; bin="$(resolve_atlas_bin || true)"
+  if [ -n "$bin" ]; then "$bin" "$@"; else npx --no-install @ariga/atlas "$@"; fi
+}
+
+# ③ 目标构造（模式判定：分库=ADD 模型 / 共库=宿主 + 动态 exclude 非 ADD 表）
+# 输出全局：TARGET_URL / SCHEMA_TARGET / EXCLUDE_ARGS
+build_target() {
+  TARGET_URL=""
+  SCHEMA_TARGET="prisma/"
+  EXCLUDE_ARGS=()
+  local tables
+  if [ -n "${ADD_DATABASE_URL:-}" ]; then
+    TARGET_URL="${ADD_DATABASE_URL//?schema=public/}"
+    SCHEMA_TARGET="prisma/add.prisma"
+    echo ">>> Atlas 同步（分库模式: ADD 治理模型）..."
+  else
+    TARGET_URL="${DB_URL//?schema=public/}"
+    # 动态 exclude：库中除 ADD 7 表外的全部表（业务表/checkpoint/_prisma_migrations）——Atlas glob 不生效，需 public. 前缀精确名
+    tables="$(podman exec "${PROJECT_NAME:-add-project}-postgres" psql -U "${DATABASE_USER:-admin}" -d "${PROJECT_NAME:-add-project}" -tAc "SELECT string_agg('public.' || table_name, ',') FROM information_schema.tables WHERE table_schema='public' AND table_name NOT IN ('AddUser','DevOperation','AuditLog','HitlRecord','PlanRecord','ReviewRecord','CollabContract');" 2>/dev/null || true)"
+    [ -n "$tables" ] && EXCLUDE_ARGS=(--exclude "$tables")
+    echo ">>> Atlas 同步（共库模式: 仅 ADD 治理表，其余 $(echo "$tables" | tr ',' '\n' | wc -l) 张表排除）..."
+  fi
+  TARGET_URL="${TARGET_URL}?sslmode=disable"
+}
+
+# ④ baseline 生成（同源：Prisma schema SQL，过滤 Prisma 7 ◇ 提示）
+generate_baseline() {
+  BASELINE_SQL="$(mktemp /tmp/atlas-target.XXXXXX.sql)"
+  trap 'rm -f "$BASELINE_SQL"' EXIT
+  npx prisma migrate diff --from-empty --to-schema "$SCHEMA_TARGET" --script 2>/dev/null | sed '/^◇/d' > "$BASELINE_SQL"
+}
+
+# ⑤ diff 检测（SQL 语句特征判定：Atlas 无变更时输出 "Schemas are synced..." 非空，不算变更）
+# 输出全局 DIFF_SQL；返回 0=有变更 / 1=无变更
+run_atlas_diff() {
+  DIFF_SQL="$(atlas_cmd schema diff --from "$TARGET_URL" --to "file://$BASELINE_SQL" --dev-url "$ATLAS_DEV_URL" "${EXCLUDE_ARGS[@]}" 2>/dev/null)"
+  echo "$DIFF_SQL" | grep -qE "^(CREATE|ALTER|DROP|COMMENT|-- *(Create|Modify|Drop))"
+}
+
+# ⑥ apply（确认门槛：交互输出 SQL → 确认 → apply；拒绝则跳过）
+apply_atlas_diff() {
+  echo "=== 待应用 diff SQL（前 60 行）==="
+  echo "$DIFF_SQL" | head -60
+  read -rp "应用以上 schema 变更？[y/N] " ANS
+  if [ "$ANS" = "y" ] || [ "$ANS" = "yes" ]; then
+    atlas_cmd schema apply --url "$TARGET_URL" --to "file://$BASELINE_SQL" --dev-url "$ATLAS_DEV_URL" "${EXCLUDE_ARGS[@]}"
+    echo ">>> Atlas 同步完成"
+  else
+    echo ">>> 已取消，未应用"
+  fi
+}
+
+# ⑦ Atlas 同步主流程（探测 → dev-url → 目标 → baseline → diff → apply）
+atlas_sync() {
+  [ "$ENGINE" = "sqlite" ] && return 0
+  if ! atlas_cmd version > /dev/null 2>&1; then
+    echo "!!! Atlas 不可用。add-coder sync --patch 可自动安装 @ariga/atlas；或手动: pnpm add -D @ariga/atlas"
+    echo "    降级路径: prisma-diff（免 shadow）→ db-push + 强制备份；文档: README「Atlas 数据库同步能力」"
+    return 1
+  fi
+  if [ -z "${ATLAS_DEV_URL:-}" ]; then
+    echo "!!! ATLAS_DEV_URL 未配置。请运行 add-coder init（分库引导自动创建 {project}-add-dev 常驻容器并登记）或手动配置"
+    return 1
+  fi
+  build_target
+  generate_baseline
+  if run_atlas_diff; then
+    apply_atlas_diff
+  else
+    echo ">>> schema 一致（幂等出口）"
+  fi
+}
+
+if [ "$DO_MIGRATE" = "true" ]; then
+  atlas_sync
+fi

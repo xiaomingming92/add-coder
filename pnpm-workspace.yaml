@@ -1,4 +1,5 @@
 allowBuilds:
+  '@ariga/atlas': true
   '@prisma/engines': false
   esbuild: false
   onnxruntime-node: true
