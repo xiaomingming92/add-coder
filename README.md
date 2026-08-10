@@ -264,11 +264,24 @@ npx add-coder init
 # → 选择 IDE（Qoder / Claude / VS Code）
 # → 选择数据库（PostgreSQL / SQLite / 自行管理）
 # → 选择容器（podman / docker / 自行管理）
+# → 分库引导（是否将 ADD 治理模型放入独立数据库？推荐隔离）
+#    [是] 统一端口分配器自动分配端口并登记 docs/ports.md（5433 起）
 # → prisma init + add.prisma 复制
-# → prisma db push（仅新增表，不删数据）
+# → prisma patch 状态机（基准 vs 消费方差异裁决）
+#    ├─ 冲突字段（同名不同义）→ 询问覆盖 / 跳过
+#    ├─ 缺失字段 → 询问补充 / 跳过
+#    └─ 一致 → 直接采用
+# → Atlas 引擎同步（声明式 diff/apply：分库模式天然隔离 / 共库模式非 ADD 变更默认拒绝）
 # → prisma generate
 # → ADD 治理模型已就绪 ✓
 ```
+
+### 为什么数据库同步用 Atlas（而非 prisma migrate）
+
+1. **prisma migrate 底座有已知缺陷**：shadow DB 依赖（shadow-url 指向生产库会被重置的官方事故）、P3014 无权限失败、外部表不在 diff 视野——在有缺陷的底座上盖状态机风险不可控
+2. **Atlas 是社区主流 schema diff 工具**（Apache-2.0），Prisma 官方博客有专门教程；同一工具覆盖两种模式：**消费方声明式**（空库注入）/ **add-coder 自身版本化**（演进迁移）
+3. **独立引擎**：不受 ORM 生态约束，未来换 ORM 或保留 schema 历史都可行
+4. **降级链**：atlas 不可用 → prisma-diff（免 shadow）→ db-push + 强制备份
 
 > **环境文件优先级**：`.env.development.local` > `.env.development` > `.env.local` > `.env`
 
@@ -277,8 +290,35 @@ npx add-coder init
 | 命令 | 说明 |
 |------|------|
 | `init` | 初始化 ADD 模板，支持 `--adapter claude\|qoder\|vscode\|trae\|codex\|auto` |
-| `sync` | 增量同步缺失文件 |
+| `sync` | 增量同步缺失文件（`--patch` 含 Atlas 能力检测：就绪 / 自动安装 / 降级文档） |
 | `status` | 检查模板完整性 |
+
+## Atlas 数据库同步能力
+
+> 数据库同步引擎：**Atlas**（消费方 = 声明式 diff/apply；add-coder 自身 = 版本化迁移）。
+
+**能力底座**：`@ariga/atlas`（npm 依赖，随 add-coder 自动安装，位于 `node_modules/add-coder/node_modules/.bin/atlas`）。
+
+**sync 能力承诺**：运行 `add-coder sync --patch` 时自动检测 Atlas 可用性——
+
+| 检测结果 | 行为 |
+|---------|------|
+| ✅ 已安装 | 打印 `Atlas 能力就绪`，直接可用 |
+| ❌ 未安装 | 询问是否自动安装（`pnpm/npm add -D @ariga/atlas`） |
+| 拒绝安装 | 降级路径：**prisma-diff**（免 shadow 单向比较）→ 仍无 prisma CLI → **db-push + 强制备份**；可随时补装恢复 Atlas |
+
+**pnpm 11 注意**：自动安装需在 `pnpm-workspace.yaml` `allowBuilds` 放行 `'@ariga/atlas': true`（否则 preinstall 不执行，安装后 `atlas version` 不可用）。
+
+### 宿主项目如何接 Atlas（消费方接入路径）
+
+1. **首次接入**：`add-coder init`——分库引导（可选独立 ADD 库）+ 统一端口分配器（5433 起，登记 docs/ports.md）+ 常驻 dev 容器 `{project}-add-dev`（写入 `ATLAS_DEV_URL`）
+2. **日常变更同步**：`bash scripts/db-ensure.sh <engine> <container> --migrate`（宿主模板已含 Atlas 声明式同步段）——或重跑 init
+3. **引擎形态**：消费方 = **声明式**（`schema diff/apply`，`--from 库 --to baseline.sql`），**不接管宿主 `prisma/migrations/` 目录**（宿主迁移历史自管；add-coder 自身才用版本化 + 独立 Atlas 目录）
+4. **宿主自管表保护**：共库模式 diff/apply 自动 `--exclude checkpoint*`（langgraph checkpoint 等 schema 外表，2026-08-07 误删事故教训）；非 ADD 表变更仍默认拒绝（兜底）
+5. **atlas 二进制可达性**：三路径探测（add-coder 包内 → 顶层 .bin → `npx --no-install @ariga/atlas`）——pnpm 不把传递依赖 bin 链接到顶层，包内 ELF 可用即可
+6. **降级**：atlas 不可用 → prisma-diff（免 shadow）→ db-push + 强制备份
+
+**详细机制**（开发视角）：`DEVELOPMENT.md` §九 数据库同步机制。
 
 ### init 内部流程
 
@@ -286,7 +326,7 @@ npx add-coder init
 |------|------|------|
 | ① | 检测 IDE | 扫描 `.qoder/` `.claude/` `.vscode/` 存在性，或通过 `--adapter` 指定 |
 | ② | 加载配置 | 交互式问答 > `add-coder.config.ts` > 自动检测 > 默认值 |
-| ③ | 数据库部署 | `db-ensure.sh` 启容器/PG 连接 + `injectPrisma()` 集中裁决层（Prisma init → AddUser 模型复制 → db push → generate） |
+| ③ | 数据库部署 | `db-ensure.sh` 启容器/PG 连接 + `injectPrisma()` 集中裁决层（**分库引导** → Prisma init → AddUser 模型复制 → **patch 状态机**（冲突/缺失/一致裁决）→ **Atlas 引擎**（声明式 diff/apply：分库隔离 / 共库动态 exclude 非 ADD 表）→ generate） |
 | ④ | 渲染模板 | 55 个 core 模板文件（skills/agents/templates/plans/specs/scripts…） |
 | ⑤ | 部署适配 | 将 core 内容复制到 `.add/` `.qoder/` `.claude/` 三目录，补 IDE 专属 hooks/mcp |
 | ⑥ | 写入文件 | 交互/yes/force/dry-run 四种模式，`.sh` 脚本自动 `chmod` |
@@ -607,11 +647,24 @@ npx add-coder init
 # → Choose IDE (Qoder / Claude / VS Code)
 # → Choose database (PostgreSQL / SQLite / self-managed)
 # → Choose container (podman / docker / self-managed)
+# → Split-db guidance (ADD governance models in a separate database? recommended)
+#    [yes] unified port allocator assigns a port & registers docs/ports.md (from 5433)
 # → prisma init + add.prisma copied
-# → prisma db push (adds new tables only, no data deletion)
+# → prisma patch state machine (baseline vs consumer diff adjudication)
+#    ├─ conflicting fields → ask override / skip
+#    ├─ missing fields → ask supplement / skip
+#    └─ identical → adopt
+# → Atlas engine sync (declarative diff/apply: split-db isolated / shared-db non-ADD changes rejected by default)
 # → prisma generate
 # → ADD governance model ready ✓
 ```
+
+### Why Atlas for schema sync (instead of prisma migrate)
+
+1. **prisma migrate has known base flaws**: shadow-DB dependency (official incident of shadow-url pointing at production being reset), P3014 permission failures, external tables invisible to diff
+2. **Atlas is the community-standard schema diff tool** (Apache-2.0), with official Prisma tutorials; one tool covers both modes: **consumer declarative** (fresh injection) / **add-coder self versioned** (evolving migrations)
+3. **Engine independence**: not bound to ORM ecosystem
+4. **Degradation chain**: atlas missing → prisma-diff (shadow-free) → db-push + forced backup
 
 > **Env file priority**: `.env.development.local` > `.env.development` > `.env.local` > `.env`
 
@@ -629,7 +682,7 @@ npx add-coder init
 |------|--------|-------------|
 | ① | Detect IDE | Scan for `.qoder/` `.claude/` `.vscode/` existence, or specify via `--adapter` |
 | ② | Load config | Interactive Q&A > `add-coder.config.ts` > auto-detect > defaults |
-| ③ | DB deployment | `db-ensure.sh` starts container/PG connection + `injectPrisma()` Caijue layer (Prisma init → AddUser model copy → db push → generate) |
+| ③ | DB deployment | `db-ensure.sh` starts container/PG connection + `injectPrisma()` Caijue layer (Prisma init → AddUser model copy → **patch state machine** → **Atlas engine sync** (declarative diff/apply) → generate) |
 | ④ | Render templates | 55 core template files (skills/agents/templates/plans/specs/scripts…) |
 | ⑤ | Deploy adapters | Copy core content to `.add/` `.qoder/` `.claude/` directories, supplement IDE-specific hooks/mcp |
 | ⑥ | Write files | Four modes: interactive / yes / force / dry-run; `.sh` scripts auto `chmod` |

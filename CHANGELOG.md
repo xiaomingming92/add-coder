@@ -5,6 +5,41 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.22] - 2026-08-10
+
+### 新增
+
+- **Atlas 数据库同步引擎**：消费方 init 走 **声明式 diff/apply**（分库/共库双模式）+ 降级链（prisma-diff 免 shadow → db-push + 强制备份）；add-coder 自身切换 **版本化迁移**（独立目录 `prisma/atlas-migrations/` + baseline，替代 prisma migrate dev）
+- **分库引导**：init 检测 ADD_DATABASE_URL → 询问是否分库 → 独立 ADD 库容器 + 统一端口分配器登记
+- **统一端口分配器**：`ports-rules.toml`（start_hint=5433）→ `PORTS_CONFIG`；契约表复用 + 跨项目避让 + podman 实扫 → 5433 起扫空闲 → 登记 docs/ports.md；禁止分散扫描
+- **端口契约控制面**：`ports-rules.toml` + transcribe `genPortsRules`（改规则不改代码）
+- **dev-url 常驻化**：dev-url = 可重放的独立空库（常驻 `{project}-add-dev` / shadow 转正），零临时容器；shadow 转正需先清空（Atlas 要求 dev 库干净）
+- **atlas 依赖**：`@ariga/atlas`（npm 依赖自带；pnpm 11 需 allowBuilds 放行）
+- **sync Atlas 能力承诺**：`add-coder sync --patch` 检测 Atlas → 就绪 / 自动安装 / 拒绝给降级文档（README「Atlas 数据库同步能力」）
+- **resolveAtlasBin 三路径**：add-coder 包作用域 → 消费方根 .bin → 全局（file:/registry 安装均命中）
+- **消费方模板 db-ensure.sh Atlas 化（函数式）**：宿主日常同步入口——7 个单一职责函数（resolve_atlas_bin / atlas_cmd / build_target / generate_baseline / run_atlas_diff / apply_atlas_diff / atlas_sync）；共库/分库自动判定
+- **动态 exclude（共库模式）**：库中除 ADD 7 表外全部排除（业务表/checkpoint/_prisma_migrations）——Atlas `--exclude` 实测需 **逗号分隔 + public. 前缀精确表名**（glob/无前缀不生效）
+- **幂等判定修正**：Atlas 无变更输出 `Schemas are synced...`（非空）→ 改为 **SQL 语句特征检测**（TS 正则 + bash grep），不再误弹确认
+- **sync 宿主段检测**：宿主 `scripts/db-ensure.sh` 缺 `atlas_sync` 标记 → 提示职责边界 + 三步合入法 + 文档指向
+
+### 变更
+
+- 消费方接入推荐 **file: 协议**（替代 pnpm link）：依赖自动安装；DEVELOPMENT.md §十一 本地联调
+- `prisma db push` → Atlas 引擎（init 流程）；prisma patch 状态机明确（冲突/缺失/一致三态裁决）
+- **职责边界明确**：add-coder 只同步 ADD 治理模型（7 表）；宿主业务表 diff **推荐 Atlas 但不强求**（保持 migrate dev/deploy 亦可）
+
+### 文档
+
+- README：快速开始补分库引导/patch 状态机/Atlas 理由；新增「Atlas 数据库同步能力」+「宿主项目如何接 Atlas」（6 步）；English 版同步
+- DEVELOPMENT.md：§九 数据库同步机制（9.1-9.5：引擎分工/自身流程/关键约束 9 条/**宿主合入三步法**/宿主业务表推荐做法）、§十 端口契约联动（统一分配器）、§十一 本地联调
+- CHANGELOG 版本联动
+
+### 实测验证（消费方回流）
+
+- farm-agent 接入闭环：file: 协议 → sync 能力就绪 → db-ensure.sh 合入 → Atlas 共库同步（32 表排除）→ 幂等出口；shadow 5436 转正（清空后干净 dev 库）
+- 7 项断裂点修复：bin 传递依赖不可达 / prisma 目录格式不兼容 / checkpoint 判删 / 宿主脚本无引擎 / ATLAS_DEV_URL 未配 / baseline 写死 / checkpoint hack 双轨
+
+---
 ## [0.3.21] - 2026-08-07
 
 ### 新增
@@ -78,7 +113,7 @@
 ### 变更
 
 - **一级依赖升级避障**：`@xenova/transformers@2.17.2` → `@huggingface/transformers@^3.8.1`（API 全兼容：`pipeline` / `env.remoteHost` / `feature-extraction` / `tolist()`），连带 sharp 0.32.x → 0.34.x——背景：sharp 0.32 经 prebuild-install 从 GitHub release 下载二进制被墙；升级后 sharp 走 `@img/sharp-*` 平台包（纯 npm registry），onnxruntime-node 1.21+ 二进制自含（+217MB 体积代价）
-- **坑位文档化**：详见 [DEVELOPMENT.md §十一 依赖治理坑位记录](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)，含「不要降级 sharp 0.32.x」「pnpm 11 allowBuilds 白名单（onnxruntime-node 必须为 true）」两条强制约束
+- **坑位文档化**：详见 [DEVELOPMENT.md §十四 依赖治理坑位记录](https://github.com/xiaomingming92/add-coder/blob/main/DEVELOPMENT.md)，含「不要降级 sharp 0.32.x」「pnpm 11 allowBuilds 白名单（onnxruntime-node 必须为 true）」两条强制约束
 
 ## [0.3.13] - 2026-08-05
 
