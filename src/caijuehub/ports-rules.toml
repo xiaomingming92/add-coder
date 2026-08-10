@@ -1,0 +1,12 @@
+# 端口契约规则 — 统一端口分配器参数（caijuehub 控制面）
+# 修改后运行 npm run generate 更新 strategies/ports.strategy.ts
+# 框架原则：端口分配以真实环境探测为准，本文件只定义建议起点与行为策略
+
+[pg]
+start_hint = 5433            # 建议起点：宿主 PG 标准 5432 之后第一顺位（add 配套从 5433 起）
+scan_limit = 100             # 向上扫描上限（防无限循环）
+
+[behavior]
+reuse_registered = true      # 契约表已登记端口复用（不重复分配）
+read_cross_project = true    # 读跨项目事实源（如 farm-agent docs/ports.md，避免兄弟项目撞车）
+on_conflict = "ask"          # 冲突处理：ask（询问换端口）/ auto-skip（自动跳过）/ block（中止）

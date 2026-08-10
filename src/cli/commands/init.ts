@@ -24,6 +24,7 @@ import { resolve } from "path";
 import { createConnection } from "net";
 import { runCommand, commandExists } from "../../lib/run-command";
 import { ensureEmbeddingModel } from "../../lib/model-predownload";
+import { ensurePortsContract } from "../../lib/ports-contract";
 
 interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; stack?: string; skipModel?: boolean; }
 interface DbChoice { engine: "postgresql" | "sqlite" | "manual"; container?: "podman" | "docker" | "manual"; user?: string; password?: string; port?: string; reuseExisting?: boolean; }
@@ -65,6 +66,9 @@ export async function initCommand(options: InitOptions) {
     const result = await renderAndWrite(ctx);
     // issue #10 P0-1：数据库部署失败必须传播到 finalize（非零退出码 + "治理模型未就绪"）
     const dbFail = await deployDatabase(ctx);
+    // 端口契约检查（add-coder-ports-contract Plan）：在 deployDocs 前独立调用，
+    // dry-run 提示不被 deployDocs 首行 return 吞掉（Review P1 #1）；只补缺不覆盖
+    ensurePortsContract(ctx.projectRoot, ctx.config, !!options.dryRun);
     deployDocs(ctx);
     finalize(ctx, result, dbFail);
     // embedding 模型预下载（model-predownload Plan）：非 dry-run；skip 也打印状态（Review P2 #5）；失败 warn 不阻断（降级边界）

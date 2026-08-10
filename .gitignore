@@ -33,3 +33,5 @@ debug-dump/
 .hitl-tongyi-*
 .hitl-bohui-*
 scripts/crontab*
+# Database sync backups (prisma-sync v2)
+.add/backups/

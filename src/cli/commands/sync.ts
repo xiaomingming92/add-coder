@@ -22,8 +22,11 @@ import { detectIDE, resolveAdapters } from "../detect";
 
 import { selectFiles } from "../../lib/select-files";
 import { ask } from "../../lib/utils";
+import { runCommand } from "../../lib/run-command";
+import { resolveAtlasBin } from "../../caijuehub/strategies/prisma.strategy";
 import { normalizeRelPath } from "../../lib/path-normalize";
 import { resolveEmbeddingModel, isModelCached, ensureEmbeddingModel } from "../../lib/model-predownload";
+import { ensurePortsContract } from "../../lib/ports-contract";
 import { SYNC_CONFIG } from "../../caijuehub/strategies/sync.strategy";
 import { SYNC_PRISMA_CONFIG } from "../../caijuehub/strategies/prisma-sync.strategy";
 import { diffPrisma, parseSchemaBlocks } from "../writer";
@@ -238,6 +241,9 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
         
         // Prisma schema diff
         await checkPrismaDiff(projectRoot, options);
+        // 端口契约检查（add-coder-ports-contract Plan）：saveHashFile 之后调用——
+        // ports.md 是用户项目文档，不进入 hash/conflict 机制（Review P1 #4）；只补缺不覆盖
+        ensurePortsContract(projectRoot, config);
         // embedding 模型检测/下载（model-predownload Plan）：patch 分支末尾
         await maybeModelDownload(options);
         return;
@@ -270,6 +276,8 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
 
     // ════════════ Prisma schema diff ════════════
     await checkPrismaDiff(projectRoot, options);
+    // 端口契约检查（add-coder-ports-contract Plan）：默认分支补缺后调用（只补缺不覆盖）
+    ensurePortsContract(projectRoot, config);
     // embedding 模型检测/下载（model-predownload Plan）：普通分支末尾
     await maybeModelDownload(options);
 }
@@ -301,6 +309,53 @@ function printMigrateGuidance(targetPath: string, changed: number) {
     console.log(`     ⚠️  所有场景收尾: ${g.FINAL}`);
 }
 
+/**
+ * Atlas 能力承诺（能力闭环）：检测 → 缺失提示安装（同意自动装 / 拒绝给降级文档）
+ * 消费方有 Prisma 注入（prisma/add.prisma）时，Atlas 是数据库同步（diff/apply）的能力底座
+ */
+async function ensureAtlasCapability(projectRoot: string): Promise<void> {
+    const bin = resolveAtlasBin(projectRoot);
+    if (bin) {
+        console.log(`   ✅ Atlas 能力就绪: ${bin}`);
+        return;
+    }
+    console.warn("   ⚠️  Atlas 不可用——数据库同步（Atlas diff/apply）能力缺失");
+    const a = await ask("   是否自动安装 @ariga/atlas（npm 依赖，走 registry）？[Y/n] ");
+    if (a === "n" || a === "no") {
+        console.log("   已跳过。数据库同步将降级 prisma-diff（免 shadow）；可随时补装恢复 Atlas");
+        console.log("   文档: README.md → 章节「Atlas 数据库同步能力」/ DEVELOPMENT.md §九");
+        return;
+    }
+    const pm = existsSync(resolve(projectRoot, "pnpm-lock.yaml")) ? "pnpm" : "npm";
+    console.log(`   安装 ${pm} add -D @ariga/atlas ...`);
+    const r = runCommand(pm, ["add", "-D", "@ariga/atlas"], { cwd: projectRoot, timeout: 180000 });
+    if (r.status !== 0) {
+        console.error("   安装失败。请手动执行:");
+        console.error(`     ${pm} add -D @ariga/atlas`);
+        console.error("   pnpm 11 注意: 需在 pnpm-workspace.yaml allowBuilds 放行 '@ariga/atlas': true");
+        return;
+    }
+    console.log("   ✅ @ariga/atlas 已安装，Atlas 能力就绪（node_modules/.bin/atlas）");
+}
+
+/**
+ * 宿主 db-ensure.sh Atlas 段检测（提示不强制——宿主自有脚本，尊重不覆盖）
+ * 缺失时提示三步合入法，避免宿主日常同步缺 ADD 治理模型
+ */
+function checkHostAtlasSegment(projectRoot: string): void {
+    const script = resolve(projectRoot, "scripts", "db-ensure.sh");
+    if (!existsSync(script)) return; // 无宿主自有脚本（用模板渲染版）无需提示
+    const content = readFileSync(script, "utf-8");
+    if (content.includes("atlas_sync")) return; // 已含 Atlas 段
+    console.warn("   ⚠️  宿主 scripts/db-ensure.sh 未包含 Atlas 同步段（日常 db-ensure 将缺少 ADD 治理模型同步）");
+    console.warn("      职责边界: add-coder 只同步 ADD 治理模型(7 表)；宿主业务表 diff 推荐 Atlas 但不强求");
+    console.warn("      合入三步：");
+    console.warn("        ① 复制模板 Atlas 模块段: sed -n '/# ════ Atlas 声明式同步模块/,/^fi$/p' node_modules/add-coder/templates/core/scripts/db-ensure.sh");
+    console.warn("        ② 变量适配（DB_URL→DATABASE_URL 等，见文档变量对照表）");
+    console.warn("        ③ 粘贴到脚本末尾（迁移/generate 之后），触发: bash scripts/db-ensure.sh <engine> <container> --migrate");
+    console.warn("      宿主业务表推荐做法: 见 DEVELOPMENT.md §九 9.5（推荐 Atlas 可选；保持 migrate dev/deploy 亦可）");
+}
+
 /** Prisma schema diff 检查（--patch 模式下触发） */
 async function checkPrismaDiff(projectRoot: string, options: { adapter?: string; patch?: boolean }) {
     if (!options.patch) return;
@@ -311,6 +366,10 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
         console.log(`  请确保 add-coder 已正确安装。`);
         return;
     }
+    // Atlas 能力承诺（能力闭环）：Prisma 注入存在 → 确保 Atlas 底座可用
+    await ensureAtlasCapability(projectRoot);
+    // 宿主 db-ensure.sh Atlas 段检测（提示三步合入，避免宿主日常同步缺 ADD 治理模型）
+    checkHostAtlasSegment(projectRoot);
     const result = diffPrisma(basePath, targetPath);
     if (!result.hasDiff) {
         console.log(`\n✅ Prisma schema 与 add-coder 标准一致，无需同步。`);

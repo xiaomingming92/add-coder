@@ -13,3 +13,11 @@ auto_generate = true
 [migration]
 name = "add_workflow_init"
 schema_arg = "--schema=prisma/"
+
+[sync]
+strategy = "atlas"                    # atlas(默认) | prisma-diff | db-push
+add_database_url = ""                 # 分库模式：独立 ADD 库连接串（init 分库引导写入）；空=共库
+atlas_dev_url = ""                    # 空=podman 临时容器（与 init 一致）；或用户显式自配空库 URL；禁止填生产连接串
+backup_dir = ".add/backups/prisma-sync"
+backup_keep = 5
+backup_required_for_push = true       # 硬性约束，transcribe 侧禁止生成为 false

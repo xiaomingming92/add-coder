@@ -43,9 +43,11 @@ function genAdapterRules(rules: TomlData): string {
 function genPrismaRules(rules: TomlData): string {
     type B = { on_missing?: string; on_existing_add_prisma?: string; on_migrate_fail?: string; auto_generate?: boolean };
     type M = { name?: string; schema_arg?: string };
-    const d = rules as { behavior?: B; migration?: M; requires?: { user_model?: boolean } };
+    type S = { strategy?: string; add_database_url?: string; atlas_dev_url?: string; backup_dir?: string; backup_keep?: number; backup_required_for_push?: boolean };
+    const d = rules as { behavior?: B; migration?: M; requires?: { user_model?: boolean }; sync?: S };
     const b = d.behavior || {};
     const m = d.migration || {};
+    const s = d.sync || {};
     return `export const PRISMA_CONFIG = {
     onMissing: "${b.on_missing || "block"}",
     onExistingAddPrisma: "${b.on_existing_add_prisma || "ask"}",
@@ -54,6 +56,14 @@ function genPrismaRules(rules: TomlData): string {
     migrationName: "${m.name || "add_workflow_init"}",
     schemaArg: "${m.schema_arg || "--schema=prisma/"}",
     requiresUserModel: ${(d.requires?.user_model) !== false},
+    sync: {
+        strategy: "${s.strategy || "atlas"}",
+        addDatabaseUrl: "${s.add_database_url || ""}",
+        atlasDevUrl: "${s.atlas_dev_url || ""}",
+        backupDir: "${s.backup_dir || ".add/backups/prisma-sync"}",
+        backupKeep: ${s.backup_keep ?? 5},
+        backupRequiredForPush: ${s.backup_required_for_push !== false},
+    },
 };`;
 }
 
@@ -64,6 +74,25 @@ function genWriterRules(rules: TomlData): string {
     onExisting: "${b.on_existing || "ask"}",
     jsonMerge: "${b.json_merge || "deep"}",
     shellChmod: ${b.shell_chmod !== false},
+};`;
+}
+
+function genPortsRules(rules: TomlData): string {
+    type P = { start_hint?: number; scan_limit?: number };
+    type B = { reuse_registered?: boolean; read_cross_project?: boolean; on_conflict?: string };
+    const d = rules as { pg?: P; behavior?: B };
+    const pg = d.pg || {};
+    const b = d.behavior || {};
+    return `export const PORTS_CONFIG = {
+    pg: {
+        startHint: ${pg.start_hint ?? 5433},
+        scanLimit: ${pg.scan_limit ?? 100},
+    },
+    behavior: {
+        reuseRegistered: ${b.reuse_registered !== false},
+        readCrossProject: ${b.read_cross_project !== false},
+        onConflict: "${b.on_conflict || "ask"}",
+    },
 };`;
 }
 
@@ -394,6 +423,7 @@ const GENERATORS: Record<string, RuleGenerator> = {
     "resolve-adapters": genAdapterRules,
     "prisma-inject": genPrismaRules,
     "write-files": genWriterRules,
+    "ports-contract": genPortsRules,
     "sync-patch": genSyncRules,
     "project-root-resolution": genProjectRootRules,
     "sync-prisma-schema": genPrismaSyncRules,

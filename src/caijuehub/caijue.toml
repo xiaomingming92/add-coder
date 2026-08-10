@@ -96,3 +96,10 @@ type = "strategy"
 description = "并发协作契约解析：参与者/阶段/文件边界从契约文档提取规则（contract_track 消费）"
 rules = "collab-contract-rules.toml"
 implementation = "src/caijuehub/strategies/collab-contract.strategy.ts"
+
+[[caijue]]
+id = "ports-contract"
+type = "strategy"
+description = "端口契约统一分配器：建议起点/扫描上限/复用策略/跨项目避让/冲突处理——调优只改此 TOML（改规则不改代码）"
+rules = "ports-rules.toml"
+implementation = "src/caijuehub/strategies/ports.strategy.ts"
