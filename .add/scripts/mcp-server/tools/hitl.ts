@@ -2,7 +2,7 @@ import * as z from "zod/v4"
 import { inputRequired, acceptedContent } from "@modelcontextprotocol/server"
 import type { ToolRegistrar } from "./registrar.js"
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
-import { join, basename } from "path"
+import { join, basename, relative } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
@@ -28,6 +28,7 @@ export function registerHitlTools(server: ToolRegistrar) {
   function _genuiGuide(recallStep: string): string {
     // D2（Review 回流）：widget 模板多候选探测——sync 实际落脚含 core/ 层级，
     // toml 原值为源仓路径（消费方不存在），逐候选回退，全 miss 显式告警。
+    // 输出必须为 workspace 相对路径：genui show_widget 实测拒绝绝对路径（2026-08-11 验证）。
     let widgetPath = ""
     if (_interaction.widget_path) {
       const base = basename(_interaction.widget_path)
@@ -36,7 +37,8 @@ export function registerHitlTools(server: ToolRegistrar) {
         join(PROJECT_ROOT, MAGIC_DIR, "templates", base),
         join(PROJECT_ROOT, _interaction.widget_path),
       ]
-      widgetPath = candidates.find((p) => existsSync(p)) ?? ""
+      const abs = candidates.find((p) => existsSync(p)) ?? ""
+      widgetPath = abs ? relative(PROJECT_ROOT, abs) : ""
     }
     const lines = [
       `⚠️ 当前环境（${MAGIC_DIR}）客户端不支持 elicitation 弹框，交互模式已裁决为 genui。请按以下流程完成：`,
