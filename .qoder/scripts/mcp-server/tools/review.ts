@@ -5,14 +5,17 @@ import { join, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { readFileSafe, readdirRecursive, PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
+import type { PlanRow, ReviewRow } from "../shared/db-types.js"
+import { PlanRowSchema, ReviewRowSchema, validatedDelegate } from "../shared/db-types.js"
 
 const db = {
-  get review() { return prisma.reviewRecord as unknown as Record<string, (...a: unknown[]) => unknown> },
-  get plan() { return prisma.planRecord as unknown as Record<string, (...a: unknown[]) => unknown> },
+  get review() { return validatedDelegate<ReviewRow>(prisma.reviewRecord, ReviewRowSchema, "ReviewRecord") },
+  get plan() { return validatedDelegate<PlanRow>(prisma.planRecord, PlanRowSchema, "PlanRecord") },
 }
 
-// 检测 review 类型
-function detectReviewType(filename: string): string {
+// 检测 review 类型（与 ReviewRowSchema.type 枚举对齐）
+type ReviewTypeValue = "PLAN_REVIEW" | "IMPLEMENTATION" | "RUNTIME"
+function detectReviewType(filename: string): ReviewTypeValue {
   const l = filename.toLowerCase()
   if (l.includes("implementation")) return "IMPLEMENTATION"
   if (l.includes("runtime")) return "RUNTIME"
@@ -67,9 +70,9 @@ export function registerReviewTools(server: ToolRegistrar) {
         // 需要用 contains 匹配，而不是 exact match
         const planMatch = await db.plan.findFirst({
           where: { planName: { contains: derivedPlan } },
-        }) as Record<string, unknown> | null
+        })
         const actualPlanName = planMatch
-          ? (planMatch.planName as string)
+          ? planMatch.planName
           : derivedPlan // fallback，让外键约束报错时提示更清晰
 
         const content = await readFileSafe(fullPath)
@@ -79,7 +82,7 @@ export function registerReviewTools(server: ToolRegistrar) {
         const stats = countIssueType(content)
         const record = await db.review.findFirst({
           where: { planName: actualPlanName, type: rtype },
-        }) as Record<string, unknown> | null
+        })
 
         const data = {
           reviewPath: fullPath,
@@ -117,7 +120,7 @@ export function registerReviewTools(server: ToolRegistrar) {
       const rows = await db.review.findMany({
         where: { planName },
         orderBy: { type: "asc" },
-      }) as Record<string, unknown>[]
+      })
 
       if (!rows.length) {
         return textResponse(
@@ -155,7 +158,7 @@ export function registerReviewTools(server: ToolRegistrar) {
   }, async (args: Record<string, unknown>) => {
     try {
       const { planName } = args as { planName: string }
-      const rows = await db.review.findMany({ where: { planName } }) as Record<string, unknown>[]
+      const rows = await db.review.findMany({ where: { planName } })
 
       if (!rows.length) return errorResponse(`无 ReviewRecord: ${planName}`)
 

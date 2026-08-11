@@ -26,18 +26,30 @@ export function registerHitlTools(server: ToolRegistrar) {
 
   // genui 模式客户端（如 Qoder）未声明 elicitation capability，弹框必然失败 → 返回 genui 流程引导
   function _genuiGuide(recallStep: string): string {
+    // D2（Review 回流）：widget 模板多候选探测——sync 实际落脚含 core/ 层级，
+    // toml 原值为源仓路径（消费方不存在），逐候选回退，全 miss 显式告警。
     let widgetPath = ""
     if (_interaction.widget_path) {
-      // genui show_widget 仅接受 workspace 相对路径，绝对路径会被拒
-      const bakedRel = join(MAGIC_DIR, "templates", basename(_interaction.widget_path))
-      widgetPath = existsSync(join(PROJECT_ROOT, bakedRel)) ? bakedRel : _interaction.widget_path
+      const base = basename(_interaction.widget_path)
+      const candidates = [
+        join(PROJECT_ROOT, MAGIC_DIR, "templates", "core", "templates", base),
+        join(PROJECT_ROOT, MAGIC_DIR, "templates", base),
+        join(PROJECT_ROOT, _interaction.widget_path),
+      ]
+      widgetPath = candidates.find((p) => existsSync(p)) ?? ""
     }
-    return [
+    const lines = [
       `⚠️ 当前环境（${MAGIC_DIR}）客户端不支持 elicitation 弹框，交互模式已裁决为 genui。请按以下流程完成：`,
-      `1. 调用 genui show_widget 渲染审批表单${widgetPath ? `（widget_path: ${widgetPath}，workspace 相对路径，维度列表经 data 注入）` : ""}`,
-      `2. 用户在 widget 中逐项拍板`,
-      `3. ${recallStep}`,
-    ].join("\n")
+    ]
+    if (widgetPath) {
+      lines.push(`1. 调用 genui show_widget 渲染审批表单（widget_path: ${widgetPath}，workspace 相对路径，维度列表经 data 注入）`)
+    } else {
+      lines.push(`1. ⚠️ widget 模板缺失（hitl-approval-widget.html 未同步到 ${MAGIC_DIR}/templates/），请先执行 add-coder sync 补齐，再走 genui show_widget 流程`)
+      lines.push(`   - 兜底可用 inline widget_code 渲染；数据契约: window.__WIDGET_DATA__ = { planName, type, dimensions: [{name, content}] }`)
+    }
+    lines.push(`2. 用户在 widget 中逐项拍板`)
+    lines.push(`3. ${recallStep}`)
+    return lines.join("\n")
   }
 
   // ═══════════════ 辅助：解析 inputRequired 响应 ═══════════════
@@ -235,15 +247,20 @@ export function registerHitlTools(server: ToolRegistrar) {
 
       // ── FK 断环修复：HitlRecord.planName 外键要求 PlanRecord 先行。
       //    全新 Plan 首次审批时自动预置占位行（约定式 planPath，文件存在性即指纹），
-      //    Plan 文件写出后由 plan_track 回刷真实路径——机器占位机器回刷，不消耗 LLM 认知。 ──
+      //    Plan 文件写出后由 plan_track 回刷真实路径——机器占位机器回刷，不消耗 LLM 认知。
+      //    D5（Review 回流）：占位路径按 type 分流——PLAN_REVIEW 指向 reviews/ 目录，
+      //    review 文档写出后由 review_track/plan_track 回刷消解（避免永久悬空）。 ──
       let planProvisioned = false
       const existingPlan = await db.plan.findFirst({ where: { planName } })
       if (!existingPlan) {
+        const placeholderPath = type === "PLAN_REVIEW"
+          ? join(PROJECT_ROOT, MAGIC_DIR, "reviews", yyyyMM, dd, `${planName}.md`)
+          : join(plansDir, `${planName}.md`)
         await db.plan.create({
           data: {
             planName,
-            planPath: join(plansDir, `${planName}.md`),
-            planKeyword: String(planName).replace(/-(plan|collab-contract)-v\d+$/, ""),
+            planPath: placeholderPath,
+            planKeyword: String(planName).replace(/-(plan|collab-contract|review)-v\d+$/, ""),
             totalTasks: 0, doneTasks: 0, checklistT: 0, checklistTDone: 0, checklistR: 0,
           },
         })

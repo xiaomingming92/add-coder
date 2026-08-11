@@ -59,11 +59,11 @@ export const HitlRowSchema = z.looseObject({
 export const ReviewRowSchema = z.looseObject({
   id: z.string(),
   planName: z.string(),
-  reviewType: z.string(),
-  reviewPath: z.string(),
+  type: z.enum(["PLAN_REVIEW", "IMPLEMENTATION", "RUNTIME"]),
+  reviewPath: z.string().nullable(),
   p0Count: z.number(),
   p1Count: z.number(),
-  p2Count: z.number(),
+  backflowRate: z.number(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })
@@ -73,11 +73,49 @@ export const AuditLogRowSchema = z.looseObject({
   action: z.string(),
   targetType: z.string(),
   targetId: z.string(),
-  beforeState: z.string().nullable(),
-  afterState: z.string().nullable(),
+  beforeState: z.unknown().nullable(),
+  afterState: z.unknown().nullable(),
   reason: z.string().nullable(),
   planKeyword: z.string().nullable(),
   createdAt: z.date(),
+})
+
+export const DevOperationRowSchema = z.looseObject({
+  id: z.string(),
+  userId: z.string(),
+  planKeyword: z.string(),
+  action: z.string(),
+  targetType: z.string(),
+  targetId: z.string(),
+  beforeState: z.unknown().nullable(),
+  afterState: z.unknown().nullable(),
+  reason: z.string().nullable(),
+  createdAt: z.date(),
+})
+
+// AddUser 仅消费 id（select { id } 场景），username/email 宽容可空
+// （避免 select 裁剪导致必填字段缺失误伤——机器占位机器回刷原则）
+export const AddUserRowSchema = z.looseObject({
+  id: z.string(),
+  username: z.string().optional(),
+  email: z.string().nullable().optional(),
+})
+
+export const CollabContractRowSchema = z.looseObject({
+  id: z.string(),
+  contractName: z.string(),
+  contractPath: z.string(),
+  masterPlanName: z.string(),
+  participants: z.unknown(),
+  abilityMatrix: z.unknown().nullable(),
+  stages: z.unknown(),
+  dependencyGraph: z.string().nullable(),
+  fileBoundaries: z.unknown(),
+  completionCriteria: z.unknown().nullable(),
+  status: z.string(),
+  version: z.number(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 })
 
 // ===== 类型派生（单一真源：schema → 类型） =====
@@ -86,16 +124,22 @@ export type PlanRow = z.infer<typeof PlanRowSchema>
 export type HitlRow = z.infer<typeof HitlRowSchema>
 export type ReviewRow = z.infer<typeof ReviewRowSchema>
 export type AuditLogRow = z.infer<typeof AuditLogRowSchema>
+export type DevOperationRow = z.infer<typeof DevOperationRowSchema>
+export type AddUserRow = z.infer<typeof AddUserRowSchema>
+export type CollabContractRow = z.infer<typeof CollabContractRowSchema>
 
-// ===== 查询参数（Prisma 最常用子集，结构化约束） =====
+// ===== 查询参数（Prisma 最常用子集，结构化约束 + 运算符支持） =====
 
 export type OrderDirection = "asc" | "desc"
 
+// where 放开为 Record<string, unknown>：Prisma 运算符（contains/gte/OR 等）
+// 动态组合，键名约束会阻碍合法查询（如 review.ts 的 contains、audit.ts 的 OR）
 export interface QueryArgs<T> {
-  where?: Partial<T>
+  where?: Record<string, unknown>
   orderBy?: { [K in keyof T]?: OrderDirection }
   take?: number
   skip?: number
+  include?: Record<string, unknown>
 }
 
 export interface BatchResult { count: number }
@@ -105,8 +149,10 @@ export interface BatchResult { count: number }
 export interface TableDelegate<T> {
   findFirst(args: Pick<QueryArgs<T>, "where" | "orderBy">): Promise<T | null>
   findMany(args?: QueryArgs<T>): Promise<T[]>
+  findUnique(args: { where: Record<string, unknown>; select?: Record<string, unknown> }): Promise<T | null>
   create(args: { data: Partial<T> }): Promise<T>
   update(args: { where: Partial<T>; data: Partial<T> }): Promise<T>
+  updateMany(args: { where: Record<string, unknown>; data: Partial<T> }): Promise<BatchResult>
   delete(args: { where: Partial<T> }): Promise<T>
   deleteMany(args: { where: Partial<T> }): Promise<BatchResult>
 }
@@ -148,8 +194,14 @@ export function validatedDelegate<T>(
       const rows = await raw.findMany(args as never)
       return rows.map(parseRow)
     },
+    async findUnique(args) {
+      if (!raw.findUnique) throw new Error(`表 ${tableName} 不支持 findUnique`)
+      const row = await raw.findUnique(args as never)
+      return row === null ? null : parseRow(row)
+    },
     async create(args) { return parseRow(await raw.create(args as never)) },
     async update(args) { return parseRow(await raw.update(args as never)) },
+    async updateMany(args) { return raw.updateMany(args as never) as Promise<BatchResult> },
     async delete(args) { return parseRow(await raw.delete(args as never)) },
     async deleteMany(args) { return raw.deleteMany(args as never) as Promise<BatchResult> },
   }

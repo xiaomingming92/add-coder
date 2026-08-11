@@ -5,10 +5,12 @@ import { join, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { readdirRecursive, PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
+import type { CollabContractRow, PlanRow } from "../shared/db-types.js"
+import { CollabContractRowSchema, PlanRowSchema, validatedDelegate } from "../shared/db-types.js"
 
 const db = {
-  get collabContract() { return prisma.collabContract as unknown as Record<string, (...a: unknown[]) => unknown> },
-  get plan() { return prisma.planRecord as unknown as Record<string, (...a: unknown[]) => unknown> },
+  get collabContract() { return validatedDelegate<CollabContractRow>(prisma.collabContract, CollabContractRowSchema, "CollabContract") },
+  get plan() { return validatedDelegate<PlanRow>(prisma.planRecord, PlanRowSchema, "PlanRecord") },
 }
 
 /** 契约文档结构化解析结果 */
@@ -122,7 +124,7 @@ export function registerContractTools(server: ToolRegistrar) {
           results.push(`⚠️ ${name}  缺少「总控 Plan:」声明，跳过`)
           continue
         }
-        const existing = await db.collabContract.findFirst({ where: { contractName: name } }) as Record<string, unknown> | null
+        const existing = await db.collabContract.findFirst({ where: { contractName: name } })
         const version = (existing?.version as number ?? 0) + 1
 
         const data = {
@@ -171,7 +173,7 @@ export function registerContractTools(server: ToolRegistrar) {
   }, async (args: Record<string, unknown>) => {
     try {
       const { contractName } = args as { contractName: string }
-      const contract = await db.collabContract.findFirst({ where: { contractName } }) as Record<string, unknown> | null
+      const contract = await db.collabContract.findFirst({ where: { contractName } })
       if (!contract) {
         return textResponse(`📋 契约: 未跟踪\ncontractName: ${contractName}\n\n操作: contract_track({ contractName: "${contractName}" })`)
       }
