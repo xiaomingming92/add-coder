@@ -217,7 +217,7 @@
   "core/scripts/mcp-server/tools/gateway/helpers.ts": "f8794a92",
   "core/scripts/mcp-server/tools/gateway/index.ts": "559acb75",
   "core/scripts/mcp-server/tools/gateway.backup": "65eae393",
-  "core/scripts/mcp-server/tools/hitl.ts": "d12af0c7",
+  "core/scripts/mcp-server/tools/hitl.ts": "d61277f5",
   "core/scripts/mcp-server/tools/hook-event-report.ts": "3f21836e",
   "core/scripts/mcp-server/tools/index.ts": "884172ba",
   "core/scripts/mcp-server/tools/plan.ts": "8ce5a7ab",
