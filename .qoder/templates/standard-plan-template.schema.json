@@ -13,6 +13,16 @@
             "note": "AI 必须先在此表中列出全部关键决策，等待人类拍板后再展开详细设计。"
         },
         {
+            "id": "review-backflow",
+            "heading": "## Review 回流记录",
+            "required": true,
+            "note": "总览索引表：记录所有 review 发现及其回流落点。列：'#' + '来源阶段' + '严重度' + '发现' + '回流落点'。来源阶段枚举：Plan Review / Impl Review / Runtime Review。",
+            "validation": {
+                "columns": ["#", "来源阶段", "严重度", "发现", "回流落点"],
+                "source_phase_enum": ["Plan Review", "Impl Review", "Runtime Review"]
+            }
+        },
+        {
             "id": "background",
             "heading": "## 一、背景与目标",
             "required": true
