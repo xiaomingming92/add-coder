@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.24",
+  "_version": "0.3.25",
   "adapters/claude/hooks/doc-format-guard.sh": "ec59ad3f",
   "adapters/claude/hooks/lib/common.sh": "4f3e64ad",
   "adapters/claude/hooks/lib/context-inject.sh": "cfc8c65e",
@@ -141,7 +141,7 @@
   "core/docs/ADD-governance-qoder-cn.md": "332a7253",
   "core/docs/ADD-governance-trae.md": "ffb29a0e",
   "core/docs/ADD-governance-vscode-copilot.md": "74062e88",
-  "core/hooks/doc-format-guard.sh": "5cd6d1f2",
+  "core/hooks/doc-format-guard.sh": "3a1beea8",
   "core/hooks/lib/common.sh": "4f3e64ad",
   "core/hooks/lib/context-inject.sh": "cfc8c65e",
   "core/hooks/lib/notify.sh": "e0033e53",
