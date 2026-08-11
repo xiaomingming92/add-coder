@@ -8,6 +8,9 @@ import { join, relative } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { readFileSafe, readdirRecursive } from "../shared/fs.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
+import { prisma } from "../shared/prisma.js"
+import type { PlanRow } from "../shared/db-types.js"
+import { PlanRowSchema, validatedDelegate } from "../shared/db-types.js"
 
 export function registerContextTools(server: ToolRegistrar) {
 
@@ -163,6 +166,22 @@ export function registerContextTools(server: ToolRegistrar) {
               parts.push(`  checklist.md: ${hasChecklist ? "✅" : "❌"}`)
             } else { parts.push("Specs: ❌ 缺失") }
           }
+
+          parts.push(""); parts.push("=== 悬空 Plan 对账（记录在、文件缺失） ===")
+          // 孤儿可见性：create_hitl 预置行被中断 / 放弃未清理 → 开局即提示，不静默累积
+          try {
+            // 无类型边界单点（zod 托管）：动态 client → 运行期校验的泛型委托
+            const planDb = validatedDelegate<PlanRow>(prisma.planRecord, PlanRowSchema, "PlanRecord")
+            const allPlans = await planDb.findMany({ orderBy: { createdAt: "desc" } })
+            const orphans = allPlans.filter(p => !existsSync(p.planPath))
+            if (orphans.length > 0) {
+              const cutoff = Date.now() - 14 * 86400000
+              for (const o of orphans) {
+                const stale = o.createdAt.getTime() < cutoff
+                parts.push(`${stale ? "🔴" : "·"} ${o.planName} → ${o.planPath}${stale ? "（超 14 天，建议清理）" : ""}`)
+              }
+            } else { parts.push("✅ 无悬空记录") }
+          } catch { parts.push("⚠️ 悬空对账跳过（数据库不可达）") }
 
           parts.push(""); parts.push("=== 待执行 ADD 操作（按流程顺序） ===")
           const todoItems: string[] = []

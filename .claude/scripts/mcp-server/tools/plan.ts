@@ -5,9 +5,12 @@ import { join, basename } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { readFileSafe, readdirRecursive, PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
+import type { PlanRow } from "../shared/db-types.js"
+import { PlanRowSchema, validatedDelegate } from "../shared/db-types.js"
 
+// 无类型边界单点（zod 托管）：动态加载的 prisma client 在此一次性转为运行期校验的泛型委托
 const db = {
-  get plan() { return prisma.planRecord as unknown as Record<string, (...a: unknown[]) => unknown> },
+  get plan() { return validatedDelegate<PlanRow>(prisma.planRecord, PlanRowSchema, "PlanRecord") },
 }
 
 export function registerPlanTools(server: ToolRegistrar) {
@@ -81,8 +84,8 @@ export function registerPlanTools(server: ToolRegistrar) {
         )
         const addRoutePath = addRouteFile ? join(plansDir, addRouteFile) : undefined
         // upsert PlanRecord
-        const existing = await db.plan.findFirst({ where: { planName: t.name } }) as Record<string, unknown> | null
-        const data = {
+        const existing = await db.plan.findFirst({ where: { planName: t.name } })
+        const data: Partial<PlanRow> = {
           planPath: t.path,
           specPath: existsSync(specPath) ? specPath : undefined,
           tasksPath: existsSync(tasksPath) ? tasksPath : undefined,
@@ -98,6 +101,20 @@ export function registerPlanTools(server: ToolRegistrar) {
           await db.plan.create({ data: { ...data, planName: t.name, planPath: t.path } })
           results.push(`  ✅ 已创建 (totalTasks=${totalTasks}, done=${doneTasks})` + (addRoutePath ? `, addRoute` : ``))
           newPlans.push(t.name.replace(/-plan-v\d+$/, ""))
+        }
+      }
+      // ── 孤儿对账（全量扫描时）：PlanRecord 存在但 planPath 文件缺失 → 悬空清单。
+      //    来源：create_hitl 预置行被中断 / 用户放弃未清理。允许暂时存在，不允许不可见。 ──
+      if (!pn) {
+        const allPlans = await db.plan.findMany({ orderBy: { createdAt: "desc" } })
+        const orphans = allPlans.filter(p => !existsSync(p.planPath))
+        if (orphans.length > 0) {
+          results.push("", `⚠️ 悬空 Plan（记录在、文件缺失）— 续写或清理:`)
+          const cutoff = Date.now() - 14 * 86400000
+          for (const o of orphans) {
+            const stale = o.createdAt.getTime() < cutoff
+            results.push(`   ${stale ? "🔴 超 14 天，建议清理" : "·"} ${o.planName} → ${o.planPath}`)
+          }
         }
       }
       // scanAll 完成后提示用户调用 review_track 填充缺陷指标
@@ -120,13 +137,13 @@ export function registerPlanTools(server: ToolRegistrar) {
   }, async (args: Record<string, unknown>) => {
     try {
       const { planName } = args as { planName: string }
-      const plan = await db.plan.findFirst({ where: { planName } }) as Record<string, unknown> | null
+      const plan = await db.plan.findFirst({ where: { planName } })
       if (!plan) return textResponse(`📋 Plan: 未跟踪\nplanName: ${planName}\n\n操作: plan_track({ planName: "${planName}" })`)
-      const t = plan.totalTasks as number || 0
-      const d = plan.doneTasks as number || 0
-      const ct = plan.checklistT as number || 0
-      const ctd = plan.checklistTDone as number || 0
-      const cr = plan.checklistR as number || 0
+      const t = plan.totalTasks || 0
+      const d = plan.doneTasks || 0
+      const ct = plan.checklistT || 0
+      const ctd = plan.checklistTDone || 0
+      const cr = plan.checklistR || 0
       const taskPct = t > 0 ? Math.round((d / t) * 100) : 0
       const lines = [
         `📊 ${planName}`,
@@ -155,16 +172,16 @@ export function registerPlanTools(server: ToolRegistrar) {
   }, async (args: Record<string, unknown>) => {
     try {
       const { planName } = args as { planName: string }
-      const plan = await db.plan.findFirst({ where: { planName } }) as Record<string, unknown> | null
+      const plan = await db.plan.findFirst({ where: { planName } })
       if (!plan) return errorResponse(`PlanRecord 未找到: ${planName}`)
-      const planPath = plan.planPath as string
+      const planPath = plan.planPath
       if (!existsSync(planPath)) return errorResponse(`Plan 文件不存在: ${planPath}`)
       const content = readFileSync(planPath, "utf-8")
-      const t = plan.totalTasks as number || 0
-      const d = plan.doneTasks as number || 0
-      const ct = plan.checklistT as number || 0
-      const ctd = plan.checklistTDone as number || 0
-      const cr = plan.checklistR as number || 0
+      const t = plan.totalTasks || 0
+      const d = plan.doneTasks || 0
+      const ct = plan.checklistT || 0
+      const ctd = plan.checklistTDone || 0
+      const cr = plan.checklistR || 0
       const pct = t > 0 ? Math.round((d / t) * 100) : 0
       const snapshot = [
         `## 📊 Plan 进度快照`,

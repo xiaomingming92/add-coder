@@ -7,9 +7,13 @@ import { textResponse, errorResponse } from "../shared/response.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
 import { HITL_INTERACTION_CONFIG } from "../shared/hitl-interaction.strategy.js"
+import type { HitlRow, PlanRow } from "../shared/db-types.js"
+import { HitlRowSchema, PlanRowSchema, validatedDelegate } from "../shared/db-types.js"
 
+// 无类型边界单点（zod 托管）：动态加载的 prisma client 在此一次性转为运行期校验的泛型委托
 const db = {
-  get hitl() { return prisma.hitlRecord as unknown as Record<string, (...a: unknown[]) => unknown> },
+  get hitl() { return validatedDelegate<HitlRow>(prisma.hitlRecord, HitlRowSchema, "HitlRecord") },
+  get plan() { return validatedDelegate<PlanRow>(prisma.planRecord, PlanRowSchema, "PlanRecord") },
 }
 
 export function registerHitlTools(server: ToolRegistrar) {
@@ -115,6 +119,19 @@ export function registerHitlTools(server: ToolRegistrar) {
     try {
       const { planName, type, dimensions, _fallback, _use_genui } = args as { planName: string; type: string; dimensions?: { name: string; content?: string }[]; _fallback?: boolean; _use_genui?: boolean }
 
+      // ── planName 入口强校验（弱模型友好：不合规返回可照抄修正调用，而非让错误漂移） ──
+      const _pnValid = /-(plan|collab-contract)-v\d+$/.test(planName)
+        || /-review(-v\d+|-implementation(-v\d+)?|-runtime(-v\d+)?)?$/.test(planName)
+        || planName.endsWith(".hitl")
+      if (!_pnValid) {
+        const suggested = type === "COLLAB_CONTRACT" ? `${planName}-collab-contract-v1` : `${planName}-plan-v1`
+        return errorResponse(
+          `planName 格式不合规: "${planName}"\n` +
+          `要求: 以 -plan-v{n} / -collab-contract-v{n} / -review-* 结尾（哨兵命名依赖此后缀剥离）\n` +
+          `可照抄修正: create_hitl({ planName: "${suggested}", type: "${type}" })`
+        )
+      }
+
       // ── 最终维度内容（从弹框结果合并） ──
       let finalDims: { name: string; content: string }[] = []
 
@@ -210,21 +227,39 @@ export function registerHitlTools(server: ToolRegistrar) {
       }
 
       // ── 原始业务逻辑（创建 DB + 生成 hitl.md。降级模式也走此路） ──
-      const rows = await db.hitl.findMany({
-        where: { planName },
-        orderBy: { round: "desc" },
-        take: 1,
-      }) as { round: number | null }[]
-      const round = (rows[0]?.round ?? 0) + 1
-      const record = await db.hitl.create({
-        data: { planName, round, type, status: "DRAFT" },
-      }) as { id: string }
-      // 生成 hitl.md
       const now = new Date()
       const yyyyMM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`
       const dd = String(now.getDate()).padStart(2,"0")
       const plansDir = join(PROJECT_ROOT, MAGIC_DIR, "plans", yyyyMM, dd)
       const proposalPath = join(plansDir, `${planName}.hitl.md`)
+
+      // ── FK 断环修复：HitlRecord.planName 外键要求 PlanRecord 先行。
+      //    全新 Plan 首次审批时自动预置占位行（约定式 planPath，文件存在性即指纹），
+      //    Plan 文件写出后由 plan_track 回刷真实路径——机器占位机器回刷，不消耗 LLM 认知。 ──
+      let planProvisioned = false
+      const existingPlan = await db.plan.findFirst({ where: { planName } })
+      if (!existingPlan) {
+        await db.plan.create({
+          data: {
+            planName,
+            planPath: join(plansDir, `${planName}.md`),
+            planKeyword: String(planName).replace(/-(plan|collab-contract)-v\d+$/, ""),
+            totalTasks: 0, doneTasks: 0, checklistT: 0, checklistTDone: 0, checklistR: 0,
+          },
+        })
+        planProvisioned = true
+      }
+
+      const rows = await db.hitl.findMany({
+        where: { planName },
+        orderBy: { round: "desc" },
+        take: 1,
+      })
+      const round = (rows[0]?.round ?? 0) + 1
+      const record = await db.hitl.create({
+        data: { planName, round, type: type as HitlRow["type"], status: "DRAFT" },
+      })
+      // 生成 hitl.md
       const isoNow = now.toISOString()
 
       // 动态生成维度表格行
@@ -270,10 +305,18 @@ export function registerHitlTools(server: ToolRegistrar) {
         `recordId: ${record.id}`,
       ]
       if (finalDims.length > 0) lines.push(`dimensions: ${finalDims.length} 项`)
+      if (planProvisioned) lines.push(`PlanRecord: 自动预置（占位行，Plan 文件写出后 plan_track 回刷真实路径）`)
       if (_fallback) lines.push(`mode:     _fallback (跳过 dialog，原始代码降级)`)
       return textResponse(lines.join("\n"))
     } catch (e) {
-      return errorResponse(`create_hitl 失败: ${e instanceof Error ? e.message : String(e)}`)
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes("Foreign key")) {
+        return errorResponse(
+          `create_hitl 外键异常（PlanRecord 自动预置可能失败）: ${msg}\n` +
+          `处方: 检查数据库连接与 PlanRecord 表结构，或改用 plan_track({ planName }) 先建立追踪记录后重试`
+        )
+      }
+      return errorResponse(`create_hitl 失败: ${msg}`)
     }
   })
 
@@ -296,7 +339,13 @@ export function registerHitlTools(server: ToolRegistrar) {
     }),
   }, async (args: Record<string, unknown>, ctx: Record<string, unknown>) => {
     try {
-      const { planName, type, status, reason, _fallback, _use_genui } = args as Record<string, string | boolean | undefined>
+      const _raw = args as Record<string, string | boolean | undefined>
+      const planName = String(_raw.planName ?? "")
+      const type = String(_raw.type ?? "")
+      const status = typeof _raw.status === "string" ? _raw.status : undefined
+      const reason = typeof _raw.reason === "string" ? _raw.reason : undefined
+      const _fallback = _raw._fallback === true
+      const _use_genui = _raw._use_genui === true
 
       // ── 交互式确认（非降级模式且非 genui 模式） ──
       let effectiveStatus = status as string | undefined
@@ -384,26 +433,38 @@ export function registerHitlTools(server: ToolRegistrar) {
       // 降级模式必须传 status
 
       // ── 原始业务逻辑（更新 DB + 写哨兵文件。降级模式也走此路） ──
-      const s = effectiveStatus!
+      const s = effectiveStatus as HitlRow["status"]
+      const qType = type as HitlRow["type"]
       const rows = await db.hitl.findMany({
-        where: { planName, type },
+        where: { planName, type: qType },
         orderBy: { round: "desc" },
         take: 1,
-      }) as Record<string, unknown>[]
+      })
       if (!rows.length) return errorResponse(`未找到 HITL 记录: planName=${planName}, type=${type}`)
       const r = rows[0]
-      const prevStatus = r.status as string
+      const prevStatus = r.status
       if (prevStatus === "TONGYI" || prevStatus === "BOHUI") {
         return errorResponse(`HITL 已终态（${prevStatus}），不可再更新。BOHUI 后请用 create_hitl 新建 round。`)
       }
       // 更新
-      const data: Record<string, unknown> = { status: s }
+      const data: Partial<HitlRow> = { status: s }
       if (s === "TONGYI") data.approvedAt = new Date()
       if (s === "BOHUI") {
         data.rejectedAt = new Date()
-        if (reason) data.rejectReason = reason
+        if (reason) data.rejectReason = String(reason)
       }
       await db.hitl.update({ where: { id: r.id }, data })
+      // ── BOHUI 清算：Plan 文件不存在 → 预置 PlanRecord 无存续理由，连同本 plan 全部 HitlRecord 删除（孤儿即时归零）。
+      //    已写出文件的驳回 Plan 保留记录（历史价值）。 ──
+      let orphanCleaned = ""
+      if (s === "BOHUI") {
+        const planRow = await db.plan.findFirst({ where: { planName } })
+        if (planRow && !existsSync(planRow.planPath)) {
+          await db.hitl.deleteMany({ where: { planName } })
+          await db.plan.delete({ where: { id: planRow.id } })
+          orphanCleaned = `预置数据已清算（Plan 文件不存在: ${planRow.planPath}）`
+        }
+      }
       // 写哨兵文件（双命名：原始 planName + pre-tool-use hook §C 剥后缀推导名，保持闸门一致）
       const markerDir = join(PROJECT_ROOT, MAGIC_DIR, "hitl")
       mkdirSync(markerDir, { recursive: true })
@@ -440,7 +501,8 @@ export function registerHitlTools(server: ToolRegistrar) {
       if (s === "BOHUI") {
         lines.push(`marker:   ${marker}`)
         lines.push(`reason:   ${reason || "—"}`)
-        lines.push(``, `💡 驳回后请用 create_hitl 新建 round ${Number(r.round) + 1} 重新发起审批。`)
+        if (orphanCleaned) lines.push(`cleanup:  ${orphanCleaned}`)
+        lines.push(``, `💡 驳回后请用 create_hitl 新建 round ${r.round + 1} 重新发起审批。`)
       }
       return textResponse(lines.join("\n"))
     } catch (e) {
@@ -458,11 +520,12 @@ export function registerHitlTools(server: ToolRegistrar) {
   }, async (args: Record<string, unknown>) => {
     try {
       const { planName, type } = args as { planName: string; type?: string }
+      const qType = (type || "PLAN") as HitlRow["type"]
       const rows = await db.hitl.findMany({
-        where: { planName, type },
+        where: { planName, type: qType },
         orderBy: { round: "desc" },
         take: 1,
-      }) as Record<string, unknown>[]
+      })
       if (!rows.length) {
         return textResponse(
           `📋 HITL: 未发起\n` +
@@ -472,7 +535,7 @@ export function registerHitlTools(server: ToolRegistrar) {
         )
       }
       const r = rows[0]
-      const status = r.status as string
+      const status = r.status
       const icons: Record<string, string> = { DRAFT: "⏳", SUBMITTED: "📤", TONGYI: "✅", BOHUI: "❌" }
       const icon = icons[status] || "❓"
       const lines = [
@@ -481,13 +544,13 @@ export function registerHitlTools(server: ToolRegistrar) {
         `planName:   ${planName}`,
         `type:       ${r.type}`,
         `round:      ${r.round}`,
-        r.createdAt ? `createdAt:  ${(r.createdAt as Date).toISOString()}` : null,
-        r.approvedAt ? `approvedAt: ${(r.approvedAt as Date).toISOString()}` : null,
-        r.rejectedAt ? `rejectedAt: ${(r.rejectedAt as Date).toISOString()}` : null,
+        r.createdAt ? `createdAt:  ${r.createdAt.toISOString()}` : null,
+        r.approvedAt ? `approvedAt: ${r.approvedAt.toISOString()}` : null,
+        r.rejectedAt ? `rejectedAt: ${r.rejectedAt.toISOString()}` : null,
         r.rejectReason ? `reason:     ${r.rejectReason}` : null,
       ].filter(Boolean)
       if (status === "BOHUI") {
-        lines.push(``, `💡 驳回后可 create_hitl 新建 round ${Number(r.round) + 1}。`)
+        lines.push(``, `💡 驳回后可 create_hitl 新建 round ${r.round + 1}。`)
       }
       if (status === "DRAFT" || status === "SUBMITTED") {
         lines.push(``, `操作: update_hitl({ planName: "${planName}", type: "${r.type}", status: "TONGYI|BOHUI" })`)
