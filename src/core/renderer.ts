@@ -159,10 +159,6 @@ export function renderCore(
                 const rendered = render(content, config);
                 const targetRel = join(CORE_TARGET, relative(CORE_DIR, full));
                 files.set(targetRel, rendered);
-                // 治理文档同时输出到项目根，方便用户查阅
-                if (relative(CORE_DIR, full).startsWith("docs/")) {
-                    files.set(name, rendered);
-                }
             }
         }
     }

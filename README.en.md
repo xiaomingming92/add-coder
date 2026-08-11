@@ -90,11 +90,11 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 
 | IDE | Governance Doc | Events Covered | Hook Config |
 |---|---|---|---|
-| Claude Code | [ADD-governance-claude-code.md](./ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
-| Qoder CN | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
-| VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
-| Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
-| Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
+| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
+| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
+| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
+| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
 
 ---
 
@@ -290,11 +290,11 @@ RAHS (Runtime Architecture Health Score) — 运行时架构健康度，< 90% BL
 ### ⑤ 多 IDE 的 Hook 即治理层
 | IDE | 治理文档 | 覆盖事件 | Hook 配置 |
 |---|---|---|---|
-| Claude Code | [ADD-governance-claude-code.md](./ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
-| Qoder CN | [ADD-governance-qoder-cn.md](./ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
-| VS Code Copilot | [ADD-governance-vscode-copilot.md](./ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
-| Trae | [ADD-governance-trae.md](./ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
-| Codex | [ADD-governance-codex.md](./ADD-governance-codex.md) | 0 (原生) / 14 (导入 Claude) | `.codex/hooks.json` |
+| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
+| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
+| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
+| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 0 (原生) / 14 (导入 Claude) | `.codex/hooks.json` |
 
 ## 快速开始
 ```bash
