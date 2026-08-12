@@ -35,3 +35,11 @@ debug-dump/
 scripts/crontab*
 # Database sync backups (prisma-sync v2)
 .add/backups/
+
+# 哨兵文件忽略（.tongyi-*/.bohui-* 与既有 .hitl-tongyi-* 规则前缀不匹配的兜底）
+*/hitl/.tongyi-*
+*/hitl/.bohui-*
+# 工作流产物未跟踪兜底（main 已跟踪的历史文件不受影响；新产物不入库）
+.qoder/plans/
+.qoder/specs/
+.qoder/reviews/
