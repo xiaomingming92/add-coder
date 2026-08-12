@@ -12,7 +12,6 @@ export const HITL_INTERACTION_CONFIG = {
 } as const;
 
 export type HitlInteractionMode = (typeof HITL_INTERACTION_CONFIG)[keyof typeof HITL_INTERACTION_CONFIG]["mode"];
-// <<< CAIJUE GENERATED END <<<
-// >>> USER CODE >>>
+// <<< CAIJUE GENERATED END <<<// >>> USER CODE >>>
 // 在此添加自定义配置覆盖
 // <<< USER CODE <<<

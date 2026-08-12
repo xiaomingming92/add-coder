@@ -9,6 +9,7 @@
  */
 import * as z from "zod/v4";
 import type { ToolRegistrar } from "../registrar.js";
+import { MAGIC_PREFIXES } from "../../shared/fs.js";
 import { existsSync } from "fs";
 import { join, basename } from "path";
 import { textResponse, errorResponse } from "../../shared/response.js";
@@ -98,11 +99,7 @@ export function registerCheckSpecSync(server: ToolRegistrar) {
             const appendixSet = new Set(appendixFiles.map((f: string) => f.toLowerCase()));
             // 豁免 sync 自动生成产物（mirror 副本 + 备份）——非本 Plan 实施文件（2026-08-12 修复）
             const isSyncGenerated = (lf: string) =>
-              lf.startsWith(".qoder/") ||
-              lf.startsWith(".claude/") ||
-              lf.startsWith(".vscode/") ||
-              lf.startsWith(".add/") ||
-              lf.startsWith(".backup/");
+              MAGIC_PREFIXES.some((p) => lf.startsWith(`${p}/`));
             const unmatched = diffFiles.filter(
               (f: string) =>
                 !isSyncGenerated(f.toLowerCase()) &&

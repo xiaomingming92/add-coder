@@ -6,6 +6,7 @@ import { registerCheckSpecSync } from "./check_spec_sync.js";
 import { registerCheckAddRouteCompleteness } from "./check_add_route_completeness.js";
 import { registerCheckDps } from "./check_dps.js";
 import { registerCheckRahs } from "./check_rahs.js";
+import { registerCheckDocSimilarity } from "./check_doc_similarity.js";
 
 export function registerGatewayTools(server: ToolRegistrar) {
   registerCheckAddRouteStatus(server);
@@ -13,4 +14,5 @@ export function registerGatewayTools(server: ToolRegistrar) {
   registerCheckAddRouteCompleteness(server);
   registerCheckDps(server);
   registerCheckRahs(server);
+  registerCheckDocSimilarity(server);
 }

@@ -1,58 +1,60 @@
 {
+    "_generated": true,
+    "_generated_source": "guard-rules.toml",
     "template": "add-route-template.md",
-    "shared_by": [
-        "add-route-template.md",
-        "add-route-template-heavyweight.md"
-    ],
     "sections": [
         {
             "id": "step0",
-            "heading": "## Step 0",
-            "required": true
+            "required": true,
+            "heading": "## Step 0"
         },
         {
             "id": "step0_plan_track",
-            "pattern": "plan_track\\(\\{ planName:",
-            "anchor": "plan_track",
             "required": true,
+            "anchor": "plan_track",
             "within": "## Step 0",
+            "pattern": "plan_track\\(\\{ planName:",
             "description": "Step 0 产出必须包含 plan_track 落库步骤"
         },
         {
             "id": "step1",
-            "heading": "## Step 1",
-            "required": true
+            "required": true,
+            "heading": "## Step 1"
         },
         {
             "id": "step2",
-            "heading": "## Step 2",
-            "required": true
+            "required": true,
+            "heading": "## Step 2"
         },
         {
             "id": "step3",
-            "heading": "## Step 3",
-            "required": true
+            "required": true,
+            "heading": "## Step 3"
         },
         {
             "id": "step3_5",
-            "heading": "## Step 3.5",
-            "required": false
+            "required": false,
+            "heading": "## Step 3.5"
         },
         {
             "id": "step4",
-            "heading": "## Step 4",
-            "required": true
+            "required": true,
+            "heading": "## Step 4"
         },
         {
             "id": "step5",
-            "heading": "## Step 5",
-            "required": true
+            "required": true,
+            "heading": "## Step 5"
         },
         {
             "id": "step8",
-            "heading": "## Step 8",
-            "required": true
+            "required": true,
+            "heading": "## Step 8"
         }
+    ],
+    "shared_by": [
+        "add-route-template.md",
+        "add-route-template-heavyweight.md"
     ],
     "placeholders": [
         "{需求域名}",

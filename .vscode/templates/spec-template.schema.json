@@ -1,21 +1,23 @@
 {
+    "_generated": true,
+    "_generated_source": "guard-rules.toml",
     "template": "spec-template.md",
     "sections": [
         {
             "id": "plan_spec_mapping",
-            "heading": "## Plan→Spec 映射",
-            "required": true
+            "required": true,
+            "heading": "## Plan→Spec 映射"
         },
         {
             "id": "section_1",
-            "heading": "## 1.",
-            "required": true
+            "required": true,
+            "heading": "## 1."
         },
         {
             "id": "plan_track_note",
-            "pattern": "plan_track\\(\\{ planName:",
+            "required": true,
             "anchor": "plan_track",
-            "required": true
+            "pattern": "plan_track\\(\\{ planName:"
         }
     ],
     "placeholders": [

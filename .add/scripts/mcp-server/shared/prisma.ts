@@ -1,8 +1,8 @@
-import { DATABASE_URL, PROJECT_ROOT } from "./env.js"
-import { join, dirname, resolve as pathResolve } from "path"
+import { DATABASE_URL, PROJECT_ROOT, MAGIC_DIR } from "./env.js"
+import { join, dirname } from "path"
 import { existsSync } from "fs"
-import { fileURLToPath } from "url"
 import { createRequire } from "module"
+import { findUpSync } from "find-up"
 
 const require = createRequire(import.meta.url)
 
@@ -11,14 +11,20 @@ const require = createRequire(import.meta.url)
 // 双库分离项目（add.prisma=postgres + 业务 schema=mysql）需显式设置环境变量
 // PRISMA_CLIENT_DIR=add-prisma，否则会加载业务库 client 导致 provider mismatch
 const clientDir = process.env.PRISMA_CLIENT_DIR || "prisma"
+// 锚点查找兜底（find-up 包）：magicDir 向上查找项目根，替代手算层级（轮次 3）
+const anchorRoot = (() => {
+  const hit = findUpSync(MAGIC_DIR, { cwd: import.meta.dirname, type: "directory" });
+  return hit ? dirname(hit) : null;
+})();
 const candidates = [
   join(PROJECT_ROOT, `src/generated/${clientDir}/client.ts`),
   join(PROJECT_ROOT, `src/generated/${clientDir}/client.js`),
   join(process.cwd(), `src/generated/${clientDir}/client.ts`),
   join(process.cwd(), `src/generated/${clientDir}/client.js`),
-  // 从当前文件位置反推：shared/prisma.ts → 上 4 层到项目根
-  (() => { const d = dirname(fileURLToPath(import.meta.url)); const root = pathResolve(d, "..", "..", "..", ".."); return join(root, `src/generated/${clientDir}/client.ts`) })(),
-  (() => { const d = dirname(fileURLToPath(import.meta.url)); const root = pathResolve(d, "..", "..", "..", ".."); return join(root, `src/generated/${clientDir}/client.js`) })(),
+  ...(anchorRoot ? [
+    join(anchorRoot, `src/generated/${clientDir}/client.ts`),
+    join(anchorRoot, `src/generated/${clientDir}/client.js`),
+  ] : []),
 ]
 // 双库分离项目提示：检测到 add-prisma 客户端但未显式选择时提醒用户自行决策
 if (clientDir === "prisma" && existsSync(join(PROJECT_ROOT, "src/generated/add-prisma/client.ts"))) {

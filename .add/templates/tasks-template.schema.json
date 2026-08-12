@@ -1,31 +1,33 @@
 {
+    "_generated": true,
+    "_generated_source": "guard-rules.toml",
     "template": "tasks-template.md",
     "sections": [
         {
             "id": "round_deps",
-            "heading": "## 轮次依赖",
-            "required": true
+            "required": true,
+            "heading": "## 轮次依赖"
         },
         {
             "id": "plan_task_mapping",
-            "heading": "## Plan→Task 映射",
-            "required": true
+            "required": true,
+            "heading": "## Plan→Task 映射"
         },
         {
             "id": "round_1",
-            "heading": "## 轮次 1:",
-            "required": true
+            "required": true,
+            "heading": "## 轮次 1:"
         },
         {
             "id": "verification",
-            "heading": "## Verification",
-            "required": true
+            "required": true,
+            "heading": "## Verification"
         },
         {
             "id": "plan_track_note",
-            "pattern": "plan_track\\(\\{ planName:",
+            "required": true,
             "anchor": "plan_track",
-            "required": true
+            "pattern": "plan_track\\(\\{ planName:"
         }
     ],
     "placeholders": [
@@ -40,6 +42,5 @@
         "Phase",
         "Round",
         "阶段"
-    ],
-    "forbidden_terms_note": "禁止使用 Phase/Round/阶段 作为 Task 分组词，必须使用模板规定的「轮次」。'步骤'和'轮次'不禁——它们是模板自身的结构关键词。"
+    ]
 }

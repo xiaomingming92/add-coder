@@ -43,3 +43,6 @@ export async function readdirRecursive(baseDir: string): Promise<string[]> {
 }
 
 export { PROJECT_ROOT, MAGIC_DIR }
+
+/** magic 目录前缀（git diff 过滤等场景用）：当前环境 magicDir + 分发镜像（与 sync 分发同源） */
+export const MAGIC_PREFIXES = [MAGIC_DIR, ".qoder", ".claude", ".vscode", ".trae", ".codex", ".add", ".backup"];
