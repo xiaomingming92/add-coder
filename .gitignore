@@ -18,13 +18,11 @@ docker-compose.add.yml
 # Runtime artifacts
 debug-dump/
 */debug-dump/
+# Local workflow artifacts（plans/specs/reviews/hitl 为本地运行产物，不同步远端）
 */plans/
-!.qoder/plans/
 */specs/
-!.qoder/specs/
-!.add/specs/
-!.claude/specs/
-!.vscode/specs/
+*/reviews/
+*/hitl/
 
 # Runtime reports
 */reports/
