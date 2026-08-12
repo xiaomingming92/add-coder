@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════════════
+# quant-recheck-rules.toml —— 量化复检层全参数真源
+# 消费方式: add-coder generate → transcribe 生成 quant-recheck.strategy.ts
+# 改动规则: 只改本文件，重新运行 add-coder generate（生成产物勿手改）
+# ═══════════════════════════════════════════════════════════════
+
+[quant_recheck]
+# 锚点加权 Jaccard：锚点 token 权重倍数（普通 token = 1）
+anchor_weight = 3.0
+
+# TF-IDF IDF 语料锚：历史文档最小样本数（低于则 IDF 退化为均匀权重）
+idf_min_docs = 5
+
+# RRF 排名融合常量（K 越小少候选集区分度越高；满分=2/(K+1)）
+rrf_k = 10
+
+# RRF 候选集最小数（低于此值 RRF 退化，判定交保守路径）
+rrf_min_candidates = 2
+
+# 绝对匹配闸门：双路综合 max(j,t) 低于此值判定 WARN_BLOCKED
+# （RRF 纯相对排名不防「全低相似度」漏网；用 max(j,t) 因真实文档 vs 模板全文 token 重叠天然低）
+min_abs_similarity = 0.25
+
+# EWMA 平滑系数（λ 越大越跟随近期）
+ewma_lambda = 0.3
+
+# EWMA 阈值系数（下界 = μ - k·σ）
+ewma_k = 1.5
+
+# 冷启动：历史判定数低于此值用保守基线
+ewma_cold_start = 10
+
+# 冷启动保守下界基线（RRF 融合分量级：满分 2/(K+1)≈0.1818，基线 0.16 拦 rank3+ 形似义异）
+ewma_baseline = 0.16

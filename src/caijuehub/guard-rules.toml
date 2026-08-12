@@ -1,0 +1,131 @@
+# ═══════════════════════════════════════════════════════════════
+# guard-rules.toml —— hook 规则真源（v3 锚定的 3 个 schema 声明）
+# 消费方式: add-coder generate → transcribe 生成 templates/core/templates/*.schema.json
+# 改动规则: 只改本文件，重新运行 add-coder generate（生成产物带 _generated 标记，勿手改）
+# 范围: 仅 v3 锚定的 add-route/spec/tasks 三个模板（其余 schema 暂留手写，不在本 Plan）
+# ═══════════════════════════════════════════════════════════════
+
+# ── add-route-template ──────────────────────────────────────────
+[guard_templates.add_route_template]
+template = "add-route-template.md"
+shared_by = ["add-route-template.md", "add-route-template-heavyweight.md"]
+
+[[guard_templates.add_route_template.sections]]
+id = "step0"
+heading = "## Step 0"
+required = true
+
+[[guard_templates.add_route_template.sections]]
+id = "step0_plan_track"
+heading = ""
+required = true
+anchor = "plan_track"
+within = "## Step 0"
+pattern = 'plan_track\(\{ planName:'   # pattern 与 anchor 并存（v3 过渡期语义，回滚兜底）
+description = "Step 0 产出必须包含 plan_track 落库步骤"
+
+[[guard_templates.add_route_template.sections]]
+id = "step1"
+heading = "## Step 1"
+required = true
+
+[[guard_templates.add_route_template.sections]]
+id = "step2"
+heading = "## Step 2"
+required = true
+
+[[guard_templates.add_route_template.sections]]
+id = "step3"
+heading = "## Step 3"
+required = true
+
+[[guard_templates.add_route_template.sections]]
+id = "step3_5"
+heading = "## Step 3.5"
+required = false
+
+[[guard_templates.add_route_template.sections]]
+id = "step4"
+heading = "## Step 4"
+required = true
+
+[[guard_templates.add_route_template.sections]]
+id = "step5"
+heading = "## Step 5"
+required = true
+
+[[guard_templates.add_route_template.sections]]
+id = "step8"
+heading = "## Step 8"
+required = true
+
+[guard_templates.add_route_template.placeholders]
+items = ["{需求域名}", "{核心内容}", "{版本号}", "{plan-path}", "{spec-path}", "{tasks-path}", "{handoff-path}", "{planName}", "{planKeyword}"]
+
+[guard_templates.add_route_template.forbidden_terms]
+terms = ["Phase", "Round", "轮次", "阶段"]
+
+# ── spec-template ──────────────────────────────────────────────
+[guard_templates.spec_template]
+template = "spec-template.md"
+
+[[guard_templates.spec_template.sections]]
+id = "plan_spec_mapping"
+heading = "## Plan→Spec 映射"
+required = true
+
+[[guard_templates.spec_template.sections]]
+id = "section_1"
+heading = "## 1."
+required = true
+
+[[guard_templates.spec_template.sections]]
+id = "plan_track_note"
+heading = ""
+required = true
+anchor = "plan_track"
+pattern = 'plan_track\(\{ planName:'
+
+[guard_templates.spec_template.placeholders]
+items = ["{功能名称}", "{标题}", "{条件}"]
+
+[guard_templates.spec_template.forbidden_terms]
+terms = ["Phase", "Step", "阶段", "步骤"]
+
+# ── tasks-template ─────────────────────────────────────────────
+[guard_templates.tasks_template]
+template = "tasks-template.md"
+
+[[guard_templates.tasks_template.sections]]
+id = "round_deps"
+heading = "## 轮次依赖"
+required = true
+
+[[guard_templates.tasks_template.sections]]
+id = "plan_task_mapping"
+heading = "## Plan→Task 映射"
+required = true
+
+[[guard_templates.tasks_template.sections]]
+id = "round_1"
+heading = "## 轮次 1:"
+required = true
+
+[[guard_templates.tasks_template.sections]]
+id = "verification"
+heading = "## Verification"
+required = true
+
+[[guard_templates.tasks_template.sections]]
+id = "plan_track_note"
+heading = ""
+required = true
+anchor = "plan_track"
+pattern = 'plan_track\(\{ planName:'
+
+[guard_templates.tasks_template.placeholders]
+items = ["{需求域名}", "{核心内容}", "{版本号}", "{轮次名称}", "{任务描述}", "{子任务描述}"]
+
+[guard_templates.tasks_template.forbidden_terms]
+terms = ["Phase", "Round", "阶段"]
+forbidden_terms_note = "禁止使用 Phase/Round/阶段 作为 Task 分组词，必须使用模板规定的「轮次」。'步骤'和'轮次'不禁——它们是模板自身的结构关键词。"
