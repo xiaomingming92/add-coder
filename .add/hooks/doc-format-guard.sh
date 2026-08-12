@@ -72,6 +72,7 @@ case "$base" in
   *add-route*heavy*) TEMPLATE_NAME="add-route-template-heavyweight.md" ;;
   *add-route*)       TEMPLATE_NAME="add-route-template.md" ;;
   *hitl*)            TEMPLATE_NAME="hitl-template.md" ;;
+  *handoff*)         : ;;  # R15: 跳过 token 层，交内容探测链（单/多轮细分）；必须在 *report* 前，防文件名含 report 的 handoff 被误吞
   *checklist*)       TEMPLATE_NAME="checklist-template.md" ;;
   *fix-verif*)       TEMPLATE_NAME="fix-verification-template.md" ;;
   *report*runtime*)  TEMPLATE_NAME="runtime-report-template.md" ;;
