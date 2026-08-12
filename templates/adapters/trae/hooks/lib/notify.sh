@@ -11,7 +11,7 @@
 #   - MCP Server 宕机不丢事件，重启后从文件恢复消费
 
 write_hook_event() {
-  local hook="$1" decision="$2" cmd="$3" reason="$4" plan="${5:-unknown}" status="${6:-none}"
+  local hook="$1" decision="$2" cmd="$3" reason="$4" plan="${5:-unknown}" status="${6:-none}" extra="${7:-}"
   local dir="${MAGIC_DIR:-.qoder}/reports"
   mkdir -p "$dir" 2>/dev/null || true
   local file="$dir/hook-events.jsonl"
@@ -23,12 +23,14 @@ write_hook_event() {
     [ "$sz" -gt 262144 ] && mv "$file" "${file}.old" 2>/dev/null || true
   fi
 
-  printf '{"ts":"%s","hook":"%s","decision":"%s","cmd":"%s","reason":"%s","planKeyword":"%s","planStatus":"%s"}\n' \
+  # extra 为可选 JSON 片段（Task 1.5 数据契约：anchor_hit/struct_score/override 等），非空时以逗号拼接
+  printf '{"ts":"%s","hook":"%s","decision":"%s","cmd":"%s","reason":"%s","planKeyword":"%s","planStatus":"%s"%s}\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     "$hook" \
     "$decision" \
     "$cmd" \
     "$reason" \
     "$plan" \
-    "$status" >> "$file"
+    "$status" \
+    "${extra:+,$extra}" >> "$file"
 }
