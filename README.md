@@ -220,20 +220,46 @@ Plan 里的 Task 不应该停留在文档里。add-coder 将 tasks.md 末尾的 
 tasks.md §IDE JSON → TodoWrite → IDE 面板
 ```
 
-### ⑩ 并发协作契约：多智能体协作即契约
+### ⑩ 并发契约体系：协作层 + 进程层双层
 
-多个 Agent 同时改一个仓库，没有契约必然冲突——改同一批文件、审计归因混乱。add-coder 把并行协作变成一份**经 HITL 审批的契约**：
+多个 Agent 同时改一个仓库，没有契约必然冲突——改同一批文件、审计归因混乱。add-coder 把并行协作变成**经 HITL 审批的契约体系**，分两层：
 
-| 机制 | 实现 |
-|------|------|
-| **总控 Plan + N 个子 Plan** | Lead Agent 调度，专家按 description 触发条件委派，满足即拉起 |
-| **文件边界** | 默认软隔离（git diff 交叉检查），大改升级 git worktree 硬隔离 |
-| **仲裁链路** | 跨边界修改走 BOUNDARY_REQUEST → Lead 裁决 → 落库可查 |
-| **审计分桶** | 每个专家独立 planKeyword，query_audit_logs 各域各查 |
+| 层 | 契约 | 版本 | 职责 |
+|----|------|------|------|
+| **协作层** | 并发协作契约（collab-contract） | v1（v0.3.18） | 多智能体协作秩序：总控 Plan + N 个子 Plan / 文件边界 / 仲裁链路 / 审计分桶 |
+| **进程层** | [多 IDE 进程并发契约](./docs/multi-ide-concurrency-contract.md) | v2（v0.3.25） | MCP Server 并发行为承诺：连接模型 / 幂等键 / PROJECT_ID 校验 / 断开隔离四态 / 生命周期拆分 / client 编排差异矩阵 |
 
-> 契约模板：`templates/core/templates/collab-contract-template.md`（init 后同步到项目 `.add/templates/`），契约新建/重大变更走 `COLLAB_CONTRACT` 审批。
+> 协作层模板：`templates/core/templates/collab-contract-template.md`（契约新建/重大变更走 `COLLAB_CONTRACT` 审批）。
+> 进程层文档：`docs/multi-ide-concurrency-contract.md`（Codex Parallel MCP / TAgent / Claude Code 并发行为对齐基准）。
 >
 > 📜 溯源：并发契约原创时间戳 → [CHANGELOG v0.3.18「并发协作契约」](https://github.com/xiaomingming92/add-coder/blob/main/CHANGELOG.md#0318---2026-08-05)；"酷"的工程学定义 → [what-makes-software-cool.md](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md)——契约的审计分桶与完成判定（DPS ≥ 80）正长在"熵值管控"四维上。
+
+### ⑪ Codex MCP 原生接入（v0.3.25）
+
+> **状态区分**："已生成 Codex 模板" ≠ "Codex MCP 端到端已验证"——以下 6 步是**已验证闭环**，不写自定义脚本即可完成接入。
+
+```bash
+# 1. 安装 add-coder（已安装可跳过）
+npm i -g add-coder
+
+# 2. 初始化 Codex 适配（hooks 模板 + config.toml 真源）
+add-coder init --adapter=codex
+
+# 3. 输出可直接使用的 config.toml 片段（不写盘，不初始化项目）
+add-coder init --adapter=codex --print-mcp-config
+
+# 4a. 粘贴片段到 ~/.codex/config.toml（Windows: %USERPROFILE%\.codex\config.toml）
+# 4b. 或自动写入（显式确认 + 先备份 + 防重复）
+add-coder init --adapter=codex --write-user-config
+
+# 5. 重启 Codex（App/CLI/IDE 扩展通用，修改 config.toml 后需重启生效）
+
+# 6. 验证：Codex 中发现 add_coder MCP Server，完整工具集可调用（29 tools）
+```
+
+**Windows 分支**：`--print-mcp-config` 在 win32 平台自动输出 `cmd /c npx.cmd` 启动分支（原生 PowerShell 场景，不依赖 WSL）。
+
+**命名兼容**：MCP Server ID 归一化为 `add_coder`（连字符→下划线，Codex 约束）；`env.PROJECT_ROOT` 由渲染时注入，多项目粘贴错误配置时 mcp-server 启动即校验退出（进程层契约 §4）。
 
 ---
 
@@ -351,7 +377,7 @@ npx add-coder init
 | `.qoder/` | Qoder 适配（hooks、settings.json、mcp.json） |
 | `.vscode/` | VS Code 适配（settings.json、tasks.json） |
 | `.trae/` | Trae 适配（hooks.json、settings.json） |
-| `.codex/` | Codex 适配（hooks.json、settings.json） |
+| `.codex/` | Codex 适配（hooks.json、settings.json、config.toml.example） |
 
 ## MCP 审计工具链
 

@@ -21,13 +21,14 @@ import { injectPrisma } from "../prisma-injector";
 import type { Adapter, AddCoderConfig } from "../../config/schema";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync } from "fs";
 import { createHash } from "crypto";
-import { resolve } from "path";
+import { resolve, dirname, join as pathJoin } from "path";
+import { homedir } from "os";
 import { createConnection } from "net";
 import { runCommand, commandExists } from "../../lib/run-command";
 import { ensureEmbeddingModel } from "../../lib/model-predownload";
 import { ensurePortsContract } from "../../lib/ports-contract";
 
-interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; stack?: string; skipModel?: boolean; }
+interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; stack?: string; skipModel?: boolean; printMcpConfig?: boolean; writeUserConfig?: boolean; }
 interface DbChoice { engine: "postgresql" | "sqlite" | "manual"; container?: "podman" | "docker" | "manual"; user?: string; password?: string; port?: string; reuseExisting?: boolean; }
 interface PackageJsonShape { scripts?: Record<string, string> }
 
@@ -54,6 +55,12 @@ interface InitContext {
  *   prepare → writeComposeEnv → renderAndWrite → deployDatabase → deployDocs → finalize
  */
 export async function initCommand(options: InitOptions) {
+    // Codex MCP 配置输出（--print-mcp-config / --write-user-config）：
+    // 轻量查询动作，在完整 init 流程之前处理（避免 DB 交互），处理完即返回
+    if (options.printMcpConfig || options.writeUserConfig) {
+        await handleCodexMcpConfig(options);
+        return;
+    }
     const ctx = await prepare(options);
     writeComposeEnv(ctx);
     // 技术栈状态落盘（D7/D4）：非 dry-run 时写 stack.json（渲染与状态一致）
@@ -79,6 +86,60 @@ export async function initCommand(options: InitOptions) {
         } catch (e) {
             console.warn(`⚠️ 模型预下载失败（不影响主流程，首次 DPS 调用会自动补下载）: ${e instanceof Error ? e.message : String(e)}`);
         }
+    }
+}
+
+// ════════════════════ Codex MCP 配置输出（--print-mcp-config / --write-user-config） ════════════════════
+
+/**
+ * @description: 渲染并输出 Codex config.toml 片段。轻量模式：仅 loadConfig（无 DB 交互）→ 渲染 → 输出/写入。
+ * @param {InitOptions} options - CLI 选项
+ */
+async function handleCodexMcpConfig(options: InitOptions): Promise<void> {
+    const projectRoot = process.cwd();
+    const magicDir = magicDirFor(options.adapter ?? "codex");
+    const config = await loadConfig(projectRoot, options.config, { force: true });
+    config.projectRoot = projectRoot;
+    config.magicDir = magicDir;
+
+    const files = renderCodex(config, projectRoot, !!options.dryRun, magicDir);
+    const tomlEntry = [...files.entries()].find(
+        ([rel]) => rel.endsWith("config.toml.example") || rel.endsWith("config.toml"),
+    );
+    if (!tomlEntry) {
+        console.error("✗ config.toml 渲染产物缺失（检查 templates/adapters/codex/config.toml.example）");
+        process.exit(1);
+    }
+    const toml = tomlEntry[1];
+
+    if (options.printMcpConfig) {
+        console.log("\n# 将以下片段粘贴到 ~/.codex/config.toml（或使用 --write-user-config 自动写入）");
+        console.log(toml);
+    }
+
+    if (options.writeUserConfig) {
+        const userConfigPath = pathJoin(homedir(), ".codex", "config.toml");
+        if (options.dryRun) {
+            console.log(`[dry-run] 将写入 ${userConfigPath}`);
+            return;
+        }
+        if (existsSync(userConfigPath) && readFileSync(userConfigPath, "utf-8").includes("mcp_servers.add_coder")) {
+            console.log(`⚠️ ${userConfigPath} 已存在 mcp_servers.add_coder 配置，跳过（避免重复）`);
+            return;
+        }
+        const answer = await ask(`写入 ${userConfigPath}？（y/N） → `);
+        if (answer.trim().toLowerCase() !== "y") {
+            console.log("已取消写入");
+            return;
+        }
+        if (existsSync(userConfigPath)) {
+            const backup = `${userConfigPath}.bak-${Date.now()}`;
+            copyFileSync(userConfigPath, backup);
+            console.log(`已备份原配置 → ${backup}`);
+        }
+        mkdirSync(dirname(userConfigPath), { recursive: true });
+        writeFileSync(userConfigPath, `\n${toml}`, { flag: "a" });
+        console.log(`✅ 已写入 ${userConfigPath}，重启 Codex 生效`);
     }
 }
 

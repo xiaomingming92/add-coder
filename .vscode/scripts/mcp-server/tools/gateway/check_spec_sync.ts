@@ -77,7 +77,7 @@ export function registerCheckSpecSync(server: ToolRegistrar) {
           lines.push(`add-route: ${arFile}`);
           const arContent = (await readFileSafe(join(plansDir, arFile))) || "";
           // 提取 add-route 附录文件清单
-          const appendixFiles = (arContent.match(/`[^`]+\.(ts|js|sh|md|tsx|json)`/g) || [])
+          const appendixFiles = (arContent.match(/`[^`]+\.(ts|js|sh|md|tsx|json|yml|yaml)`/g) || [])
             .map((f: string) => f.replace(/`/g, ""));
           lines.push(`附录文件: ${appendixFiles.length} 个`);
 

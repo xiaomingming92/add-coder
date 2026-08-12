@@ -41,9 +41,18 @@ fi
 ATLAS_MIG_DIR="$PROJECT_ROOT/prisma/atlas-migrations"
 mkdir -p "$ATLAS_MIG_DIR"
 
+# ② 迁移锁（进程层契约 v2 §6）：多 IDE 并发 init 时仅一个进程执行迁移
+# 非阻塞拿锁（pg_try_advisory_lock），会话级锁——脚本退出连接断开自动释放，无需 trap
+LOCK_KEY="0xADD001"
+DB_CONTAINER="${PROJECT_NAME:-add-project}-postgres"
+LOCKED="$(podman exec "$DB_CONTAINER" psql -U "$DATABASE_USER" -d "${PROJECT_NAME:-add-project}" -tAc "SELECT pg_try_advisory_lock(${LOCK_KEY});" 2>/dev/null || true)"
+if [ "$LOCKED" != "t" ]; then
+    echo "!!! 另一个进程正在迁移，请稍后重试"
+    exit 1
+fi
+
 # ③ baseline 哨兵：首次切换（容器内 psql 探测 atlas_schema_revisions；宿主机无 psql，用 podman exec）
 # 双保险：已有 *_baseline.sql 但 revisions 缺失 → 拒绝自动重生成（防快照重叠）
-DB_CONTAINER="${PROJECT_NAME:-add-project}-postgres"
 BASELINE_DONE="$(podman exec "$DB_CONTAINER" psql -U "$DATABASE_USER" -d "${PROJECT_NAME:-add-project}" -tAc "SELECT 1 FROM information_schema.schemata WHERE schema_name='atlas_schema_revisions';" 2>/dev/null || true)"
 EXISTING_BASELINE="$(ls "$ATLAS_MIG_DIR"/*_baseline.sql 2>/dev/null | head -1 || true)"
 if [ -z "$BASELINE_DONE" ] && [ -n "$EXISTING_BASELINE" ]; then

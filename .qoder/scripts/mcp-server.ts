@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server"
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio"
 import { registerAll } from "./mcp-server/index.js"
+import { redact } from "./mcp-server/shared/redact.js"
 
 async function main() {
   const server = new McpServer(
@@ -14,6 +15,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("[ADD-MCP] Fatal error:", error)
+  console.error("[ADD-MCP] Fatal error:", redact(error instanceof Error ? error.message : String(error)))
   process.exit(1)
 })

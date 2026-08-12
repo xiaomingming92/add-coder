@@ -32,3 +32,19 @@ jobs:
       # 单测：路径规范化 / hash 全量基线 / runCommand win32 分支 为纯函数逻辑，
       # windows-latest 上真实执行验证 .cmd 解析语义（issue #10 建议第 5 条）
       - run: pnpm test
+
+      # Codex 原生适配断言（issue #12 验收 13）：双平台验证 --print-mcp-config 输出
+      - name: Codex config generation assertion
+        shell: bash
+        run: |
+          OUT=$(node dist/index.js init --adapter=codex --print-mcp-config --dry-run)
+          echo "$OUT" | grep -q "mcp_servers.add_coder" || { echo "缺少 mcp_servers.add_coder"; exit 1; }
+          echo "$OUT" | grep -q "PROJECT_ROOT" || { echo "缺少 PROJECT_ROOT"; exit 1; }
+          echo "$OUT" | grep -q "{{codexCommand}}" && { echo "占位符未替换"; exit 1; } || true
+
+      - name: Windows .cmd branch assertion
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          OUT=$(node dist/index.js init --adapter=codex --print-mcp-config --dry-run)
+          echo "$OUT" | grep -q "cmd /c npx.cmd" || { echo "缺少 .cmd 分支"; exit 1; }
