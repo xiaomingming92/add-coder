@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.25",
+  "_version": "0.3.26",
   "adapters/claude/hooks/doc-format-guard.sh": "73f36a12",
   "adapters/claude/hooks/lib/common.sh": "4f3e64ad",
   "adapters/claude/hooks/lib/context-inject.sh": "cfc8c65e",
@@ -235,7 +235,7 @@
   "core/templates/TERMINOLOGY.md": "e9f4f781",
   "core/templates/add-route-template-heavyweight.md": "0e107ac0",
   "core/templates/add-route-template.md": "da7022df",
-  "core/templates/add-route-template.schema.json": "867a45c1",
+  "core/templates/add-route-template.schema.json": "3168feb6",
   "core/templates/checklist-template.md": "d6b73a5c",
   "core/templates/checklist-template.schema.json": "fb3a73e8",
   "core/templates/collab-contract-template.md": "bccba0fd",

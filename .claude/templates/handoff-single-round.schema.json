@@ -28,7 +28,7 @@
         },
         {
             "id": "6.steps",
-            "heading": "## 6. 执行步骤摘要",
+            "heading": "## 6. 执行 Task 摘要",
             "required": true
         },
         {

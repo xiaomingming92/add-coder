@@ -85,10 +85,10 @@ export function registerCheckAddRouteStatus(server: ToolRegistrar) {
             prisma.auditLog as Record<string, (...a: unknown[]) => unknown>
           ).findMany({
             where: {
-              OR: [
-                { targetId: { contains: "add-route", mode: "insensitive" } },
+              // 按当前 Plan 精准定位：targetId 同时含 planKeyword 与 add-route（与文件匹配语义一致）
+              AND: [
                 { targetId: { contains: planKeyword, mode: "insensitive" } },
-                { reason: { contains: "add-route", mode: "insensitive" } },
+                { targetId: { contains: "add-route", mode: "insensitive" } },
               ],
             },
             orderBy: { createdAt: "desc" },
@@ -96,6 +96,45 @@ export function registerCheckAddRouteStatus(server: ToolRegistrar) {
           }) as Array<{ targetId?: string; reason?: string; action: string; createdAt: Date }>;
           const pl = planKeyword.toLowerCase();
           for (const l of logs) {
+            const ti = (l.targetId || "").toLowerCase();
+            const r = (l.reason || "").toLowerCase();
+            if (
+              (ti.includes("add-route") && ti.includes(pl)) ||
+              (r.includes("add-route") && r.includes(pl))
+            ) {
+              auditHasRecord = true;
+              auditRecords.push({
+                action: l.action,
+                targetId: l.targetId || "unknown",
+                createdAt: l.createdAt,
+              });
+            }
+          }
+        } catch {
+          /* empty */
+        }
+        // 补查 DevOperation 表（record_dev_operation 写入通道；R10 修复，2026-08-12 用户拍板不另立 Plan，本 Plan 内闭环）
+        try {
+          const devLogs = await (
+            prisma.devOperation as Record<string, (...a: unknown[]) => unknown>
+          ).findMany({
+            where: {
+              // 按当前 Plan 精准定位（AND：planKeyword + add-route），命中集天然为当前 Plan 的 add-route 记录
+              AND: [
+                { targetId: { contains: planKeyword, mode: "insensitive" } },
+                { targetId: { contains: "add-route", mode: "insensitive" } },
+              ],
+            },
+            orderBy: { createdAt: "desc" },
+            take: 100,
+          }) as Array<{
+            targetId?: string;
+            reason?: string;
+            action: string;
+            createdAt: Date;
+          }>;
+          const pl = planKeyword.toLowerCase();
+          for (const l of devLogs) {
             const ti = (l.targetId || "").toLowerCase();
             const r = (l.reason || "").toLowerCase();
             if (

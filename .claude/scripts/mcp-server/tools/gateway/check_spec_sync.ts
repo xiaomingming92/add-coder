@@ -43,10 +43,17 @@ export function registerCheckSpecSync(server: ToolRegistrar) {
           f.endsWith(".md"),
         );
         const kw = args.planKeyword as string;
-        let planMatch = planFiles.find(
-          (f) =>
-            f.toLowerCase().includes(kw.toLowerCase()) && f.includes("-plan-v"),
-        );
+        // 多版本（-plan-vN）共存时取版本号最高者：活跃 Plan 优先，避免评分旧版（2026-08-12 修复，同 check_dps R9）
+        let planMatch: string | undefined = planFiles
+          .filter(
+            (f) =>
+              f.toLowerCase().includes(kw.toLowerCase()) && f.includes("-plan-v"),
+          )
+          .sort((a, b) => {
+            const va = parseInt(a.match(/-plan-v(\d+)/)?.[1] ?? "0", 10);
+            const vb = parseInt(b.match(/-plan-v(\d+)/)?.[1] ?? "0", 10);
+            return vb - va;
+          })[0];
         if (!planMatch)
           planMatch = planFiles.find((f) =>
             f.toLowerCase().includes(kw.toLowerCase()),
@@ -89,8 +96,17 @@ export function registerCheckSpecSync(server: ToolRegistrar) {
           // 交叉比对
           if (appendixFiles.length > 0 && diffFiles.length > 0) {
             const appendixSet = new Set(appendixFiles.map((f: string) => f.toLowerCase()));
+            // 豁免 sync 自动生成产物（mirror 副本 + 备份）——非本 Plan 实施文件（2026-08-12 修复）
+            const isSyncGenerated = (lf: string) =>
+              lf.startsWith(".qoder/") ||
+              lf.startsWith(".claude/") ||
+              lf.startsWith(".vscode/") ||
+              lf.startsWith(".add/") ||
+              lf.startsWith(".backup/");
             const unmatched = diffFiles.filter(
-              (f: string) => !appendixSet.has(f.toLowerCase()),
+              (f: string) =>
+                !isSyncGenerated(f.toLowerCase()) &&
+                !appendixSet.has(f.toLowerCase()),
             );
             if (unmatched.length > 0) {
               lines.push(`⚠️ ${unmatched.length} 个文件在 git diff 中但不在 add-route 附录中:`);

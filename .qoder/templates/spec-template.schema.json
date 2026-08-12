@@ -14,6 +14,7 @@
         {
             "id": "plan_track_note",
             "pattern": "plan_track\\(\\{ planName:",
+            "anchor": "plan_track",
             "required": true
         }
     ],
@@ -21,46 +22,6 @@
         "{功能名称}",
         "{标题}",
         "{条件}"
-    ],
-    "forbidden_terms": [
-        "Phase",
-        "Step",
-        "阶段",
-        "步骤"
-    ]
-}
-{
-    "template": "spec-template.md",
-    "sections": [
-        {
-            "id": "why",
-            "heading": "## Why",
-            "required": true
-        },
-        {
-            "id": "what",
-            "heading": "## What Changes",
-            "required": true
-        },
-        {
-            "id": "impact",
-            "heading": "## Impact",
-            "required": true
-        },
-        {
-            "id": "boundaries",
-            "heading": "## Boundaries",
-            "required": false
-        },
-        {
-            "id": "requirements",
-            "heading": "## Requirements",
-            "required": true
-        }
-    ],
-    "placeholders": [
-        "{功能名称}",
-        "{描述}"
     ],
     "forbidden_terms": [
         "Phase",

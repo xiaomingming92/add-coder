@@ -57,12 +57,18 @@ export function registerCheckDps(server: ToolRegistrar) {
         const apf = (await readdirRecursive(plansDir)).filter(
           (f) => f.endsWith(".md") && !f.includes(".hitl"),
         );
-        const pm = apf.find(
+        // 多版本（-plan-vN）共存时取版本号最高者：活跃 Plan 优先，避免评分旧版（2026-08-12 修复）
+        const matched = apf.filter(
           (f) =>
             f.toLowerCase().includes(pp.toLowerCase()) && f.includes("-plan-v"),
         );
-        if (!pm)
+        if (!matched.length)
           return errorResponse(`未找到匹配的 Plan 文件（关键词: ${pp}）`);
+        const pm = matched.sort((a, b) => {
+          const va = parseInt(a.match(/-plan-v(\d+)/)?.[1] ?? "0", 10);
+          const vb = parseInt(b.match(/-plan-v(\d+)/)?.[1] ?? "0", 10);
+          return vb - va;
+        })[0];
         const planPath = join(plansDir, pm);
         const pc = await readFileSafe(planPath);
         if (!pc) return errorResponse(`无法读取 Plan 文件: ${pm}`);
