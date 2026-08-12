@@ -19,7 +19,6 @@ export const COLLAB_CONTRACT_CONFIG = {
     ROLE_SUB: "SUB",
 };
 // <<< CAIJUE GENERATED END <<<
-// <<< CAIJUE GENERATED END <<<
-// >>> USER CODE >>>
+// <<< CAIJUE GENERATED END <<<// >>> USER CODE >>>
 // <<< CAIJUE GENERATED END <<<
 // <<< USER CODE <<<

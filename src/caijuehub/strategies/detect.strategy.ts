@@ -14,8 +14,7 @@ export const DETECT_RULES = [
   { dir: ".vscode", value: "vscode" },
 ];
 export const DETECT_FALLBACK = "auto";
-// <<< CAIJUE GENERATED END <<<
-// >>> USER CODE >>>
+// <<< CAIJUE GENERATED END <<<// >>> USER CODE >>>
 import { existsSync } from "fs";
 import { join } from "path";
 

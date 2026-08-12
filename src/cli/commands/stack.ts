@@ -8,13 +8,13 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { resolve, join } from "path";
 import { createHash } from "crypto";
+import { magicDirFor, ADD_DIR } from "../../shared/paths.js";
 import { renderCore, saveStack, loadStack, loadProfileRegistry } from "../../core/renderer";
 import { defaults } from "../../config/defaults";
 import { detectIDE } from "../detect";
 import { normalizeRelPath } from "../../lib/path-normalize";
 import type { AddCoderConfig } from "../../config/schema";
 
-const MAGIC_DIR_MAP: Record<string, string> = { claude: ".claude", qoder: ".qoder", vscode: ".vscode", trae: ".trae", codex: ".codex" };
 const HASH_OUTPUT_FILE = ".add-coder-hash.json";
 
 function hash8(c: string) { return createHash("sha256").update(c).digest("hex").slice(0, 8); }
@@ -22,12 +22,11 @@ function hash8(c: string) { return createHash("sha256").update(c).digest("hex").
 /** 解析 magicDir：adapter 名 → 带点目录（与 init.ts 一致） */
 function resolveMagicDir(projectRoot: string, specified?: string): string {
     if (specified) {
-        if (!MAGIC_DIR_MAP[specified]) throw new Error(`未知 adapter: ${specified}`);
-        return MAGIC_DIR_MAP[specified];
+        return magicDirFor(specified);
     }
     const detected = detectIDE(projectRoot);
     const adapter = detected !== "auto" ? detected : "qoder";
-    return MAGIC_DIR_MAP[adapter];
+    return magicDirFor(adapter);
 }
 
 /** 项目侧自定义 profile 清单：{magicDir}/rules/profiles/*.md 中不在注册表内的文件 */
@@ -161,7 +160,7 @@ function applyStack(projectRoot: string, magicDir: string, name: string) {
 
     let written = 0;
     for (const [relPath, content] of stackRelated) {
-        for (const t of [".add", magicDir]) {
+        for (const t of [ADD_DIR, magicDir]) {
             const targetPath = resolve(projectRoot, relPath.replace(/^\.add/, t));
             mkdirSync(join(targetPath, ".."), { recursive: true });
             writeFileSync(targetPath, content, "utf-8");
@@ -175,11 +174,11 @@ function applyStack(projectRoot: string, magicDir: string, name: string) {
     const registry = loadProfileRegistry();
     const isBuiltin = registry.some((p) => p.name === name);
     const profilePathMagic = resolve(projectRoot, magicDir, "rules", "profiles", `${name}-profile.md`);
-    const profilePathAdd = resolve(projectRoot, ".add", "rules", "profiles", `${name}-profile.md`);
+    const profilePathAdd = resolve(projectRoot, ADD_DIR, "rules", "profiles", `${name}-profile.md`);
     const projectRulesPath = resolve(projectRoot, magicDir, "rules", "project_rules.md");
     const projectRulesContent = existsSync(projectRulesPath) ? readFileSync(projectRulesPath, "utf-8") : "";
     if (written === 0) fail(`未渲染任何 stack 相关文件（${name}）——Windows 路径匹配失效遗留问题`);
-    if (isBuiltin && !existsSync(profilePathAdd)) fail(`profile 未写入 .add: ${profilePathAdd}`);
+    if (isBuiltin && !existsSync(profilePathAdd)) fail(`profile 未写入 ${ADD_DIR}: ${profilePathAdd}`);
     if (!existsSync(profilePathMagic)) fail(`profile 未写入 ${magicDir}: ${profilePathMagic}`);
     if (!projectRulesContent.includes("**当前技术栈**") || !projectRulesContent.includes(name)) fail(`project_rules.md 未包含 ${name} 引用`);
 

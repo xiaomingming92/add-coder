@@ -3,12 +3,13 @@
 // 将项目级 .qoder/settings.json 的 hook 配置同步到 Qoder CN 用户级 ~/.qoder-cn/settings.json
 // 用法: tsx scripts/patch-qoder-cn-hook-setting.ts [projectDir]
 
+import { magicDirFor } from "../src/shared/paths.js";
 import { readFileSync, writeFileSync, existsSync } from "fs"
 import { join, resolve } from "path"
 import { homedir } from "os"
 
 const projectDir = resolve(process.argv[2] ?? ".")
-const srcFile = join(projectDir, ".qoder", "settings.json")
+const srcFile = join(projectDir, magicDirFor("qoder"), "settings.json")
 const destFile = join(homedir(), ".qoder-cn", "settings.json")
 
 if (!existsSync(srcFile)) {
@@ -29,7 +30,7 @@ for (const [event, groups] of Object.entries(src.hooks ?? {})) {
     ...g,
     hooks: (g.hooks as Array<Record<string, unknown>>).map(h => ({
       ...h,
-      command: String(h.command).replace("bash .qoder/", `bash ${projectDir}/.qoder/`),
+      command: String(h.command).replace(`bash ${magicDirFor("qoder")}/`, `bash ${projectDir}/${magicDirFor("qoder")}/`),
     })),
   }))
 }

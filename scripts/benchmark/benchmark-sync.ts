@@ -3,15 +3,14 @@
 // 用法: tsx scripts/benchmark/benchmark-sync.ts
 // 10 轮执行时间测量 + 逐轮输出 + 对称静态分析 + 配置变更成本实测
 
+import { projectRoot } from "../../src/shared/paths.js";
 import { execSync } from "node:child_process"
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
-import { fileURLToPath } from "node:url"
 import { performance } from "node:perf_hooks"
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-const PROJECT_DIR = join(__dirname, "..", "..")
+const __dirname = import.meta.dirname
+const PROJECT_DIR = projectRoot() ?? join(__dirname, "..", "..")
 const BENCH_DIR = __dirname
 
 const RUNS = 10

@@ -19,8 +19,7 @@ export const PRISMA_CONFIG = {
         backupRequiredForPush: true,
     },
 };
-// <<< CAIJUE GENERATED END <<<
-// >>> USER CODE >>>
+// <<< CAIJUE GENERATED END <<<// >>> USER CODE >>>
 import { copyFileSync, existsSync, readFileSync, unlinkSync, writeFileSync, mkdirSync } from "fs";
 import { resolve, join, dirname } from "path";
 import { ask, detectPm } from "../../lib/utils";

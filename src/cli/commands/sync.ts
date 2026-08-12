@@ -19,6 +19,7 @@ import type { Adapter, AddCoderConfig } from "../../config/schema";
 import { writeFiles } from "../writer";
 import { loadConfig } from "../config-loader";
 import { detectIDE, resolveAdapters } from "../detect";
+import { magicDirFor, ADD_DIR } from "../../shared/paths.js";
 
 import { selectFiles } from "../../lib/select-files";
 import { ask } from "../../lib/utils";
@@ -34,11 +35,10 @@ import { diffPrisma, parseSchemaBlocks } from "../writer";
 const ADAPTER_RENDERERS: Record<string, (config: AddCoderConfig, targetDir: string, dryRun: boolean, magicDir: string) => Map<string, string>> = {
     claude: renderClaude, qoder: renderQoder, vscode: renderVSCode, trae: renderTrae, codex: renderCodex,
 };
-const MAGIC_DIR_MAP: Record<string, string> = { claude: ".claude", qoder: ".qoder", vscode: ".vscode", trae: ".trae", codex: ".codex" };
 
 function resolveAdapter(projectRoot: string, specified?: string): Adapter {
     if (specified) {
-        if (!MAGIC_DIR_MAP[specified]) throw new Error(`未知 adapter: ${specified}`);
+        if (!magicDirFor(specified)) throw new Error(`未知 adapter: ${specified}`);
         console.log(`目标 IDE: ${specified} (--adapter)`);
         return specified as Adapter;
     }
@@ -140,7 +140,7 @@ async function maybeModelDownload(options: { model?: boolean }) {
 export async function syncCommand(options: { adapter?: string; interactive?: boolean; patch?: boolean; model?: boolean } = {}) {
     const projectRoot = process.cwd();
     const target = resolveAdapter(projectRoot, options.adapter);
-    const magicDir = MAGIC_DIR_MAP[target];
+    const magicDir = magicDirFor(target);
 
     const config: AddCoderConfig = await loadConfig(projectRoot);
     config.projectRoot = projectRoot;
@@ -148,7 +148,7 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
 
     // 渲染 core 文件 → .add/ + magicDir/
     const coreFiles = renderCore(config, false);
-    const CORE_TARGETS = [".add", magicDir];
+    const CORE_TARGETS = [ADD_DIR, magicDir];
     const allFiles = new Map<string, string>();
     for (const [relPath, content] of coreFiles) {
         for (const t of CORE_TARGETS) {
@@ -170,7 +170,7 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
 
     // vscode / trae / codex 同步产出完整 .claude/
     if (resolved.includes("vscode") || resolved.includes("trae") || resolved.includes("codex")) {
-        const claudeFiles = renderClaude(config, projectRoot, false, ".claude");
+        const claudeFiles = renderClaude(config, projectRoot, false, magicDirFor("claude"));
         for (const [p, c] of claudeFiles) allFiles.set(p, c);
         console.log(`claude adapter (via Agent Host): ${claudeFiles.size} 文件`);
     }

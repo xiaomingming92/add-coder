@@ -18,6 +18,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from "fs";
 import { join, resolve } from "path";
 import { runCommand, commandExists } from "./run-command";
+import { ADD_DIR } from "../shared/paths.js";
 import { ask } from "./utils";
 
 export interface BackupOptions {
@@ -47,9 +48,9 @@ export function ensureGitignoreRule(projectRoot: string): void {
     const gitignorePath = resolve(projectRoot, ".gitignore");
     if (!existsSync(gitignorePath)) return;
     const content = readFileSync(gitignorePath, "utf-8");
-    if (content.includes(".add/backups/")) return;
-    writeFileSync(gitignorePath, `${content}${content.endsWith("\n") ? "" : "\n"}\n# add-coder 数据库同步备份\n.add/backups/\n`, "utf-8");
-    console.log("📋 已注入宿主 .gitignore: .add/backups/");
+    if (content.includes(`${ADD_DIR}/backups/`)) return;
+    writeFileSync(gitignorePath, `${content}${content.endsWith("\n") ? "" : "\n"}\n# add-coder 数据库同步备份\n${ADD_DIR}/backups/\n`, "utf-8");
+    console.log(`📋 已注入宿主 .gitignore: ${ADD_DIR}/backups/`);
 }
 
 /**

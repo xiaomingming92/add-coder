@@ -3,6 +3,7 @@
 // 根据源→目标映射关系，自动同步 hooks 和 templates 到各 magic 目录
 // 使用: tsx scripts/sync-magic.ts 或 npm run sync
 
+import { projectRoot } from "../src/shared/paths.js";
 import {
   existsSync,
   mkdirSync,
@@ -22,7 +23,7 @@ import { SYNC_MAGIC_CONFIG } from "../src/caijuehub/strategies/sync-magic.strate
 // ── 常量和配置（由 caijuehub 驱动）──
 
 const SCRIPT_DIR = dirname(new URL(import.meta.url).pathname)
-const PROJECT_DIR = resolve(SCRIPT_DIR, "..")
+const PROJECT_DIR = projectRoot() ?? resolve(SCRIPT_DIR, "..")
 
 const { PROJECT_NAME, MAGIC_DIRS, EXCLUDE_PATTERNS, LOG_EXTENSIONS, HOOKS, CATEGORIES, VERIFY } = SYNC_MAGIC_CONFIG
 

@@ -17,6 +17,8 @@ type = "strategy"
 description = "IDE 环境检测优先级链：env 变量 → 目录检测 → 兜底"
 rules = "detect-rules.toml"
 implementation = "src/caijuehub/strategies/detect.strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "resolve-adapters"
@@ -24,6 +26,8 @@ type = "strategy"
 description = "根据 target 决定启用的适配器列表"
 rules = "adapter-rules.toml"
 implementation = "src/caijuehub/strategies/adapter.strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "prisma-inject"
@@ -31,6 +35,8 @@ type = "strategy"
 description = "Prisma 模型注入行为决策"
 rules = "prisma-rules.toml"
 implementation = "src/caijuehub/strategies/prisma.strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "write-files"
@@ -38,6 +44,8 @@ type = "strategy"
 description = "文件写入模式决策"
 rules = "writer-rules.toml"
 implementation = "src/caijuehub/strategies/writer.strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "sync-patch"
@@ -45,6 +53,8 @@ type = "strategy"
 description = "sync 命令行为：补缺 / --patch 覆盖更新，双 hash 校验 + PATCH_GUARD 保护"
 rules = "sync-rules.toml"
 implementation = "src/caijuehub/strategies/sync.strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "hitl-interaction"
@@ -52,6 +62,8 @@ type = "strategy"
 description = "HITL 人机交互策略：每个 IDE 独立声明审批交互模式（genui / inputRequired）"
 rules = "hitl-interaction-rules.toml"
 implementation = "templates/core/scripts/mcp-server/shared/hitl-interaction.strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "dps-scoring"
@@ -59,6 +71,87 @@ type = "strategy"
 description = "DPS 评分全参数：四维权重 + 阈值 + FFT，调优只改此 TOML"
 rules = "dps-scoring-rules.toml"
 implementation = "templates/core/scripts/mcp-server/shared/dps-scoring.strategy.ts"
+line_type = "ts-const"
+approval = "auto"
+export_name = "DPS_SCORING_CONFIG"
+fields = [
+  ["SEMANTIC_WEIGHTS", "semantic", "weights", "arr"],
+  ["SEMANTIC_MISSING_REVIEW_PENALTY", "semantic", "missing_review_penalty", "num"],
+  ["ENTROPY_GAP_MULT", "entropy", "gap_multiplier", "num"],
+  ["DENG_PER_MARKER", "entropy", "deng_per_marker", "num"],
+  ["DENG_MAX_PENALTY", "entropy", "deng_max_penalty", "num"],
+  ["MISSING_SPECS_GAP", "entropy", "missing_specs_gap", "num"],
+  ["CPM_SUB_WEIGHTS", "cpm", "sub_weights", "arr"],
+  ["CPM_OVERLAP_MULT", "cpm", "overlap_multiplier", "num"],
+  ["CPM_MAX_TASK_PAIRS", "cpm", "max_task_pairs", "num"],
+  ["CPM_FILE_LOW", "cpm", "file_per_task_low", "num"],
+  ["CPM_FILE_MID", "cpm", "file_per_task_mid", "num"],
+  ["CPM_ENTROPY_LOW", "cpm", "entropy_low", "num"],
+  ["CPM_ENTROPY_MID", "cpm", "entropy_mid", "num"],
+  ["CPM_ATTENTION_WEIGHTS", "cpm", "attention_weights", "arr"],
+  ["CPM_DEP_WEIGHTS", "cpm", "dep_weights", "arr"],
+  ["STRUCT_PLACEHOLDER", "structure", "placeholder_penalty", "num"],
+  ["STRUCT_MISSING_SPECS", "structure", "missing_specs_penalty", "num"],
+  ["STRUCT_MISSING_TASKS", "structure", "missing_tasks_penalty", "num"],
+  ["STRUCT_MISSING_CHECKLIST", "structure", "missing_checklist_penalty", "num"],
+  ["STRUCT_SUB_WEIGHTS", "structure", "sub_weights", "arr"],
+  ["FFT_COLD_START", "fft", "cold_start_threshold", "num"],
+  ["FFT_HISTORY_LIMIT", "fft", "history_limit", "num"],
+  ["FFT_DEFAULT_WEIGHTS", "fft", "default_weights", "arr"],
+  ["THRESHOLD_PASS", "thresholds", "pass", "num"],
+  ["THRESHOLD_WARN", "thresholds", "warn", "num"],
+  ["EMBEDDING_MODEL", "embedding", "model", "str"],
+]
+
+# ──── guard 规则（hook schema 声明真源 → 生成产物，v3 锚定的 3 个模板）────
+
+[[caijue]]
+id = "guard-add-route"
+type = "strategy"
+description = "hook 规则：add-route 模板 schema 声明（guard-rules.toml 真源生成）"
+rules = "guard-rules.toml"
+implementation = "templates/core/templates/add-route-template.schema.json"
+line_type = "json"
+approval = "auto"
+
+[[caijue]]
+id = "guard-spec"
+type = "strategy"
+description = "hook 规则：spec 模板 schema 声明（guard-rules.toml 真源生成）"
+rules = "guard-rules.toml"
+implementation = "templates/core/templates/spec-template.schema.json"
+line_type = "json"
+approval = "auto"
+
+[[caijue]]
+id = "guard-tasks"
+type = "strategy"
+description = "hook 规则：tasks 模板 schema 声明（guard-rules.toml 真源生成）"
+rules = "guard-rules.toml"
+implementation = "templates/core/templates/tasks-template.schema.json"
+line_type = "json"
+approval = "auto"
+
+[[caijue]]
+id = "quant-recheck"
+type = "strategy"
+description = "量化复检层全参数：锚点权重/IDF 语料/EWMA 阈值，调优只改此 TOML"
+rules = "quant-recheck-rules.toml"
+implementation = "templates/core/scripts/mcp-server/shared/quant-recheck.strategy.ts"
+line_type = "ts-const"
+approval = "auto"
+export_name = "QUANT_RECHECK_CONFIG"
+fields = [
+  ["ANCHOR_WEIGHT", "quant_recheck", "anchor_weight", "num"],
+  ["IDF_MIN_DOCS", "quant_recheck", "idf_min_docs", "num"],
+  ["RRF_K", "quant_recheck", "rrf_k", "num"],
+  ["MIN_ABS_SIMILARITY", "quant_recheck", "min_abs_similarity", "num"],
+  ["RRF_MIN_CANDIDATES", "quant_recheck", "rrf_min_candidates", "num"],
+  ["EWMA_LAMBDA", "quant_recheck", "ewma_lambda", "num"],
+  ["EWMA_K", "quant_recheck", "ewma_k", "num"],
+  ["EWMA_COLD_START", "quant_recheck", "ewma_cold_start", "num"],
+  ["EWMA_BASELINE", "quant_recheck", "ewma_baseline", "num"],
+]
 
 # ──── Runtime 环境策略 ────────────────────────────────────────
 
@@ -68,6 +161,8 @@ type = "strategy"
 description = "MCP Server 运行时 PROJECT_ROOT 三层推导链：env 变量 → __dirname 推算 → process.cwd 向上查找"
 rules = "project-root-rules.toml"
 implementation = "templates/core/scripts/mcp-server/shared/project-root-strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "sync-prisma-schema"
@@ -75,6 +170,8 @@ type = "strategy"
 description = "Prisma schema 增量同步：diff add-coder 基准 vs 消费方 schema，interactive 确认后只插不删"
 rules = "sync-rules.toml"
 implementation = "src/caijuehub/strategies/prisma-sync.strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "sync-magic"
@@ -82,6 +179,8 @@ type = "strategy"
 description = "magic 目录批量同步：hooks/templates/skills/rules 等从模板到 4 个 IDE 目录的映射与烘焙"
 rules = "sync-magic-rules.toml"
 implementation = "src/caijuehub/strategies/sync-magic.strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "sync-magic-bash"
@@ -89,6 +188,8 @@ type = "strategy"
 description = "magic 目录批量同步（bash 版）：独立 TOML 结构，产 shell config 供 sync-magic.sh source"
 rules = "benchmark/sync-magic-benchmark-bash-rules.toml"
 implementation = "scripts/sync-magic-config.sh"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "collab-contract"
@@ -96,6 +197,8 @@ type = "strategy"
 description = "并发协作契约解析：参与者/阶段/文件边界从契约文档提取规则（contract_track 消费）"
 rules = "collab-contract-rules.toml"
 implementation = "src/caijuehub/strategies/collab-contract.strategy.ts"
+line_type = "custom"
+approval = "auto"
 
 [[caijue]]
 id = "ports-contract"
@@ -103,3 +206,5 @@ type = "strategy"
 description = "端口契约统一分配器：建议起点/扫描上限/复用策略/跨项目避让/冲突处理——调优只改此 TOML（改规则不改代码）"
 rules = "ports-rules.toml"
 implementation = "src/caijuehub/strategies/ports.strategy.ts"
+line_type = "custom"
+approval = "auto"

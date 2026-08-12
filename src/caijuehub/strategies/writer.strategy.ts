@@ -7,8 +7,7 @@ export const WRITER_CONFIG = {
     jsonMerge: "deep",
     shellChmod: true,
 };
-// <<< CAIJUE GENERATED END <<<
-// >>> USER CODE >>>
+// <<< CAIJUE GENERATED END <<<// >>> USER CODE >>>
 import { existsSync, mkdirSync, writeFileSync, chmodSync } from "fs";
 import { join, dirname } from "path";
 import { selectFiles } from "../../lib/select-files";

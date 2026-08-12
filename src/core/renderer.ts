@@ -1,11 +1,10 @@
+import { ADD_DIR } from "../shared/paths.js";
 import { readFileSync, readdirSync, statSync, existsSync, mkdirSync, writeFileSync } from "fs";
 import { join, relative, dirname } from "path";
-import { fileURLToPath } from "url";
 import { parse } from "smol-toml";
 import type { AddCoderConfig } from "../config/schema";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = import.meta.dirname;
 
 const PLACEHOLDERS: Record<string, keyof AddCoderConfig> = {
     "{{projectName}}": "projectName",
@@ -95,7 +94,7 @@ export function render(content: string, config: AddCoderConfig): string {
 
 const TEMPLATES_ROOT = join(__dirname, "../templates");
 const CORE_DIR = join(TEMPLATES_ROOT, "core");
-const CORE_TARGET = ".add";
+const CORE_TARGET = ADD_DIR;
 const SKIP_DIRS = new Set(["prisma", "profiles"]); // Prisma schema 不进 IDE magic path; profiles 按 stack 按需注入
 
 interface ProfileEntry {
@@ -173,7 +172,7 @@ export function renderCore(
             const src = join(CORE_DIR, "rules", "profiles", profile.file);
             if (existsSync(src)) {
                 const rendered = render(readFileSync(src, "utf-8"), config);
-                files.set(join(".add", "rules", "profiles", profile.file), rendered);
+                files.set(join(ADD_DIR, "rules", "profiles", profile.file), rendered);
             }
         }
         // 注册表未命中：视为自定义 profile（项目侧已有文件），模板不输出
