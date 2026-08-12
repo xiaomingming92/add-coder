@@ -4,8 +4,7 @@
 // >>> CAIJUE GENERATED START >>>
 export const PROJECT_ROOT_PRIORITY = ["env_var", "dirname_fallback", "cwd_fallback"] as const;
 export type ProjectRootTier = (typeof PROJECT_ROOT_PRIORITY)[number];
-// <<< CAIJUE GENERATED END <<<
-// >>> USER CODE >>>
+// <<< CAIJUE GENERATED END <<<// >>> USER CODE >>>
 import { resolve, dirname } from "path"
 import { existsSync } from "fs"
 

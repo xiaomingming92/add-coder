@@ -14,12 +14,12 @@ if [ ! -f "$CONFIG_FILE" ]; then
     echo "🔧 sync-magic-config.sh 不存在，自动生成..."
     bash "$PROJECT_DIR/src/caijuehub/benchmark/transcribe.sh" "$PROJECT_DIR/src/caijuehub/benchmark/sync-magic-benchmark-bash-rules.toml" "$CONFIG_FILE" 2>/dev/null || {
         echo "⚠️  transcribe.sh 不可用，尝试 transcribe.ts..."
-        npx tsx "$PROJECT_DIR/src/caijuehub/transcribe.ts" 2>/dev/null || true
+        npx tsx "$PROJECT_DIR/src/caijuehub/transcribe/index.ts" 2>/dev/null || true
     }
 fi
 source "$CONFIG_FILE" 2>/dev/null || {
     echo "❌ 无法加载配置: $CONFIG_FILE" >&2
-    echo "   请运行: npx tsx src/caijuehub/transcribe.ts" >&2
+    echo "   请运行: npx tsx src/caijuehub/transcribe/index.ts" >&2
     exit 1
 }
 
