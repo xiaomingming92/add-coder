@@ -47,7 +47,7 @@ add-coder 有两个名字相同但用途完全不同的 `sync`：
 |---|---|---|
 | **谁用** | add-coder 开发者 | 终端用户 |
 | **做什么** | 将 `templates/` 源同步到运行时 magic 目录 | ① 给用户项目补全缺失的模板文件 ② **Atlas 能力承诺**（检测/自动安装/降级文档）③ **宿主 db-ensure.sh 段检测**（缺 Atlas 段 → 提示三步合入）④ Prisma schema 差异检测（patch 状态机，尊重本地适配） |
-| **入口** | `bash scripts/sync-magic-dirs.sh` | `npx add-coder sync` |
+| **入口** | `tsx scripts/sync-magic.ts`（`SYNC_MAGIC_CONFIG` 驱动，真源 `src/caijuehub/sync-magic-rules.toml`） | `npx add-coder sync` |
 | **方向** | 源 → 目标（覆盖） | core → 用户项目（只补缺） |
 | **触发** | 修改 templates/ 后手动执行 | 用户发现文件缺失时 |
 
@@ -60,25 +60,25 @@ add-coder 有两个名字相同但用途完全不同的 `sync`：
 ```
 add-coder/
 ├── templates/                     ← ★ 唯一真源（所有产出的根）
-│   ├── core/                      ← 跨 IDE 共享核心（77 个文件）
-│   │   ├── hooks/                 ←   通用 hooks 脚本（15 文件 + lib/）
-│   │   │   └── lib/               ←     hooks 共享库（7 文件）
-│   │   ├── templates/             ←   文档模板（37 文件含 schema）
+│   ├── core/                      ← 跨 IDE 共享核心（162 个文件）
+│   │   ├── hooks/                 ←   通用 hooks 脚本（14 个 .sh + lib/）
+│   │   │   └── lib/               ←     hooks 共享库（8 文件）
+│   │   ├── templates/             ←   文档模板（44 文件含 schema）
 │   │   ├── agents/                ←   子代理模板
 │   │   ├── skills/                ←   SKILL 定义
-│   │   ├── scripts/               ←   db-ensure.sh 等基础设施脚本
-│   │   ├── plans/specs/reports/   ←   Plan/Spec/Report 模板
+│   │   ├── scripts/               ←   db-ensure.sh 等基础设施脚本（69 文件）
+│   │   ├── plans/specs/reports/reviews/ ← 治理产物模板
 │   │   ├── docs/                  ←   知识库模板（01-架构 等）
 │   │   ├── rules/                 ←   治理规则模板
 │   │   ├── vocabulary/            ←   触发词语汇表
 │   │   ├── tools/                 ←   MCP 工具定义
 │   │   └── prisma/                ←   Prisma schema 片段
 │   └── adapters/                  ← 各 IDE 专属适配层
-│       ├── claude/hooks/          ←   Claude Code hooks（17 文件，无 lib/）
-│       ├── qoder/hooks/           ←   Qoder hooks（15 文件 + lib/）
-│       ├── vscode/hooks/          ←   VS Code hooks（11 文件，无 lib/）
-│       ├── trae/hooks/            ←   Trae hooks（从 core 派生，15 文件 + lib/）
-│       └── codex/hooks/           ←   Codex 原生 hooks（含 lib/ 的完整独立真源）
+│       ├── claude/hooks/          ←   Claude Code hooks（16 文件 + lib/，含 permission-denied/stop-failure 特有）
+│       ├── qoder/hooks/           ←   Qoder hooks（14 文件 + lib/）
+│       ├── vscode/hooks/          ←   VS Code hooks（14 文件 + lib/，含 doc-format-guard）
+│       ├── trae/hooks/            ←   Trae hooks（从 core 派生，14 文件 + lib/）
+│       └── codex/hooks/           ←   Codex 原生 hooks（14 文件 + lib/ 的完整独立真源）
 │
 ├── .add/                          ← 运行时：ADD 标准落地目录（从 core 同步）
 │   ├── hooks/                     ←   从 core/hooks/ 同步（含 lib/）
@@ -98,19 +98,25 @@ add-coder/
 │   └── settings.json              ←   IDE 配置，不同步
 │
 ├── .vscode/                       ← 运行时：VS Code 适配（从 adapters/vscode 同步）
-│   ├── hooks/                     ←   从 adapters/vscode/hooks/ 同步
+│   ├── hooks/                     ←   从 adapters/vscode/hooks/ 同步（含 lib/）
 │   └── templates/                 ←   从 core/templates/ 同步
 │
+├── .codex/                        ← 运行时：Codex 适配（完整独立真源，从 adapters/codex 同步，git 跟踪）
+│   ├── hooks/                     ←   从 adapters/codex/hooks/ 同步（含 lib/）
+│   ├── templates/                 ←   从 core/templates/ 同步
+│   └── config.toml                ←   Codex MCP 配置，不同步
+│
 ├── scripts/
-│   └── sync-magic-dirs.sh         ← ★ 自举同步脚本
+│   └── sync-magic.ts              ← ★ 自举同步脚本（SYNC_MAGIC_CONFIG 驱动）
 │
 ├── src/                           ← TypeScript 源码
 │   ├── cli/commands/              ←   init / sync / status CLI 命令
 │   ├── core/renderer.ts           ←   核心模板渲染引擎
 │   ├── adapters/                  ←   各 IDE 适配器渲染器
-│   └── caijuehub/                 ←   裁决引擎
+│   ├── shared/paths.ts            ←   路径解析统一层（find-up 锚点）
+│   └── caijuehub/                 ←   裁决引擎（TOML 真源 + transcribe 工厂）
 │
-└── package.json                   ← "sync": "bash scripts/sync-magic-dirs.sh"
+└── package.json                   ← "sync": "tsx scripts/sync-magic.ts"
 ```
 
 ---
@@ -163,47 +169,52 @@ add-coder 遵循 **单一真源（Single Source of Truth）** 原则：
 
 ## 四、sync 映射关系
 
-`npm run sync` 执行 7 对源→目标同步：
+`npm run sync` 执行两类同步：**5 对 hooks 定向同步 + 8 个通用类别批量同步**（由 caijuehub `sync-magic-rules.toml` 的 `[[hooks]]` / `[[categories]]` 声明驱动）：
 
 ```
 源（唯一真源）                          目标（运行时副本）
 ══════════════════════════════════    ══════════════════════════════════
 
+hooks 定向同步（5 对）
+
 ① templates/adapters/claude/hooks/ → .claude/hooks/
-    含 adapter 特有文件:
+    16 文件 + lib/，含 adapter 特有文件:
       permission-denied.sh           ← Claude 独有权限拒绝钩子
       stop-failure.sh                ← Claude 独有停止失败钩子
 
 ② templates/adapters/qoder/hooks/  → .qoder/hooks/
-    含 lib/ 目录（state-detect / vocabulary / context-inject 等）
+    14 文件 + lib/（state-detect / vocabulary / context-inject 等 8 个工具函数）
 
 ③ templates/adapters/vscode/hooks/ → .vscode/hooks/
-    11 个文件，无 lib/、无 doc-format-guard
+    14 文件 + lib/，与 core 同构（含 doc-format-guard）
 
 ④ templates/core/hooks/            → .add/hooks/
     .add 无自有 hooks，完全从 core 派生
 
-⑤ templates/core/templates/        → .add/templates/
-                                    → .claude/templates/
-                                    → .qoder/templates/
-                                    → .vscode/templates/
-    36 个模板文件 + schema，4 个 magic 目录完全一致
+⑤ templates/core/hooks/            → templates/adapters/trae/hooks/
+    trae 无自有 hooks，从 core 派生（14 文件 + lib/）
 
-⑥ templates/adapters/codex/hooks/ → .codex/hooks/
-    Codex hooks（含 lib/）是完整 adapter 真源；core 不覆盖任何 Codex hook 文件
+通用类别批量同步（8 类 × 4 个 magic 目录）
 
-⑦ templates/core/hooks/            → templates/adapters/trae/hooks/
-    trae 无自有 hooks，从 core 派生
+⑥ templates/core/{templates,skills,rules,agents,scripts,docs,vocabulary,tools}/
+    → .add/ + .claude/ + .qoder/ + .vscode/ 同名目录
+    templates 44 文件含 schema，4 个 magic 目录完全一致
+
+不进映射
+
+    templates/adapters/codex/hooks/ → .codex/hooks/
+    Codex hooks（14 文件 + lib/）是完整 adapter 真源；不入 sync 映射，
+    core 不覆盖任何 Codex hook 文件（codex 生成态已 git 入库）
 ```
 
 ### 同步策略
 
 | 特性 | 实现 |
 |------|------|
-| **同步方式** | `rsync -av --delete` → **烘焙（bake）**：将模板中的动态变量替换为确定性硬编码值 |
+| **同步方式** | node fs 复制（cpSync 整目录 + 删除重建，替代旧 rsync）→ **烘焙（bake）**：将模板中的动态变量替换为确定性硬编码值 |
 | **烘焙内容** | 将 `MAGIC_DIR="$(basename ...)"` 动态检测替换为目标目录的确定值；Markdown 的 `{{magicDir}}` 同样按各自目标目录烘焙 |
 | **备份机制** | 同步前自动备份到 `.backup/YYYYMMDD_HHMMSS/` |
-| **排除项** | `.gitkeep`、`.DS_Store`、`debug-dump/`、`*.log` |
+| **排除项** | `.gitkeep`、`.DS_Store`、`debug-dump/`、`*.log`（`sync-magic-rules.toml` `[exclude]`） |
 | **安全保护** | adapter 特有文件（如 claude 的 permission-denied.sh）不会丢失，因为它们存在于源中 |
 
 ---
@@ -251,16 +262,15 @@ add-coder 遵循 **单一真源（Single Source of Truth）** 原则：
         └─→ templates/adapters/trae/hooks/lib/   ✅
 ```
 
-但 claude / qoder / vscode 这三个 adapter 的 hooks 不在 sync 映射中——
-它们各有自己的独立真源（`templates/adapters/{name}/hooks/`），不受 core 变更影响：
+claude / qoder / vscode 这三个 adapter 的 hooks 各有自己的独立真源（`templates/adapters/{name}/hooks/`），core 变更不会自动覆盖它们（需手动回流），但**自身源 → 各自 magicDir 的同步在映射内**（§四 ① ② ③）：
 
-| adapter | 是否有 lib/ | sync 覆盖 | 如需要新 lib 文件 |
+| adapter | 是否有 lib/（8 文件） | sync 覆盖 | 如需要新 lib 文件 |
 |---------|:----------:|:--------:|------------------|
-| .add / codex / trae | ✅（来自 core） | ✅ 自动 | 无需操作 |
-| qoder | ✅（独立维护） | ❌ | 手动复制到 `templates/adapters/qoder/hooks/lib/` |
-| claude / vscode | ❌ 无 lib | ❌ | 先确认是否需要（当前不需要） |
+| .add / trae | ✅（来自 core） | ✅ 自动 | 无需操作 |
+| claude / qoder / vscode | ✅（自持，与 core 同构） | ✅（独立真源 → 各自 magicDir） | renderer 合并：core 先渲染 → adapter 后置覆盖；lib 完全自持（`includeCoreHooksLib=false`） |
+| codex | ✅（完整独立真源） | — | 不入 sync 映射，core 不覆盖 |
 
-> **一句话**：core 的 lib 只自动同步到 .add / codex / trae。qoder 虽有 lib 但独立维护。claude/vscode 压根没 lib。
+> **一句话**：core 的 lib 自动同步到 .add / trae；claude/qoder/vscode 各持完整 lib（8 工具函数，与 core 同构）；codex 独立真源自持 lib。
 
 ### 5.4 回流 adapter 增强到 core
 
@@ -277,7 +287,7 @@ qoder 的 pre-tool-use.sh 新增了 §A Bash 裸写保护
         ├─→ codex/hooks/pre-tool-use.sh          ✅
         └─→ trae/hooks/pre-tool-use.sh           ✅
         
-⚠️  claude/vscode 的 hooks/ 不受影响 — 它们需要手动合并
+⚠️  claude/qoder/vscode 的 hooks/ 是独立真源 — 它们需要手动合并
 ```
 
 ---
@@ -308,7 +318,7 @@ qoder 的 pre-tool-use.sh 新增了 §A Bash 裸写保护
         │
         ▼
   ④ 步骤 B：模板渲染 + 写入
-     ├─ renderCore() → 77 个 core 文件
+     ├─ renderCore() → 162 个 core 文件
      │   └─ 写入 .add/ + target magic dir（如 .qoder/）
      ├─ renderAdapter() → IDE 专属 hooks/mcp/settings
      │   └─ 如 qoder: .qoder/hooks/*.sh + mcp.json + settings.json
@@ -353,20 +363,42 @@ templates/adapters/qoder/ →          .qoder/mcp.json
 
 ## 七、多 adapter hooks 差异化
 
-不同 IDE 的 hooks 能力不同，因此 hooks 集也不同：
+不同 IDE 的 hooks 能力不同，因此 hooks 集也不同（14 个通用 hook + claude 2 个特有）：
 
 | Hook 文件 | core | claude | qoder | vscode | codex | trae |
 |-----------|:----:|:------:|:-----:|:------:|:-----:|:----:|
-| `doc-format-guard.sh` | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `doc-format-guard.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `pre-tool-use.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `prompt-submit.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `permission-gate.sh` | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `permission-gate.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `notification.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `post-tool-use.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `post-tool-failure.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `session-start.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `session-end.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `stop-check.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `subagent-guard.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `subagent-stop.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `pre-compact.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `review-checklist.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `permission-denied.sh` | — | ✅ | — | — | — | — |
 | `stop-failure.sh` | — | ✅ | — | — | — | — |
-| `review-checklist.sh` | ✅ 343B | ✅ 343B | ✅ 7147B | — | ✅ 343B | ✅ 343B |
-| `lib/` 目录 | ✅ 7 文件 | — | ✅ 7 文件 | — | ✅ 7 文件 | ✅ 7 文件 |
+| `lib/` 目录 | ✅ 8 文件 | ✅ 8 文件 | ✅ 8 文件 | ✅ 8 文件 | ✅ 8 文件 | ✅ 8 文件 |
 
-> **规则**：claude/qoder/vscode 的 hooks 独立维护在 `templates/adapters/{name}/hooks/`。codex/trae 没有独立 hooks，运行时从 core 派生。
+> **规则**：core 是跨 IDE 通用真源；claude/qoder/vscode 独立维护在 `templates/adapters/{name}/hooks/`（与 core 同构，含完整 lib/）；codex 是完整独立真源（不入 sync 映射）；trae 运行时从 core 派生。
+
+### 7.1 Hook 协议层契约（v0.3.27 起）
+
+2026-08-13 起，`templates/core/hooks/` 统一为**协议层四接口**，4 adapter（claude/trae/qoder/vscode）契约对齐，codex 同语义：
+
+| 接口 | 契约 | 落点 |
+|------|------|------|
+| **DB lifecycle 裁决** | `detect_active_add` 消费 `plan-status-bridge`（DB 为真相源）；DB 不可用返回 `__STATUS_UNAVAILABLE__` → **fail-closed**（stop-check Q0 阻断），禁止吞成无 Plan | `common.sh` / `stop-check.sh` |
+| **本地 scope** | 仅当前 magicDir（入口注入/物理位置推导），无 adapter 名称默认值；删除跨端扫描与 `.add` fallback | `state-detect.sh` / `vocabulary.sh` |
+| **sed 精确判定** | pre-tool-use 独立 option 判定（不再 `\bsed\b` 宽泛误判 session-init）；HITL 门禁限域当前 magicDir | `pre-tool-use.sh` |
+| **模板自包含** | preload-templates 本地物化（`${SCRIPT_DIR}/../../templates`，禁止源仓路径）+ 缺失 fail-fast（exit 1 + 明确错误） | `preload-templates.sh` |
+
+配套渲染契约：`renderAdapterBase` 顺序 **core baseline 先渲染 → adapter 私有文件后置覆盖**；4 adapter 显式 `includeCoreHooksLib=false`（lib 完全自持）。
 
 ---
 
@@ -384,11 +416,11 @@ build 时（prepare）              用户 init 时                sync --patch 
 gen-src-hash.ts                  init.ts                   sync.ts
   │                               │                          │
   │ 扫描 templates/               │ renderCore+Adapter        │ 读 npm 源 hash
-  │ 253 文件 SHA256(8位)           │ → 写文件                  │ 读用户产出 hash
+  │ 300 文件 SHA256(8位)           │ → 写文件                  │ 读用户产出 hash
   ▼                               ▼                          ▼
 templates/                       .qoder/                    对比：
 .add-coder-src-hash.json         .add-coder-hash.json       ┌──────────────┐
-  ├─ _version: "0.2.10"           ├─ hooks/doc-format: "a3f" │ same → 跳过  │
+  ├─ _version: "0.3.26"           ├─ hooks/doc-format: "a3f" │ same → 跳过  │
   ├─ core/hooks/...: "c8e"        ├─ hooks/pre-tool: "7b1"  │ missing→写入 │
   └─ adapters/qoder/...: "fe3"    └─ ...                     │ conflict→交互│
         │                         └──────────────────────────┘
@@ -642,7 +674,8 @@ npm run sync
 # 3. 手动合并到各 adapter（它们的 hooks 是独立维护的）
 vim templates/adapters/claude/hooks/doc-format-guard.sh
 vim templates/adapters/qoder/hooks/doc-format-guard.sh
-# vscode 无此 hook，跳过
+vim templates/adapters/vscode/hooks/doc-format-guard.sh
+# vscode 从 0.3.27 起与 core 同构（含 doc-format-guard + lib/）
 
 # 4. 再次同步
 npm run sync
@@ -755,6 +788,8 @@ npm run sync   # 确保 magic dirs 和 templates/ 对齐
 ```
 
 > **magic dirs 在 git 中，不在 .gitignore 中。这是有意为之——保证 clone 即用。**
+>
+> 当前跟踪规模（2026-08-13）：`.add` 163 / `.claude` 169 / `.qoder` 373 / `.vscode` 172 / `.codex` 153 文件。`.codex` 为 0.3.27 起纳入（codex 生成态首次入库，含 hooks/templates/scripts/skills/tools/config.toml）；plans/specs/reviews 等治理产物仍由 gitignore 排除，不入库。
 
 #### 边界 B：修改 templates/ 后到 sync 前
 
