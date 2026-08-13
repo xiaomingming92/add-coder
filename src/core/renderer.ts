@@ -211,6 +211,10 @@ export function renderCoreForTargets(
 }
 
 // 统一适配器渲染：所有 IDE adapter 共用此函数
+// 合并语义（Review P0 #2 渲染架构 / 协议层契约）:
+//   core hooks/lib 是默认实现（baseline），adapter 私有文件是能力层自主实现。
+//   合并顺序固定为: core baseline 先渲染 → adapter 私有文件后置显式覆盖（Map.set 后写覆盖先写）。
+//   includeCoreHooksLib 为显式参数：false = adapter lib 完全自持（不消费 core 默认实现）。
 export function renderAdapterBase(
     config: AddCoderConfig,
     magicPath: string,          // e.g. ".claude" ".qoder" ".vscode"
@@ -243,10 +247,12 @@ export function renderAdapterBase(
         }
     }
 
-    walk(adapterDir, "");
+    // ① core baseline 先渲染（默认实现）
     if (includeCoreHooksLib) {
         walk(coreHooksLib, "", join(magicPath, "hooks", "lib"));
     }
+    // ② adapter 私有文件后置渲染 → 显式覆盖 core 默认实现（能力层自持）
+    walk(adapterDir, "");
 
     if (dryRun) {
         console.log(`[dry-run] ${magicPath} adapter: ${files.size} files`);
