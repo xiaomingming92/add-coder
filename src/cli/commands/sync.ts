@@ -9,7 +9,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { createHash } from "crypto";
-import { renderCore } from "../../core/renderer";
+import { renderCoreForTargets } from "../../core/renderer";
 import { renderAdapter as renderClaude } from "../../adapters/claude/renderer";
 import { renderAdapter as renderQoder } from "../../adapters/qoder/renderer";
 import { renderAdapter as renderVSCode } from "../../adapters/vscode/renderer";
@@ -50,6 +50,41 @@ function resolveAdapter(projectRoot: string, specified?: string): Adapter {
 
 export function isUserData(p: string) { return SYNC_CONFIG.PATCH_GUARD.some(r => r.test(normalizeRelPath(p))); }
 function hash8(c: string) { return createHash("sha256").update(c).digest("hex").slice(0, SYNC_CONFIG.HASH_HEX_LENGTH); }
+export function classifyPatchCandidate(
+    currentContent: string,
+    incomingContent: string,
+    storedHash?: string,
+): "same" | "update" | "conflict" {
+    const currentHash = hash8(currentContent);
+    if (currentHash === hash8(incomingContent)) return "same";
+    if (storedHash && currentHash === storedHash) return "update";
+    return "conflict";
+}
+export type PatchConflictMode = "all" | "interactive" | "skip";
+
+/** 当前 adapter 的 core 分发目标；Codex 自治，不写 `.add`。 */
+export function coreTargetsForAdapter(target: Adapter, magicDir = magicDirFor(target)): string[] {
+    return target === "codex" ? [magicDir] : [ADD_DIR, magicDir];
+}
+
+/** 仅依赖 Claude Agent Host 的 adapter 需要额外生成 `.claude`。 */
+export function needsClaudeAgentHost(adapters: readonly string[]): boolean {
+    return adapters.includes("vscode") || adapters.includes("trae");
+}
+
+/**
+ * patch 冲突处理必须显式区分自动确认、交互终端与管道/CI：
+ * - --yes：调用方已明确授权覆盖全部冲突；
+ * - TTY：交给文件选择器逐项确认；
+ * - non-TTY：没有可用的人机确认通道，默认跳过，禁止把 EOF 当成确认。
+ */
+export function resolvePatchConflictMode(
+    yes = false,
+    isTTY = Boolean(process.stdin.isTTY),
+): PatchConflictMode {
+    if (yes) return "all";
+    return isTTY ? "interactive" : "skip";
+}
 export function loadHashFile(root: string, magic: string): Record<string, string> {
     try {
         const raw = JSON.parse(readFileSync(resolve(root, magic, SYNC_CONFIG.HASH_OUTPUT_FILE), "utf-8")) as Record<string, string>;
@@ -65,6 +100,21 @@ function loadVersionFile(root: string, magic: string): string {
 function saveVersionFile(root: string, magic: string, version: string) {
     writeFileSync(resolve(root, magic, SYNC_CONFIG.VERSION_SENTINEL), version + "\n", "utf-8");
 }
+
+/** 发布包与仓库自举共用的模板版本真源。 */
+export function loadTemplateVersion(root: string): string {
+    const candidates = [
+        resolve(root, "node_modules", "add-coder", "templates", ".add-coder-src-hash.json"),
+        resolve(import.meta.dirname, "../templates/.add-coder-src-hash.json"),
+        resolve(import.meta.dirname, "../../../templates/.add-coder-src-hash.json"),
+    ];
+    for (const candidate of candidates) {
+        try {
+            return (JSON.parse(readFileSync(candidate, "utf-8")) as Record<string, string>)._version ?? "";
+        } catch { /* try next package layout */ }
+    }
+    return "";
+}
 /**
  * 写 hash 文件。
  * ⚠️ 契约（Review-implementation #1 双重 hash 修复）：files 的 value 必须是**最终 hash 值**，
@@ -78,27 +128,44 @@ export function saveHashFile(root: string, magic: string, files: Map<string, str
 }
 
 /**
- * 全量基线合并（issue #10 P0-2）：旧 hash 全量保留 + candidates 磁盘当前内容刷新。
- * 覆盖/跳过/新建均以磁盘为准——用户 [a] 跳过保留其修改，下一轮不再误判冲突。
+ * 全量基线合并（issue #10 P0-2）：旧 hash 全量保留 + 已确认 candidates 的磁盘内容刷新。
+ * 未批准而跳过的 conflict 保留旧 hash，使下一轮仍是 conflict，禁止重复运行绕过确认。
  * ⚠️ 契约（Review-implementation #1）：返回值 value 为**最终 hash 值**（旧值原样、新值由 readDiskHash 提供），
  * 消费方（saveHashFile）直接写盘，禁止再次 hash。
  * @param outHash 旧 hash（key 已 POSIX 规范化，value 为 hash8 值）
  * @param candidates 本轮全部候选文件（relPath 可能含 Windows 反斜杠）
  * @param readDiskHash 读取磁盘当前内容并返回 **hash8 值**（文件不存在返回 null）
+ * @param preserveKeys 本轮未批准的 conflict key；保留旧基线或保持无基线
  */
 export function mergeFullHash(
     outHash: Record<string, string>,
     candidates: { relPath: string; absPath: string }[],
     readDiskHash: (absPath: string) => string | null,
+    preserveKeys: ReadonlySet<string> = new Set(),
 ): Map<string, string> {
     const finalHash = new Map<string, string>();
     for (const [k, v] of Object.entries(outHash)) finalHash.set(k, v);
     for (const { relPath, absPath } of candidates) {
         const key = normalizeRelPath(relPath);
+        // 未经明确批准而跳过的 conflict 必须保留旧基线；否则下一轮会被误判为安全 update。
+        if (preserveKeys.has(key)) continue;
         const h = readDiskHash(absPath);
         if (h !== null) finalHash.set(key, h);
     }
     return finalHash;
+}
+
+/**
+ * 移除不属于当前 adapter 分发集合的旧 hash 基线。
+ * Codex 从历史 `.add/.claude` 联合分发迁移为自治后，必须清掉旧 key，
+ * 否则后续 patch 仍会把越界文件视为 Codex 管理对象。
+ */
+export function pruneHashToCandidates(
+    hashes: Map<string, string>,
+    candidatePaths: Iterable<string>,
+): Map<string, string> {
+    const allowed = new Set([...candidatePaths].map(normalizeRelPath));
+    return new Map([...hashes].filter(([key]) => allowed.has(normalizeRelPath(key))));
 }
 
 /**
@@ -109,6 +176,7 @@ export function mergeFullHash(
  * @param {boolean} [options.patch]
  * @param {boolean} [options.interactive]
  * @param {boolean} [options.model] 缓存缺失时下载 embedding 模型（review-implementation #1）
+ * @param {boolean} [options.yes] 显式确认覆盖全部 patch 冲突并跳过后续询问
  */
 /**
  * embedding 模型检测/下载（model-predownload Plan）：
@@ -137,7 +205,7 @@ async function maybeModelDownload(options: { model?: boolean }) {
     }
 }
 
-export async function syncCommand(options: { adapter?: string; interactive?: boolean; patch?: boolean; model?: boolean } = {}) {
+export async function syncCommand(options: { adapter?: string; interactive?: boolean; patch?: boolean; model?: boolean; yes?: boolean } = {}) {
     const projectRoot = process.cwd();
     const target = resolveAdapter(projectRoot, options.adapter);
     const magicDir = magicDirFor(target);
@@ -146,31 +214,35 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
     config.projectRoot = projectRoot;
     config.magicDir = magicDir;
 
-    // 渲染 core 文件 → .add/ + magicDir/
-    const coreFiles = renderCore(config, false);
-    const CORE_TARGETS = [ADD_DIR, magicDir];
-    const allFiles = new Map<string, string>();
-    for (const [relPath, content] of coreFiles) {
-        for (const t of CORE_TARGETS) {
-            const targetPath = relPath.replace(/^\.add/, t);
-            if (!allFiles.has(targetPath)) allFiles.set(targetPath, content);
-        }
-    }
-
+    // Codex 是完整自治 adapter：只写 `.codex`；其他 adapter 保留既有 `.add + adapter` 分发。
+    const coreTargets = coreTargetsForAdapter(target, magicDir);
+    const allFiles = renderCoreForTargets(config, false, coreTargets);
     // 渲染 adapter 文件
     const resolved = resolveAdapters(target);
     for (const adapter of resolved) {
         const renderFn = ADAPTER_RENDERERS[adapter];
         if (renderFn) {
-            const adapterFiles = renderFn(config, projectRoot, false, magicDir);
+            const adapterMagicDir = magicDirFor(adapter);
+            const adapterFiles = renderFn(
+                { ...config, magicDir: adapterMagicDir },
+                projectRoot,
+                false,
+                adapterMagicDir,
+            );
             for (const [p, c] of adapterFiles) allFiles.set(p, c);
             console.log(`${adapter} adapter: ${adapterFiles.size} 文件`);
         }
     }
 
-    // vscode / trae / codex 同步产出完整 .claude/
-    if (resolved.includes("vscode") || resolved.includes("trae") || resolved.includes("codex")) {
-        const claudeFiles = renderClaude(config, projectRoot, false, magicDirFor("claude"));
+    // VS Code / Trae 仍使用 Claude Agent Host；Codex 有原生 hooks，不分发 `.claude`。
+    if (needsClaudeAgentHost(resolved)) {
+        const claudeMagicDir = magicDirFor("claude");
+        const claudeFiles = renderClaude(
+            { ...config, magicDir: claudeMagicDir },
+            projectRoot,
+            false,
+            claudeMagicDir,
+        );
         for (const [p, c] of claudeFiles) allFiles.set(p, c);
         console.log(`claude adapter (via Agent Host): ${claudeFiles.size} 文件`);
     }
@@ -184,9 +256,7 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
             candidates.set(p, c);
         }
         const outHash = loadHashFile(projectRoot, magicDir);
-        const srcHashPath = resolve(projectRoot, "node_modules", "add-coder", "templates", ".add-coder-src-hash.json");
-        let npmVersion = "";
-        try { npmVersion = (JSON.parse(readFileSync(srcHashPath, "utf-8")) as Record<string, string>)._version ?? ""; } catch { /* ignore */ }
+        const npmVersion = loadTemplateVersion(projectRoot);
         const installedVersion = loadVersionFile(projectRoot, magicDir);
         const isFirstPatch = !installedVersion;
         const isUpgrade = installedVersion && npmVersion && installedVersion !== npmVersion;
@@ -207,10 +277,14 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
             } else if (establishBaseline) {
                 missingFiles.set(key, content);
             } else {
-                const curH = hash8(readFileSync(absPath, "utf-8"));
-                const storedH = outHash[key];
-                if (storedH && curH === storedH) { sameCount++; }
-                else { conflictFiles.set(key, content); }
+                const classification = classifyPatchCandidate(
+                    readFileSync(absPath, "utf-8"),
+                    content,
+                    outHash[key],
+                );
+                if (classification === "same") sameCount++;
+                else if (classification === "update") missingFiles.set(key, content);
+                else conflictFiles.set(key, content);
             }
         }
         console.log(`patch: ${allFiles.size} → skip user ${skipped} | missing ${missingFiles.size} | conflict ${conflictFiles.size} | same ${sameCount}`);
@@ -218,24 +292,40 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
             const r = await writeFiles(projectRoot, missingFiles, { force: true, yes: true });
             console.log(`  missing: 新建 ${r.created}`);
         }
+        const unresolvedConflictKeys = new Set<string>();
         if (conflictFiles.size > 0) {
-            const sel = await selectFiles(projectRoot, conflictFiles);
+            const conflictMode = resolvePatchConflictMode(options.yes);
+            let sel = new Map<string, string>();
+            if (conflictMode === "all") {
+                sel = conflictFiles;
+            } else if (conflictMode === "interactive") {
+                sel = await selectFiles(projectRoot, conflictFiles);
+            } else {
+                console.warn(`  conflict: 非交互终端默认跳过 ${conflictFiles.size} 个冲突文件；如需全部覆盖请重跑并显式传入 --yes`);
+            }
             if (sel.size > 0) {
                 const r = await writeFiles(projectRoot, sel, { force: true, yes: true });
                 console.log(`  conflict: 覆盖 ${r.overwritten}, 跳过 ${conflictFiles.size - sel.size}`);
-            } else {
+            } else if (conflictMode === "interactive") {
                 console.log(`  conflict: 用户取消，${conflictFiles.size} 个文件未写入`);
+            }
+            for (const key of conflictFiles.keys()) {
+                if (!sel.has(key)) unresolvedConflictKeys.add(key);
             }
         }
         if (missingFiles.size === 0 && conflictFiles.size === 0) {
             console.log(SYNC_CONFIG.PROMPT_PATCH_DONE);
         }
         // 全量基线保存（issue #10 P0-2）：旧 hash 全量保留 + 本轮处理后磁盘当前内容刷新
-        const finalHash = mergeFullHash(
+        let finalHash = mergeFullHash(
             outHash,
             [...candidates].map(([relPath]) => ({ relPath, absPath: resolve(projectRoot, relPath) })),
             (absPath) => (existsSync(absPath) ? hash8(readFileSync(absPath, "utf-8")) : null),
+            unresolvedConflictKeys,
         );
+        if (target === "codex") {
+            finalHash = pruneHashToCandidates(finalHash, candidates.keys());
+        }
         saveHashFile(projectRoot, magicDir, finalHash);
         saveVersionFile(projectRoot, magicDir, npmVersion);
         
@@ -313,14 +403,21 @@ function printMigrateGuidance(targetPath: string, changed: number) {
  * Atlas 能力承诺（能力闭环）：检测 → 缺失提示安装（同意自动装 / 拒绝给降级文档）
  * 消费方有 Prisma 注入（prisma/add.prisma）时，Atlas 是数据库同步（diff/apply）的能力底座
  */
-async function ensureAtlasCapability(projectRoot: string): Promise<void> {
+async function ensureAtlasCapability(projectRoot: string, yes = false): Promise<void> {
     const bin = resolveAtlasBin(projectRoot);
     if (bin) {
         console.log(`   ✅ Atlas 能力就绪: ${bin}`);
         return;
     }
+    // win32 降级（RPT-03/#14）：@ariga/atlas install.js 不支持 win32，跳过安装 + 降级提示
+    if (process.platform === "win32") {
+        console.warn("   ⚠️  Atlas 在 Windows 不可用（@ariga/atlas install.js 不支持 win32）");
+        console.log("   降级路径：数据库同步使用 prisma-diff（免 shadow）；如需 Atlas 请在 WSL 环境手动安装");
+        console.log("   文档: README.md → 章节「Atlas 数据库同步能力」/ DEVELOPMENT.md §九");
+        return;
+    }
     console.warn("   ⚠️  Atlas 不可用——数据库同步（Atlas diff/apply）能力缺失");
-    const a = await ask("   是否自动安装 @ariga/atlas（npm 依赖，走 registry）？[Y/n] ");
+    const a = yes ? "y" : await ask("   是否自动安装 @ariga/atlas（npm 依赖，走 registry）？[Y/n] ");
     if (a === "n" || a === "no") {
         console.log("   已跳过。数据库同步将降级 prisma-diff（免 shadow）；可随时补装恢复 Atlas");
         console.log("   文档: README.md → 章节「Atlas 数据库同步能力」/ DEVELOPMENT.md §九");
@@ -357,7 +454,7 @@ function checkHostAtlasSegment(projectRoot: string): void {
 }
 
 /** Prisma schema diff 检查（--patch 模式下触发） */
-async function checkPrismaDiff(projectRoot: string, options: { adapter?: string; patch?: boolean }) {
+async function checkPrismaDiff(projectRoot: string, options: { adapter?: string; patch?: boolean; yes?: boolean }) {
     if (!options.patch) return;
     const basePath = resolve(projectRoot, SYNC_PRISMA_CONFIG.BASE_SCHEMA);
     const targetPath = resolve(projectRoot, SYNC_PRISMA_CONFIG.TARGET_PATTERN);
@@ -367,7 +464,7 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
         return;
     }
     // Atlas 能力承诺（能力闭环）：Prisma 注入存在 → 确保 Atlas 底座可用
-    await ensureAtlasCapability(projectRoot);
+    await ensureAtlasCapability(projectRoot, options.yes);
     // 宿主 db-ensure.sh Atlas 段检测（提示三步合入，避免宿主日常同步缺 ADD 治理模型）
     checkHostAtlasSegment(projectRoot);
     const result = diffPrisma(basePath, targetPath);
@@ -397,7 +494,7 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
                 }
             },
             async confirm() {
-                const ans = await ask(`\n  输入编号选择性注入（如 1,3），a 全部注入，回车跳过: `);
+                const ans = options.yes ? "a" : await ask(`\n  输入编号选择性注入（如 1,3），a 全部注入，回车跳过: `);
                 if (ans === "a" || ans === "all") {
                     selected = [...result.missing];
                     return true;
@@ -437,7 +534,7 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
                         }
                     },
                     async confirm() {
-                        const ans = await ask(`    是否用基准定义覆盖这些冲突字段？(y/n): `);
+                        const ans = options.yes ? "y" : await ask(`    是否用基准定义覆盖这些冲突字段？(y/n): `);
                         return ans === "y" || ans === "yes";
                     },
                     execute() {
@@ -460,7 +557,7 @@ async function checkPrismaDiff(projectRoot: string, options: { adapter?: string;
                         }
                     },
                     async confirm() {
-                        const ans = await ask(`    是否补充这些缺失字段？(y/n): `);
+                        const ans = options.yes ? "y" : await ask(`    是否补充这些缺失字段？(y/n): `);
                         return ans === "y" || ans === "yes";
                     },
                     execute() {

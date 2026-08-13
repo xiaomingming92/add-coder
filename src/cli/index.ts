@@ -55,6 +55,7 @@ program
     .option("--patch", "覆盖已有模板文件（不碰 plans/specs/reviews）")
     .option("-i, --interactive", "交互式选择要同步的文件")
     .option("--model", "检测到缺失时下载 embedding 模型")
+    .option("--yes", "全部确认跳过询问（RPT-06/#19）")
     .action(syncCommand);
 
 program

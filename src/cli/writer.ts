@@ -106,8 +106,9 @@ export function parseSchemaBlocks(content: string): Map<string, SchemaBlock> {
  * 返回消费方缺失的 model/enum，不检测已有差异。
  */
 export function diffPrisma(basePath: string, targetPath: string): PrismaDiffResult {
-    const baseContent = existsSync(basePath) ? readFileSync(basePath, "utf-8") : "";
-    const targetContent = existsSync(targetPath) ? readFileSync(targetPath, "utf-8") : "";
+    // CRLF 归一化（RPT-05/#15）：\r\n → \n，避免 \r 残留破坏块/字段匹配（git autocrlf 场景）
+    const baseContent = (existsSync(basePath) ? readFileSync(basePath, "utf-8") : "").replace(/\r\n/g, "\n");
+    const targetContent = (existsSync(targetPath) ? readFileSync(targetPath, "utf-8") : "").replace(/\r\n/g, "\n");
 
     if (!baseContent) return { hasDiff: false, baseSchema: basePath, targetPath, missing: [], fieldDiffs: [] };
 

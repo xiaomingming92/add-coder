@@ -6,10 +6,18 @@
  */
 import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
 import { tmpdir } from "os";
 import { normalizeRelPath } from "../src/lib/path-normalize";
-import { isUserData, loadHashFile, mergeFullHash, saveHashFile } from "../src/cli/commands/sync";
+import {
+    classifyPatchCandidate,
+    isUserData,
+    loadHashFile,
+    loadTemplateVersion,
+    mergeFullHash,
+    resolvePatchConflictMode,
+    saveHashFile,
+} from "../src/cli/commands/sync";
 import { patchGeneratorOutput } from "../src/caijuehub/strategies/prisma.strategy";
 import { createHash } from "crypto";
 
@@ -19,6 +27,41 @@ vi.mock("child_process", () => ({ spawnSync: mocks.spawnSync }));
 import { runCommand, commandExists } from "../src/lib/run-command";
 
 const hash8 = (c: string) => createHash("sha256").update(c).digest("hex").slice(0, 8);
+
+describe("仓库自举 template version", () => {
+    it("node_modules/add-coder 缺失时回退当前包 templates 真源", () => {
+        const projectRoot = resolve(import.meta.dirname, "..");
+        expect(loadTemplateVersion(projectRoot)).toBe("0.3.26");
+    });
+});
+
+describe("patch candidate 三态判定", () => {
+    it("当前内容已等于新模板时为 same", () => {
+        expect(classifyPatchCandidate("new", "new", hash8("old"))).toBe("same");
+    });
+
+    it("用户未改旧基线且模板变化时为安全 update", () => {
+        expect(classifyPatchCandidate("old", "new", hash8("old"))).toBe("update");
+    });
+
+    it("当前内容偏离旧基线且新模板也不同才是 conflict", () => {
+        expect(classifyPatchCandidate("user edit", "new", hash8("old"))).toBe("conflict");
+    });
+});
+
+describe("patch 冲突通道三态判定", () => {
+    it("显式 --yes 在任意终端下都覆盖全部冲突", () => {
+        expect(resolvePatchConflictMode(true, false)).toBe("all");
+    });
+
+    it("未传 --yes 且 stdin 是 TTY 时进入交互选择", () => {
+        expect(resolvePatchConflictMode(false, true)).toBe("interactive");
+    });
+
+    it("未传 --yes 且 stdin 非 TTY 时默认跳过冲突", () => {
+        expect(resolvePatchConflictMode(false, false)).toBe("skip");
+    });
+});
 
 describe("normalizeRelPath（issue #10 P0-3 基础设施）", () => {
     it("Windows 反斜杠路径 → POSIX", () => {
@@ -73,12 +116,18 @@ describe("mergeFullHash 全量基线（issue #10 P0-2 复现验证）", () => {
         expect(result.size).toBe(300); // 300→1→空 复现链第一步：不缩水
     });
 
-    it("用户 [a] 跳过（磁盘已修改）→ hash 记录用户版本，下一轮不误判冲突", () => {
+    it("未批准的冲突保持旧基线，重复 non-TTY patch 仍为 conflict", () => {
         const outHash: Record<string, string> = { "templates/a.md": hash8("original") };
         const candidates = [{ relPath: "templates/a.md", absPath: "/tmp/a.md" }];
         const disk = new Map([["/tmp/a.md", hash8("user-modified")]]);
-        const result = mergeFullHash(outHash, candidates, (p) => disk.get(p) ?? null);
-        expect(result.get("templates/a.md")).toBe(hash8("user-modified"));
+        const result = mergeFullHash(
+            outHash,
+            candidates,
+            (p) => disk.get(p) ?? null,
+            new Set(["templates/a.md"]),
+        );
+        expect(result.get("templates/a.md")).toBe(hash8("original"));
+        expect(classifyPatchCandidate("user-modified", "new", result.get("templates/a.md"))).toBe("conflict");
     });
 
     it("Windows 反斜杠 relPath → key 统一 POSIX", () => {
