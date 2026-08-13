@@ -1,7 +1,7 @@
 # ADD 范式在 Trae 上的确定性运行
 
 > **定位**：描述 ADD 范式如何通过 Trae 的 Hook 机制在 agent 生命周期中确定性运行。
-> **关联文档**：[add-coder-hook-full-alignment-plan-v1](../.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md)
+> **关联文档**：[add-coder-hook-full-alignment-plan-v1](../plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md)
 > **Hook 参考**: https://docs.trae.cn/ide_automate-actions-with-hooks | https://docs.trae.cn/ide_hook-configuration-reference
 
 ---

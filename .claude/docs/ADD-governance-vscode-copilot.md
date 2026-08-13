@@ -1,7 +1,7 @@
 # ADD 范式在 VS Code Copilot 上的确定性运行
 
 > **定位**：描述 ADD 范式如何通过 VS Code Copilot 的 Agent Hook 机制在 agent 生命周期中确定性运行。
-> **关联文档**：[add-coder-hook-full-alignment-plan-v1](../.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | [issue-6-report](../.qoder/reports/issue-6-tool-call-throttling-report.md)
+> **关联文档**：[add-coder-hook-full-alignment-plan-v1](../plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | [issue-6-report](../reports/issue-6-tool-call-throttling-report.md)
 > **Hook 参考**: https://docs.github.com/zh/copilot/concepts/agents/hooks | https://vscode.js.cn/docs/agent-customization/hooks
 > **VS Code 版本要求**: 1.127+（Agent Hook 预览），1.129+（Agent Host 架构，支持 `.claude/settings.json`）
 

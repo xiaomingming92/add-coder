@@ -379,7 +379,7 @@ Plan 级闭包: {业务功能描述}
 
 **活跃判定规则**：
 
-1. **判定输入**：指定 magicDir 下的 `plans/` 目录（按当前端优先回退——以 Claude IDE 宿主环境为例：`.claude/plans/` → `.qoder/plans/` → `.add/plans/`，其他 IDE 同理取各自的 magicDir）
+1. **判定输入**：当前 adapter 自己的 `.vscode/plans/`。各 adapter 的 Plan/Spec/Route/Review/HITL 相互独立，禁止跨 adapter fallback
 2. **索引优先**：先读 `plans/index.md` 匹配 planKeyword → 无匹配才 glob `*-plan-v*.md`
 3. **活跃定义**：读 add-route 文件 → 存在 `[ ]` 未勾选的 Step 产出项 = 活跃（进行中）；全部 `[x]` = 已收敛（不活跃）
 4. **多 Plan 冲突**：多个 Plan 均有 `[ ]` → 取 add-route 文件最近修改时间（`mtime`）最大的 Plan
@@ -863,7 +863,7 @@ check_add_route_completeness({ planKeyword: "<Plan 核心关键词>" })
 
 ### 3.5.3 生成实现审查文档
 
-按 HITL temporary.md 流程执行：读取 `review-implementation-template.md` → 先写 `{name}-review-implementation.temporary.md`（只含 HITL 发现总览表）→ 人类一次性拍板 → 逐条展开详细分析 → 写入 `.qoder/reviews/`（guard 放行）→ 删除 temporary。详见上方模板生成规则处的 Review HITL 磋商说明。
+读取 `review-implementation-template.md`，将实现审查发现整理为 `dimensions`，调用 `create_hitl({ planName: "{name}-review-implementation", type: "PLAN_REVIEW", dimensions })`。`create_hitl` 自动生成 `*.hitl.md` 审批提案并写入 HITL 记录；人类审核后调用 `update_hitl` 完成拍板。通过 `status_hitl` 确认状态为 `TONGYI` 后，方可逐条展开详细分析并写入 `.vscode/reviews/`；若为 `BOHUI`，修订发现后调用 `create_hitl` 新建 round。
 
 ### 3.5.4 生成运行时审查文档（所有 [T] 项通过后）
 

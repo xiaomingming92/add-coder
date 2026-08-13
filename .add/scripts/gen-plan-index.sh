@@ -1,24 +1,13 @@
 #!/bin/bash
 # 生成 {MAGIC_DIR}/plans/index.md 总览清单 — 按日期分层，每日自动更新
-# 自动探测 MAGIC_DIR（.qoder / .claude / .vscode / .trae / .codex / .add）
+# MAGIC_DIR 由脚本自身的物理目录确定，各 adapter 自治。
 set -e
 
-# 探测 MAGIC_DIR：在当前目录向上查找包含 plans/ 的隐藏目录
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CURRENT="$SCRIPT_DIR"
 MAGIC_DIR=".add"
-while [ "$CURRENT" != "/" ]; do
-  for d in "$CURRENT"/.qoder "$CURRENT"/.claude "$CURRENT"/.vscode "$CURRENT"/.trae "$CURRENT"/.codex "$CURRENT"/.add; do
-    if [ -d "$d/plans" ]; then
-      MAGIC_DIR="$d"
-      break 2
-    fi
-  done
-  CURRENT="$(dirname "$CURRENT")"
-done
 
-if [ -z "$MAGIC_DIR" ]; then
-  echo "❌ 未找到 MAGIC_DIR（.qoder / .claude / .vscode / .trae / .codex / .add 均无 plans/ 子目录）" >&2
+if [ ! -d "$MAGIC_DIR/plans" ]; then
+  echo "❌ 当前 adapter 不存在 plans/: $MAGIC_DIR" >&2
   exit 1
 fi
 

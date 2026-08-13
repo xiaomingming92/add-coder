@@ -44,6 +44,7 @@ export function registerAuditTools(server: ToolRegistrar) {
       const lines = [`=== 开发操作审计日志 (条件: ${fl.length > 0 ? fl.join(", ") : "无过滤条件（最近全部）"}) ===`, `服务项目: ${PROJECT_ID} (${PROJECT_ROOT})`, `共 ${logs.length} 条记录`]
       for (let i = 0; i < logs.length; i++) {
         const l = logs[i]; lines.push(`[${i+1}] ${l.createdAt.toISOString()}`, `    action: ${l.action} | targetType: ${l.targetType} | targetId: ${l.targetId || "(无)"}`)
+        lines.push(`    beforeState: ${JSON.stringify(l.beforeState)}`, `    afterState: ${JSON.stringify(l.afterState)}`)
         if (l.reason) lines.push(`    reason: ${l.reason}`); if (l.planKeyword) lines.push(`    planKeyword: ${l.planKeyword}`)
       }
       if (planKeyword) { lines.push("=== Plan 分组 ===", `planKeyword=${planKeyword} 的操作链:`); for (const l of logs) lines.push(`  ${l.createdAt.toISOString().slice(11,19)} ${l.action}`) }
@@ -60,8 +61,8 @@ export function registerAuditTools(server: ToolRegistrar) {
       targetType: z.string().describe("目标类型: 'API_ROUTE', 'COMPONENT', 'SCHEMA', 'RULE', 'DOC', 'PLAN', 'SPEC', 'SKILL', 'AGENT' 等"),
       targetId: z.string().optional().describe("目标标识（相对路径）"),
       planKeyword: z.string().optional().describe("关联 Plan 的关键词"),
-      beforeState: z.string().describe("操作前的状态（JSON 字符串）。必填，记录变更前的文件内容或配置状态，用于审计回溯。"),
-      afterState: z.string().describe("操作后的状态（JSON 字符串）。必填，记录变更后的文件内容或配置状态，用于审计回溯。"),
+      beforeState: z.string().describe("操作前的状态（非 null JSON 对象或数组字符串）。必填，用于审计回溯。"),
+      afterState: z.string().describe("操作后的状态（非 null JSON 对象或数组字符串）。必填，用于审计回溯。"),
       reason: z.string().optional().describe("操作原因"),
     }),
   }, async (args: Record<string, string | number | undefined>, _ctx: unknown) => {
@@ -70,12 +71,15 @@ export function registerAuditTools(server: ToolRegistrar) {
       const tId = s(targetId)
       const pathWarnings: string[] = []
       if (tId && (tId.startsWith("/") || /^[A-Z]:\\/.test(tId))) pathWarnings.push(`⚠️ targetId 使用了绝对路径: "${tId}"。请使用相对路径。`)
+      if (!s(beforeState).trim() || !s(afterState).trim()) return errorResponse("beforeState/afterState 必须提供非空 JSON 字符串。")
       let parsedBefore: unknown, parsedAfter: unknown
       try { if (beforeState) parsedBefore = JSON.parse(s(beforeState)); if (afterState) parsedAfter = JSON.parse(s(afterState)) } catch { return errorResponse("beforeState/afterState 必须是有效的 JSON 字符串。") }
+      const isStructuredState = (value: unknown): value is Record<string, unknown> | unknown[] => typeof value === "object" && value !== null
+      if (!isStructuredState(parsedBefore) || !isStructuredState(parsedAfter)) return errorResponse("beforeState/afterState 必须是非 null 的 JSON 对象或数组。")
       let systemUser = await userDb.findUnique({ where: { username: "ai-assistant" }, select: { id: true } })
       if (!systemUser) systemUser = await userDb.create({ data: { id: "ai-assistant", username: "ai-assistant", email: "ai-assistant@internal" } })
-      const log = await devDb.create({ data: { userId: systemUser.id, planKeyword: s(planKeyword) || "unknown", action: s(action), targetType: s(targetType), targetId: tId || "unknown", beforeState: parsedBefore ?? null, afterState: parsedAfter ?? null, reason: s(reason) || null } })
-      const lines = [`✅ 开发操作已记录`, `  落库项目: ${PROJECT_ID} (${PROJECT_ROOT})`, `  ID: ${log.id}`, `  action: ${s(action)}`, `  targetType: ${s(targetType)}`, `  targetId: ${tId || "unknown"}`, `  planKeyword: ${s(planKeyword) || "unknown"}`, `  createdAt: ${log.createdAt.toISOString()}`]
+      const log = await devDb.create({ data: { userId: systemUser.id, planKeyword: s(planKeyword) || "unknown", action: s(action), targetType: s(targetType), targetId: tId || "unknown", beforeState: parsedBefore, afterState: parsedAfter, reason: s(reason) || null } })
+      const lines = [`✅ 开发操作已记录`, `  落库项目: ${PROJECT_ID} (${PROJECT_ROOT})`, `  ID: ${log.id}`, `  action: ${s(action)}`, `  targetType: ${s(targetType)}`, `  targetId: ${tId || "unknown"}`, `  planKeyword: ${s(planKeyword) || "unknown"}`, `  beforeState: ${JSON.stringify(log.beforeState)}`, `  afterState: ${JSON.stringify(log.afterState)}`, `  createdAt: ${log.createdAt.toISOString()}`]
       if (pathWarnings.length > 0) { lines.push(""); lines.push(...pathWarnings) }
       lines.push("", `📋 落库回查（必须执行）:`, tId ? `  query_audit_logs({ targetId: "${tId}" }) — 确认本条记录已写入` : "")
       return textResponse(lines.join("\n"))

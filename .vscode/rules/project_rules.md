@@ -26,8 +26,8 @@
 | P2 | ADD-13 DPS 上游文档质量闸门 | Plan 概括度 → Review 注意力稀释 → Specs 遗漏 → 实现偏差。`check_dps`（DPS ≥ {{dpsPass}}）在 Step 0 末尾量化阻断 | ✅ 已实现 | 2026-06-11 引入 |
 | P2 | ADD-14 RAHS 下游执行健康度闸门 | 范围保真度 + 类型安全 + 审计完整度 + Spec 合规 + 阶段对称性。`check_rahs`（RAHS ≥ 90）在 Step 4/8 量化阻断 | ✅ 已实现 | 2026-06-11 引入 |
 | P2 | ADD-15 add-route 闭环自检 | Step 3 代码完成后必须调用 `check_add_route_completeness` 扫描 add-route Step 完成度，防止执行遗漏。返回 complete 方可进入 Step 3.5 | ✅ 已实现 | 2026-06-11 引入 |
-| P2 | ADD-17 HITL 磋商临时文件机制 | doc-format-guard 要求 Plan/Review 文件包含完整章节才放行，HITL 第一步只写总览表会被 guard 阻断。用 `{name}.temporary.md` 做磋商（不受 guard 检查），人类拍板后再写正式文件并删除 temporary.md | ✅ 已实现 | 2026-07-23 引入 |
-| P2 | ADD-18 HITL 人机审核强制规则 | Plan/Review 必须经过 HITL 审批（`create_hitl` → 人工 tongyi/bohui → `update_hitl` 确认）。无 `.hitl-tongyi-{planName}` 哨兵时 pre-tool-use hook 阻断写入正式文件。提案文件按 hitl-template.md 生成 + schema 校验 | ✅ 已实现 | 2026-07-27 引入 |
+| P2 | ADD-17 HITL 提案载体与状态机 | `create_hitl` 接收 `dimensions`，创建 `HitlRecord(DRAFT)` 与 `*.hitl.md` 提案；人工拍板后由 `update_hitl` 写入终态，正式文档仅在 `status_hitl=TONGYI` 后生成 | ✅ 已实现 | 2026-07-23 引入，2026-08-12 对齐 MCP 实现 |
+| P2 | ADD-18 HITL 人机审核强制规则 | Plan、方案 Review、实现 Review 必须经过 `create_hitl` → 人工 tongyi/bohui → `update_hitl`；`TONGYI` 同步写 DB、提案状态和 `.tongyi-{planName}` 哨兵 | ✅ 已实现 | 2026-07-27 引入 |
 
 
 ### P0 规则：不可跳过
@@ -68,7 +68,7 @@ AI 助手必须先恢复到基线、找到对应的 SKILL 文件并按步骤执�
 | ADD-14 | `add-paradigm` Step 4 末端 + Step 8 收敛 + MCP `check_rahs` | Step 4 合规检查 / Step 8 收敛判定 |
 | ADD-15 | `add-paradigm` Step 3.6 + MCP `check_add_route_completeness` | Step 3 代码完成后自检 |
 | ADD-16 | `add-paradigm` Step 9 | runtime-fix plan 收敛后，关闭 gateway.md 运行时发现 |
-| ADD-17 | `add-paradigm` 独立能力：生成 Plan / Step 0 | Plan/Review HITL 磋商时（写入 temporary.md 绕过 guard，拍板后写正式文件） |
+| ADD-17 | `add-paradigm` 独立能力：生成 Plan / Step 0 / Step 3.5 | Plan/Review HITL：整理 dimensions → create_hitl 生成提案 → update_hitl 拍板 → status_hitl 校验终态 |
 | ADD-18 | `add-paradigm` 独立能力：生成 Plan + Step 0 + pre-tool-use §C | HITL 审批强制：create_hitl → 人工 tongyi/bohui → update_hitl 确认；hook 哨兵检查 |
 
 ---
@@ -783,45 +783,47 @@ ADD-0.1 要求"文档先行"（先改文档再改代码）。ADD-16 是对 ADD-0
 
 ---
 
-## ADD-17：HITL 磋商临时文件机制
+## ADD-17：HITL 提案载体与状态机
 
-**Plan 和 Review 的 HITL 磋商必须在写入正式文件之前完成，但 doc-format-guard 要求 `.qoder/plans/` 和 `.qoder/reviews/` 下的文件包含完整章节才放行。HITL 第一步只写总览表、不写正文——会被 guard 阻断。**
+**Plan、方案 Review 和实现 Review 在写入正式文件前，必须通过 `create_hitl` 建立结构化审批提案。`*.hitl.md` 与 `HitlRecord` 是同一轮审批的文件/数据库双通道载体；正式文档不得替代审批提案。**
 
 ### 流程
 
 ```
-① AI 写 {name}.temporary.md（只含 HITL 总览表，放项目根目录，不受 guard 检查）
-② 人类审阅 HITL 表 → 逐行拍板（同意/调整）
-③ AI 根据确认后的 HITL 表生成完整 Plan/Review → 写入正式路径（guard 放行）
-④ 删除 temporary.md
+① AI 读取对应模板并将待拍板发现整理为 dimensions
+② create_hitl({ planName, type, dimensions }) → HitlRecord(DRAFT) + plans/{YYYY-MM}/{DD}/{planName}.hitl.md
+③ 人类审阅提案并逐项拍板 → update_hitl({ planName, type, status })
+④ status_hitl 确认 TONGYI → 生成完整 Plan/Review 并写入正式路径
+⑤ BOHUI → 修订 dimensions 后调用 create_hitl 创建 round+1
 ```
 
 ### 适用范围
 
-| 文档类型 | temporary 磋商 | 正式写入路径 |
+| 文档类型 | HITL type | 正式写入路径 |
 |---------|:---:|------|
-| Plan（标准版/精简版） | ✅ 需要 | `.qoder/plans/{YYYY-MM}/{DD}/` |
-| Review（方案/实现） | ✅ 需要 | `.qoder/reviews/` |
-| Spec / Tasks / Checklist | ❌ 不需要 | 直接写入 `.qoder/specs/` |
-| Handoff | ❌ 不需要 | 直接写入 `.qoder/plans/` |
+| Plan（标准版/精简版） | `PLAN` | `.vscode/plans/{YYYY-MM}/{DD}/` |
+| Review（方案/实现） | `PLAN_REVIEW` | `.vscode/reviews/` |
+| Runtime Review | 不需要 | `[T]` 全部通过后直接写入 `.vscode/reviews/` |
+| Spec / Tasks / Checklist | 不需要 | 直接写入 `.vscode/specs/` |
+| Handoff | 不需要 | 直接写入 `.vscode/plans/` |
 
 ### 与 ADD-0.1 的关系
 
-ADD-0.1 要求"文档先行"——HITL 磋商本身就是文档先行的一种形式（先对齐方向再产出文档）。temporary.md 机制确保 HITL 的"先拍板再展开"哲学不因 guard 的"完整章节校验"而被破坏。
+ADD-0.1 要求“文档先行”。`create_hitl` 先持久化决策维度与审批状态，再展开正式文档，使“先拍板、后展开”具备可查询、可追溯的事实源。
 
 ---
 
 ## ADD-18：HITL 人机审核强制规则
 
-**Plan 和 PLAN_REVIEW 类型 Review 在写入正式文件前，必须经过 HITL 审批。** 审批通过后生成 `.hitl-tongyi-{planName}` 哨兵文件，pre-tool-use hook 以此判断是否允许写入。
+**Plan、方案 Review 和实现 Review 在写入正式文件前，必须经过 HITL 审批。** 审批通过后，`update_hitl` 更新数据库与 `*.hitl.md` 状态，并在 `.vscode/hitl/` 生成 `.tongyi-{planName}` 哨兵。pre-tool-use hook 对 Plan/方案 Review 执行哨兵门禁；实现 Review 由 `add-paradigm` Step 3.5 与 `status_hitl` 门禁约束。
 
 ### 强制流程
 
 ```
-① create_hitl({ planName, type }) → HitlRecord DRAFT，生成 hitl.md 提案文件
-② 人类审阅 hitl.md → 逐行拍板
-③ update_hitl({ planName, status: "TONGYI" }) → 写 .hitl-tongyi-{planName} 哨兵
-   或 update_hitl({ planName, status: "BOHUI", reason }) → 提案驳回
+① create_hitl({ planName, type, dimensions }) → HitlRecord DRAFT，生成 *.hitl.md 提案文件
+② 人类审阅 *.hitl.md → 逐行拍板
+③ update_hitl({ planName, type, status: "TONGYI" }) → 更新 DB/提案并写 .tongyi-{planName} 哨兵
+   或 update_hitl({ planName, type, status: "BOHUI", reason }) → 更新 DB/提案并写 .bohui-{planName} 哨兵
 ④ TONGYI 后：正式写入 Plan/Review 文件（hook §C 放行）
 ⑤ BOHUI 后：create_hitl 新建 round+1，重新审批
 ```
@@ -830,15 +832,16 @@ ADD-0.1 要求"文档先行"——HITL 磋商本身就是文档先行的一种�
 
 | 文档类型 | HITL 审批 | 依据 |
 |---------|:--------:|------|
-| Plan | ✅ 必须 | pre-tool-use §C 拦截 plans/ 目录 |
-| Review（PLAN_REVIEW） | ✅ 必须 | pre-tool-use §C 拦截 reviews/ 目录（不含 implementation/runtime） |
-| Review（implementation/runtime） | ❌ 不需要 | 走 §B 活跃 Plan 检查 |
+| Plan | ✅ 必须 | pre-tool-use §C 哨兵门禁 |
+| 方案 Review | ✅ 必须 | pre-tool-use §C 哨兵门禁 |
+| Implementation Review | ✅ 必须 | `add-paradigm` Step 3.5 + `status_hitl` |
+| Runtime Review | ❌ 不需要 | `[T]` 全部通过后直接生成 |
 | Spec / Tasks / Checklist | ❌ 不需要 | 直接写 |
 | Handoff | ❌ 不需要 | 直接写 |
 
 ### 与 ADD-17 的关系
 
-ADD-17 定义 HITL 如何在 guard 约束下运作（temporary.md 绕过 guard 完成磋商）。ADD-18 定义 HITL 审批本身是强制的——不经过 create_hitl→update_hitl 流程，hook 阻止写入。两者互补：ADD-17 是"怎么做 HITL"，ADD-18 是"必须做 HITL"。
+ADD-17 定义审批提案的载体、维度和状态流转；ADD-18 定义哪些正式文档必须先取得 `TONGYI`。两者共同以 `create_hitl → update_hitl → status_hitl` 为事实链，文件、数据库和哨兵相互校验。
 
 ---
 

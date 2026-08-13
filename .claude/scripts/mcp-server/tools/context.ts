@@ -4,7 +4,7 @@ import { readFile } from "fs/promises"
 import { readdir } from "fs/promises"
 import { stat } from "fs/promises"
 import { existsSync } from "fs"
-import { join, relative } from "path"
+import { basename, join, relative } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { readFileSafe, readdirRecursive } from "../shared/fs.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
@@ -98,16 +98,23 @@ export function registerContextTools(server: ToolRegistrar) {
           let activePlan = ""
           let activePlanPath = ""
           if (existsSync(plansDir)) {
-            const planFiles = (await readdirRecursive(plansDir))
-              .filter(f => f.endsWith(".md") && !f.includes("add-route") && !f.includes("handoff"))
-              .sort()
+            const candidates = (await readdirRecursive(plansDir))
+              .filter(f => /-plan-v\d+\.md$/.test(f) && !f.endsWith(".hitl.md"))
+            const planFiles = (await Promise.all(candidates.map(async (file) => ({
+              file,
+              mtimeMs: (await stat(join(plansDir, file))).mtimeMs,
+            }))))
+              .sort((a, b) => a.mtimeMs - b.mtimeMs || a.file.localeCompare(b.file))
+              .map(({ file }) => file)
             if (planFiles.length > 0) {
               activePlan = planFiles[planFiles.length - 1]
               activePlanPath = join(plansDir, activePlan)
               parts.push(`最近 Plan: ${activePlan}`)
               const allPlanFiles = await readdirRecursive(plansDir)
-              const addRouteFile = allPlanFiles.find(f => f.includes("add-route"))
-              const planKeyword = activePlan.replace(/-plan-v\d+\.md$/, "")
+              const planKeyword = basename(activePlan).replace(/-plan-v\d+\.md$/, "")
+              const addRouteFile = allPlanFiles.find(f =>
+                f.includes("add-route") && f.toLowerCase().includes(planKeyword.toLowerCase()),
+              )
               const handoffFiles = allPlanFiles.filter(f => f.includes("handoff"))
               const hasHandoff = handoffFiles.some(f => f.toLowerCase().includes(planKeyword.toLowerCase()))
               parts.push(` add-route: ${addRouteFile ? "✅ " + addRouteFile : "❌ 缺失（需回退 Step 0.5）"}`)
@@ -118,7 +125,7 @@ export function registerContextTools(server: ToolRegistrar) {
           let reviewFileName = ""; let reviewP0Count = 0; let reviewP1Count = 0; let reviewBackflowRate = 0
           if (existsSync(reviewsDir) && activePlan) {
             const reviewFiles = await readdir(reviewsDir)
-            const planKeyword = activePlan.replace(/-plan-v\d+\.md$/, "")
+            const planKeyword = basename(activePlan).replace(/-plan-v\d+\.md$/, "")
             const matchingReview = reviewFiles.find(f => f.toLowerCase().includes(planKeyword.toLowerCase()) && f.includes("-review-v"))
               || reviewFiles.find(f => f.toLowerCase().includes(planKeyword.toLowerCase()))
             if (matchingReview) {
@@ -152,7 +159,7 @@ export function registerContextTools(server: ToolRegistrar) {
           }
 
           if (activePlan) {
-            const planKeyword = activePlan.replace(/-plan-v\d+\.md$/, "")
+            const planKeyword = basename(activePlan).replace(/-plan-v\d+\.md$/, "")
             const specDirs = existsSync(specsDir) ? await readdir(specsDir) : []
             const matchingSpec = specDirs.find(d => d.toLowerCase().includes(planKeyword.toLowerCase()))
             parts.push("")
@@ -192,10 +199,13 @@ export function registerContextTools(server: ToolRegistrar) {
               todoItems.push("1. [0.6.5] Review 结论回流至 Plan — P0/P1 未写入 Plan 体")
               todoItems.push("2. [check_dps] DPS 门禁预计不通过（回流完整度 < 70%）")
             }
+            const planKw = basename(activePlan).replace(/-plan-v\d+\.md$/, "")
             const allPlanDir = await readdirRecursive(plansDir)
-            const hasAddRoute = allPlanDir.some(f => f.includes("add-route"))
+            const hasAddRoute = allPlanDir.some(f => {
+              const lower = f.toLowerCase()
+              return lower.includes("add-route") && lower.includes(planKw.toLowerCase())
+            })
             if (!hasAddRoute && reviewBackflowRate >= 70) { todoItems.push("2. [Step 0.5] 生成 add-route") }
-            const planKw = activePlan.replace(/-plan-v\d+\.md$/, "")
             const sd = existsSync(specsDir) ? await readdir(specsDir) : []
             if (!sd.some(d => d.toLowerCase().includes(planKw.toLowerCase())) && reviewBackflowRate >= 70) { todoItems.push("3. [Step 0] 生成 Specs 三元组") }
             if (todoItems.length === 0) { todoItems.push("✅ ADD 就绪 — check_dps ≥ {{dpsPass}} 后可进入 Step 1") }
