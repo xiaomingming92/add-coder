@@ -106,7 +106,8 @@ describe("add-coder init --force", () => {
         const schemaPath = resolve(TMP, "prisma", "schema.prisma")
         if (!existsSync(schemaPath)) return
         const c = readFileSync(schemaPath, "utf-8")
-        expect(c).toContain('provider = "prisma-client-js"')
+        // Prisma 7 起 provider 从 prisma-client-js 更名 prisma-client；兼容两种
+        expect(c).toMatch(/provider\s*=\s*"prisma-client(-js)?"/)
     })
 
     it("prisma: add.prisma 在 prisma/ 下（不进入 IDE magic path）", function () {
