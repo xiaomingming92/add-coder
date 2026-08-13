@@ -22,14 +22,40 @@ export function createTsConstGenerator(opts: {
   };
 }
 
+// guard_templates 声明式结构（guard-rules.toml 真源）
+interface GuardSectionInput {
+  id: string;
+  required?: boolean;
+  heading?: string;
+  anchor?: string;
+  within?: string;
+  pattern?: string;
+  description?: string;
+  subsections?: GuardSectionInput[];
+}
+
+interface GuardTemplateInput {
+  template?: string;
+  sections?: GuardSectionInput[];
+  shared_by?: unknown;
+  placeholders?: { items?: unknown };
+  forbidden_terms?: { terms?: unknown };
+  forbidden_terms_note?: unknown;
+}
+
+interface GuardRulesRoot {
+  guard_templates?: Record<string, GuardTemplateInput>;
+}
+
 export function genGuardSchema(templateKey: string): RuleGenerator {
   return (rules: unknown): string => {
-    const tpl = (rules as Record<string, any>)?.guard_templates?.[templateKey];
+    const root = rules as GuardRulesRoot;
+    const tpl = root.guard_templates?.[templateKey];
     if (!tpl) throw new Error(`guard-rules.toml: guard_templates.${templateKey} 未配置`);
-    const sections = (tpl.sections || []).map((s: Record<string, any>) => {
+    const sections = (tpl.sections || []).map((s: GuardSectionInput) => {
       const out: Record<string, unknown> = { id: s.id, required: s.required ?? false };
       for (const k of ["heading", "anchor", "within", "pattern", "description"]) {
-        if (s[k]) out[k] = s[k];
+        if (s[k as keyof GuardSectionInput]) out[k] = s[k as keyof GuardSectionInput];
       }
       if (Array.isArray(s.subsections) && s.subsections.length) out.subsections = s.subsections;
       return out;

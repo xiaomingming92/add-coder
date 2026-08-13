@@ -6,7 +6,7 @@
  * @FilePath     : /farm-agent/home/xmm/ai/add-coder/src/cli/prisma-injector.ts
  * @Description  : prisma注入
  */
-import { resolve, dirname } from "path";
+import { resolve } from "path";
 import { injectPrisma as strategyFn } from "../caijuehub/strategies/prisma.strategy";
 
 const __dirname = import.meta.dirname;

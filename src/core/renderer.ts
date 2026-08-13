@@ -1,6 +1,6 @@
 import { ADD_DIR } from "../shared/paths.js";
 import { readFileSync, readdirSync, statSync, existsSync, mkdirSync, writeFileSync } from "fs";
-import { join, relative, dirname } from "path";
+import { join, relative } from "path";
 import { parse } from "smol-toml";
 import type { AddCoderConfig } from "../config/schema";
 

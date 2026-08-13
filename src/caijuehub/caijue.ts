@@ -1,6 +1,6 @@
 import { parse } from "smol-toml";
 import { readFileSync } from "fs";
-import { join, dirname } from "path";
+import { join } from "path";
 
 const __dirname = import.meta.dirname;
 
