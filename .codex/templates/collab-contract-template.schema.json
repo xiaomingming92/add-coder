@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "collab-contract-template",
+  "description": "ADD 范式并发协作契约模板（多智能体协作规则集）",
+  "type": "object",
+  "required": ["contractName", "participants", "stages", "fileBoundaries", "auditAttribution", "completionCriteria"],
+  "properties": {
+    "contractName": {
+      "type": "string",
+      "description": "契约名称：{需求域名}-{核心内容}-collab-contract-v{版本号}"
+    },
+    "participants": {
+      "type": "array",
+      "description": "参与者（Lead Agent + 自定义专家）",
+      "items": {
+        "type": "object",
+        "required": ["role", "platformEntity", "boundPlan", "responsibility", "planKeyword", "description"],
+        "properties": {
+          "role": { "type": "string", "description": "角色：Lead Agent / 专家 N" },
+          "platformEntity": { "type": "string", "description": "平台实体（主智能体/自定义子智能体）" },
+          "boundPlan": { "type": "string", "description": "绑定的子 Plan 名称" },
+          "responsibility": { "type": "string", "description": "职责描述" },
+          "planKeyword": { "type": "string", "description": "审计归因 planKeyword" },
+          "description": { "type": "string", "description": "Subagent 触发匹配描述（平台自动委派依据）" }
+        }
+      }
+    },
+    "contractRole": {
+      "type": "object",
+      "description": "Plan 主/从角色（§3.6）：MASTER=总控 / SUB=子 Plan",
+      "properties": {
+        "masterPlan": { "type": "string", "description": "总控 Plan 名称（ContractRole=MASTER）" },
+        "subPlans": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "子 Plan 名称列表（ContractRole=SUB）"
+        }
+      }
+    },
+    "hitlApproval": {
+      "type": "object",
+      "description": "契约自身 HITL 审批配套（§3.6）",
+      "properties": {
+        "type": { "type": "string", "enum": ["COLLAB_CONTRACT"] },
+        "triggerTiming": { "type": "string" },
+        "sentinelPath": { "type": "string" }
+      }
+    },
+    "abilityMatrix": {
+      "type": "object",
+      "description": "能力矩阵（§2.1）：每个专家的能力边界",
+      "additionalProperties": {
+        "type": "object",
+        "description": "能力 → 各专家是否具备",
+        "additionalProperties": { "type": "boolean" }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "description": "触发条件表（§3.1）：阶段/专家/触发条件/并行度",
+      "items": {
+        "type": "object",
+        "required": ["stage", "expert", "trigger", "parallelism"],
+        "properties": {
+          "stage": { "type": "string", "description": "阶段标识（A/B/C/D）" },
+          "expert": { "type": "string", "description": "执行的专家" },
+          "trigger": { "type": "string", "description": "触发条件（前置依赖/无依赖）" },
+          "parallelism": { "enum": ["parallel", "serial"], "description": "并行度" }
+        }
+      }
+    },
+    "dependencyGraph": {
+      "type": "string",
+      "description": "依赖拓扑 ASCII 图（§3.1.1）"
+    },
+    "dependencyDeclarations": {
+      "type": "array",
+      "description": "机器可读依赖声明（§3.1.1）",
+      "items": { "type": "string", "description": "如：依赖: 专家2 → { 专家1产出 }" }
+    },
+    "fileBoundaries": {
+      "type": "array",
+      "description": "文件边界（§3.2）：防冲突硬约束",
+      "items": {
+        "type": "object",
+        "required": ["expert", "exclusiveDomain", "forbidden"],
+        "properties": {
+          "expert": { "type": "string" },
+          "exclusiveDomain": { "type": "string", "description": "独占文件域" },
+          "forbidden": { "type": "string", "description": "禁改域" },
+          "isolationMode": { "type": "string", "enum": ["file", "worktree"], "description": "隔离模式：file=文件级独占 / worktree=工作树级隔离" }
+        }
+      }
+    },
+    "auditAttribution": {
+      "type": "object",
+      "description": "审计归因（§3.3）",
+      "properties": {
+        "recordDevOperation": { "type": "string" },
+        "hookEvents": { "type": "string" },
+        "auditQuery": { "type": "string" },
+        "hitlApproval": { "type": "string" }
+      }
+    },
+    "completionCriteria": {
+      "type": "object",
+      "description": "完成判定（§3.4）",
+      "additionalProperties": {
+        "type": "string",
+        "description": "专家 → 可验证的完成标志"
+      }
+    },
+    "taskMapping": {
+      "type": "array",
+      "description": "Task 映射（§四）",
+      "items": {
+        "type": "object",
+        "required": ["contractTask", "subPlanTask", "expert", "trigger"],
+        "properties": {
+          "contractTask": { "type": "string" },
+          "subPlanTask": { "type": "string" },
+          "expert": { "type": "string" },
+          "trigger": { "type": "string" }
+        }
+      }
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "description": "验收标准（§五）",
+      "items": { "type": "string" }
+    }
+  }
+}

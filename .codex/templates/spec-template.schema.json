@@ -1,0 +1,34 @@
+{
+    "_generated": true,
+    "_generated_source": "guard-rules.toml",
+    "template": "spec-template.md",
+    "sections": [
+        {
+            "id": "plan_spec_mapping",
+            "required": true,
+            "heading": "## Plan→Spec 映射"
+        },
+        {
+            "id": "section_1",
+            "required": true,
+            "heading": "## 1."
+        },
+        {
+            "id": "plan_track_note",
+            "required": true,
+            "anchor": "plan_track",
+            "pattern": "plan_track\\(\\{ planName:"
+        }
+    ],
+    "placeholders": [
+        "{功能名称}",
+        "{标题}",
+        "{条件}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "Step",
+        "阶段",
+        "步骤"
+    ]
+}
