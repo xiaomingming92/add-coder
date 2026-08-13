@@ -78,9 +78,9 @@ add-coder/
 │       ├── qoder/hooks/           ←   Qoder hooks（15 文件 + lib/）
 │       ├── vscode/hooks/          ←   VS Code hooks（11 文件，无 lib/）
 │       ├── trae/hooks/            ←   Trae hooks（从 core 派生，15 文件 + lib/）
-│       └── codex/hooks/           ←   Codex hooks（从 core 派生，15 文件 + lib/）
+│       └── codex/hooks/           ←   Codex 原生 hooks（含 lib/ 的完整独立真源）
 │
-├── .add/                          ← 运行时：ADD 共享核心（从 core 同步）
+├── .add/                          ← 运行时：ADD 标准落地目录（从 core 同步）
 │   ├── hooks/                     ←   从 core/hooks/ 同步（含 lib/）
 │   ├── templates/                 ←   从 core/templates/ 同步
 │   ├── plans/ specs/ reports/     ←   运行时产出，不同步
@@ -134,8 +134,8 @@ add-coder 遵循 **单一真源（Single Source of Truth）** 原则：
 │  │  hooks/  templates/  │  │  claude/hooks/           │ │
 │  │  agents/ skills/     │  │  qoder/hooks/            │ │
 │  │  plans/  scripts/    │  │  vscode/hooks/           │ │
-│  │  ...                 │  │  （codex/trae 无真源，    │ │
-│  │                      │  │   从 core 派生）          │ │
+│  │  ...                 │  │  codex/hooks（原生真源）  │ │
+│  │                      │  │  trae/hooks（core 派生）  │ │
 │  └──────────┬───────────┘  └────────────┬─────────────┘ │
 └─────────────┼───────────────────────────┼───────────────┘
               │                           │
@@ -189,8 +189,8 @@ add-coder 遵循 **单一真源（Single Source of Truth）** 原则：
                                     → .vscode/templates/
     36 个模板文件 + schema，4 个 magic 目录完全一致
 
-⑥ templates/core/hooks/            → templates/adapters/codex/hooks/
-    codex 无自有 hooks，从 core 派生
+⑥ templates/adapters/codex/hooks/ → .codex/hooks/
+    Codex hooks（含 lib/）是完整 adapter 真源；core 不覆盖任何 Codex hook 文件
 
 ⑦ templates/core/hooks/            → templates/adapters/trae/hooks/
     trae 无自有 hooks，从 core 派生
@@ -201,7 +201,7 @@ add-coder 遵循 **单一真源（Single Source of Truth）** 原则：
 | 特性 | 实现 |
 |------|------|
 | **同步方式** | `rsync -av --delete` → **烘焙（bake）**：将模板中的动态变量替换为确定性硬编码值 |
-| **烘焙内容** | 将 `MAGIC_DIR="$(basename ...)"` 动态检测替换为 `MAGIC_DIR=".add"` 等具体值；修复 grep 单引号导致 `$MAGIC_DIR` 不展开的 bug |
+| **烘焙内容** | 将 `MAGIC_DIR="$(basename ...)"` 动态检测替换为目标目录的确定值；Markdown 的 `{{magicDir}}` 同样按各自目标目录烘焙 |
 | **备份机制** | 同步前自动备份到 `.backup/YYYYMMDD_HHMMSS/` |
 | **排除项** | `.gitkeep`、`.DS_Store`、`debug-dump/`、`*.log` |
 | **安全保护** | adapter 特有文件（如 claude 的 permission-denied.sh）不会丢失，因为它们存在于源中 |

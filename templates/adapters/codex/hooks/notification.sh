@@ -1,5 +1,5 @@
 #!/bin/bash
-# Notification — Review 提醒 + Token 预警（Claude Code 适配）
+# Notification — Review 提醒 + Token 预警（Codex 适配）
 # 治理卡位 #12: 开发提醒/Token 预警
 set -euo pipefail
 
@@ -11,7 +11,8 @@ if [ "$ntype" != "result" ]; then
 fi
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-export CURRENT_MAGIC=$(basename "$(dirname "$HOOK_DIR")")
+export CURRENT_MAGIC=".codex"
+export MAGIC_DIR=".codex"
 COMMON_LIB="$HOOK_DIR/lib/common.sh"
 [ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
 
@@ -22,24 +23,8 @@ state=$(detect_active_add 2>/dev/null || true)
 
 IFS='::' read -r plan _ _ _ _ <<< "$state"
 
-# 动态探测
-if [ -z "${MAGIC_DIR:-}" ]; then
-  for m in ".claude" ".qoder" ".vscode" ".add"; do
-    [ -d "${PROJECT_DIR:-$PWD}/$m" ] && { MAGIC_DIR="$m"; break; }
-  done
-  MAGIC_DIR="${MAGIC_DIR:-.add}"
-fi
 reviews_dir="${PROJECT_DIR}/$MAGIC_DIR/reviews"
 if ls "$reviews_dir"/*.md >/dev/null 2>&1; then
   echo "[ADD Notification] Plan: ${plan} — 请检查 Review 文档: ${reviews_dir}"
 fi
-exit 0
-#!/bin/bash
-# Notification — 通知事件处理（Claude Code 适配）
-set -euo pipefail
-
-HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-SHARED_LIB="$HOOK_DIR/../../shared/hooks-lib/common.sh"
-[ -f "$SHARED_LIB" ] && source "$SHARED_LIB"
-
 exit 0

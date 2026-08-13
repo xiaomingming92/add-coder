@@ -10,7 +10,7 @@ import { detectIDE, resolveAdapters } from "../detect";
 import { magicDirFor, ADD_DIR } from "../../shared/paths.js";
 import { loadConfig } from "../config-loader";
 import { writeFiles } from "../writer";
-import { renderCore, saveStack } from "../../core/renderer";
+import { renderCoreForTargets, saveStack } from "../../core/renderer";
 import { renderAdapter as renderClaude } from "../../adapters/claude/renderer";
 import { renderAdapter as renderQoder } from "../../adapters/qoder/renderer";
 import { renderAdapter as renderVSCode } from "../../adapters/vscode/renderer";
@@ -35,6 +35,14 @@ interface PackageJsonShape { scripts?: Record<string, string> }
 const ADAPTER_RENDERERS: Record<string, (config: AddCoderConfig, targetDir: string, dryRun: boolean, magicDir: string) => Map<string, string>> = {
     claude: renderClaude, qoder: renderQoder, vscode: renderVSCode, trae: renderTrae, codex: renderCodex,
 };
+
+function coreTargetsForAdapter(target: Adapter, magicDir: string): string[] {
+    return target === "codex" ? [magicDir] : [ADD_DIR, magicDir];
+}
+
+function needsClaudeAgentHost(adapters: readonly string[]): boolean {
+    return adapters.includes("vscode") || adapters.includes("trae");
+}
 
 // ════════════════════ 上下文 — 全流程共享状态 ════════════════════
 
@@ -426,35 +434,41 @@ async function renderAndWrite(ctx: InitContext) {
     const { projectRoot, options, magicDir, config, target } = ctx;
     const dry = !!options.dryRun;
 
-    const coreFiles = renderCore(config, dry);
-    console.log(`Core 模板: ${coreFiles.size} 文件`);
-
-    const allFiles = new Map<string, string>();
-    for (const [relPath, content] of coreFiles) {
-        for (const t of [ADD_DIR, magicDir]) {
-            const targetPath = relPath.replace(/^\.add/, t);
-            if (!allFiles.has(targetPath)) allFiles.set(targetPath, content);
-        }
-    }
+    const coreTargets = coreTargetsForAdapter(target, magicDir);
+    const allFiles = renderCoreForTargets(config, dry, coreTargets);
+    console.log(`Core 模板: ${allFiles.size} 个并列目标文件`);
 
     const resolved = resolveAdapters(target);
     for (const adapter of resolved) {
         const renderFn = ADAPTER_RENDERERS[adapter];
         if (renderFn) {
-            const adapterFiles = renderFn(config, projectRoot, dry, magicDir);
+            const adapterMagicDir = magicDirFor(adapter);
+            const adapterFiles = renderFn(
+                { ...config, magicDir: adapterMagicDir },
+                projectRoot,
+                dry,
+                adapterMagicDir,
+            );
             for (const [p, c] of adapterFiles) allFiles.set(p, c);
             console.log(`${adapter} adapter: ${adapterFiles.size} 文件`);
         }
     }
 
-    if (resolved.includes("vscode") || resolved.includes("trae") || resolved.includes("codex")) {
-        const claudeFiles = renderClaude(config, projectRoot, dry, magicDirFor("claude"));
+    if (needsClaudeAgentHost(resolved)) {
+        const claudeMagicDir = magicDirFor("claude");
+        const claudeFiles = renderClaude(
+            { ...config, magicDir: claudeMagicDir },
+            projectRoot,
+            dry,
+            claudeMagicDir,
+        );
         for (const [p, c] of claudeFiles) allFiles.set(p, c);
         console.log(`claude adapter (via Agent Host): ${claudeFiles.size} 文件`);
     }
 
     // 确保空目录存在（reviews/ 等运行时产出目录）
-    for (const d of [ADD_DIR, magicDir]) {
+    const reviewTargets = target === "codex" ? [magicDir] : [ADD_DIR, magicDir];
+    for (const d of reviewTargets) {
         const reviewsDir = resolve(projectRoot, d, "reviews")
         if (!existsSync(reviewsDir)) {
             if (dry) { console.log(`[dry-run] 将创建 ${reviewsDir}/`); }

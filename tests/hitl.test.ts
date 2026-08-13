@@ -5,8 +5,26 @@
  * 运行: npx vitest run tests/hitl.test.ts
  */
 
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { McpServer } from "@modelcontextprotocol/server"
+
+vi.mock("../templates/core/scripts/mcp-server/shared/prisma.js", () => ({
+  prisma: new Proxy({}, { get: () => ({}) }),
+}))
+
+vi.mock("../templates/core/scripts/mcp-server/shared/env.js", () => ({
+  PROJECT_ROOT: process.cwd(),
+  PROJECT_ID: "add-coder",
+  MAGIC_DIR: ".codex",
+  DATABASE_URL: "postgresql://test.invalid/add_coder",
+  getRuntimeContext: () => ({
+    projectRoot: process.cwd(),
+    projectKey: "test-project-key",
+    adapterKey: "codex",
+    magicDir: ".codex",
+    contextId: "test-project-key:codex",
+  }),
+}))
 
 function createServer() {
   return new McpServer(

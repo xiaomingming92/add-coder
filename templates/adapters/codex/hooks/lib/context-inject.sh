@@ -24,7 +24,7 @@ build_stop_context() {
       echo "[ADD Stop] 无活跃 Plan，无代码改动。正常结束。"
       ;;
     "no_add_has_dev")
-      cat <<'EOF'
+      cat <<EOF
 [ADD Stop] ⚠️ 检测到代码修改但无活跃 ADD Plan。
 
 Plan 不是"文档开销"——它是代码治理的基础设斻。跳过 Plan 的后果:
@@ -35,7 +35,7 @@ Plan 不是"文档开销"——它是代码治理的基础设斻。跳过 Plan �
 你必须立即补救，二选一:
 
 方案 A — 补 ADD 流程（招安）:
-  Step 0: 读 .qoder/templates/plan-template.md → 生成 Plan → .qoder/plans/{today}/{keyword}-plan-v1.md
+  Step 0: 读 ${MAGIC_DIR}/templates/standard-plan-template.md → 生成 Plan → ${MAGIC_DIR}/plans/{today}/{keyword}-plan-v1.md
           生成 add-route → check_dps ≥ {{dpsPass}}
   Step 1: 扩展 AgentAuditPhase（如需要）
   Step 2: 确认 agentAudit() 通道

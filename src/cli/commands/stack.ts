@@ -9,7 +9,7 @@ import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 
 import { resolve, join } from "path";
 import { createHash } from "crypto";
 import { magicDirFor, ADD_DIR } from "../../shared/paths.js";
-import { renderCore, saveStack, loadStack, loadProfileRegistry } from "../../core/renderer";
+import { renderCoreForTargets, saveStack, loadStack, loadProfileRegistry } from "../../core/renderer";
 import { defaults } from "../../config/defaults";
 import { detectIDE } from "../detect";
 import { normalizeRelPath } from "../../lib/path-normalize";
@@ -129,7 +129,7 @@ function buildConfig(projectRoot: string, magicDir: string, stack: string): AddC
     return config;
 }
 
-/** 应用技术栈：校验 → 写 stack.json → 重渲染 project_rules.md + profile（.add + magicDir 双路径）→ 更新 hash */
+/** 应用技术栈：校验 → 写 stack.json → 重渲染当前 adapter（非 Codex 继续保留 .add mirror）→ 更新 hash */
 function applyStack(projectRoot: string, magicDir: string, name: string) {
     if (!profileExists(projectRoot, magicDir, name)) {
         const registry = loadProfileRegistry();
@@ -143,7 +143,8 @@ function applyStack(projectRoot: string, magicDir: string, name: string) {
     saveStack(projectRoot, magicDir, name);
 
     // 重渲染 stack 相关文件（project_rules.md 引用行 + profile），只写与 stack 相关的部分
-    const coreFiles = renderCore(config, false);
+    const coreTargets = magicDir === magicDirFor("codex") ? [magicDir] : [ADD_DIR, magicDir];
+    const coreFiles = renderCoreForTargets(config, false, coreTargets);
     const stackRelated = new Map<string, string>();
     for (const [relPath, content] of coreFiles) {
         // Windows 渲染路径为反斜杠，先 normalize 再匹配（issue #10 P1-4）
@@ -160,13 +161,11 @@ function applyStack(projectRoot: string, magicDir: string, name: string) {
 
     let written = 0;
     for (const [relPath, content] of stackRelated) {
-        for (const t of [ADD_DIR, magicDir]) {
-            const targetPath = resolve(projectRoot, relPath.replace(/^\.add/, t));
-            mkdirSync(join(targetPath, ".."), { recursive: true });
-            writeFileSync(targetPath, content, "utf-8");
-            hashMap[relPath.replace(/^\.add/, t)] = hash8(content);
-            written++;
-        }
+        const targetPath = resolve(projectRoot, relPath);
+        mkdirSync(join(targetPath, ".."), { recursive: true });
+        writeFileSync(targetPath, content, "utf-8");
+        hashMap[relPath] = hash8(content);
+        written++;
     }
 
     // 写后断言（issue #10 P1-4）：profile 文件与 project_rules.md 引用必须实际写入，否则返回失败
@@ -178,7 +177,7 @@ function applyStack(projectRoot: string, magicDir: string, name: string) {
     const projectRulesPath = resolve(projectRoot, magicDir, "rules", "project_rules.md");
     const projectRulesContent = existsSync(projectRulesPath) ? readFileSync(projectRulesPath, "utf-8") : "";
     if (written === 0) fail(`未渲染任何 stack 相关文件（${name}）——Windows 路径匹配失效遗留问题`);
-    if (isBuiltin && !existsSync(profilePathAdd)) fail(`profile 未写入 ${ADD_DIR}: ${profilePathAdd}`);
+    if (magicDir !== magicDirFor("codex") && isBuiltin && !existsSync(profilePathAdd)) fail(`profile 未写入 ${ADD_DIR}: ${profilePathAdd}`);
     if (!existsSync(profilePathMagic)) fail(`profile 未写入 ${magicDir}: ${profilePathMagic}`);
     if (!projectRulesContent.includes("**当前技术栈**") || !projectRulesContent.includes(name)) fail(`project_rules.md 未包含 ${name} 引用`);
 

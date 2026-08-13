@@ -4,11 +4,11 @@
  # @Date         : 2026-07-17 13:19:01
  # @LastEditors  : xiaomingming wujixmm@gmail.com
  # @LastEditTime : 2026-07-17 13:21:29
- # @FilePath     : /add-coder/templates/core/hooks/lib/preload-templates.sh
+ # @FilePath     : /add-coder/templates/adapters/codex/hooks/lib/preload-templates.sh
  # @Description  : ADD 模板预读脚本
 ### 
 # preload-templates.sh — ADD 模板预读脚本
-# 路径: templates/core/hooks/lib/preload-templates.sh
+# 路径: templates/adapters/codex/hooks/lib/preload-templates.sh
 #
 # 用法:
 #   preload-templates.sh --index              # 输出模板清单（文件名 + 用途）
@@ -16,14 +16,14 @@
 #   preload-templates.sh --full --top 5       # 输出前 5 个最常用模板全文
 #   preload-templates.sh --full --mark        # 全文输出 + 落 tpl-injected 标记
 #
-# 被 SessionStart（--index）和 UserPromptSubmit（--full）调用。
+# 可由 Codex 生命周期 hook 或人工按需调用。
 # tpl-injected 标记文件用于去重——同会话二次命中时不重复注入。
 
 set -euo pipefail
 
-# 模板目录（相对于本脚本）
+# core 标准模板在分发期物化到 `.codex/templates`；生成态只读取当前 adapter 本地副本。
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TEMPLATES_DIR="${SCRIPT_DIR}/../../../core/templates"
+TEMPLATES_DIR="${SCRIPT_DIR}/../../templates"
 
 # tpl-injected 标记文件路径（项目级，/tmp 下按项目 hash 区分）
 PROJECT_HASH=$(echo "${PROJECT_DIR:-$PWD}" | md5sum 2>/dev/null | cut -c1-8 || echo "default")
@@ -74,6 +74,25 @@ PRIORITY_ORDER=(
   "TERMINOLOGY.md"
 )
 
+validate_templates_dir() {
+  if [ ! -d "$TEMPLATES_DIR" ]; then
+    echo "[ADD preload] 模板目录不存在: $TEMPLATES_DIR" >&2
+    exit 1
+  fi
+
+  local available=0
+  local tmpl
+  for tmpl in "${PRIORITY_ORDER[@]}"; do
+    if [ -f "$TEMPLATES_DIR/$tmpl" ]; then
+      available=$((available + 1))
+    fi
+  done
+  if [ "$available" -eq 0 ]; then
+    echo "[ADD preload] 模板目录中未找到 ADD 标准模板: $TEMPLATES_DIR" >&2
+    exit 1
+  fi
+}
+
 # 读取模板文件内容（strip frontmatter）
 read_template_content() {
   local file="$1"
@@ -99,7 +118,7 @@ output_index() {
   for tmpl in "${PRIORITY_ORDER[@]}"; do
     if [ -f "$TEMPLATES_DIR/$tmpl" ]; then
       echo "| $i | $tmpl | ${TEMPLATES[$tmpl]:-模板文件} |"
-      ((i++))
+      i=$((i + 1))
     fi
   done
 }
@@ -164,6 +183,8 @@ main() {
       *) shift ;;
     esac
   done
+
+  validate_templates_dir
 
   case "$mode" in
     index)

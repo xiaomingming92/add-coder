@@ -169,7 +169,7 @@
 | 发起时机 | 契约新建 / 契约重大变更（参与者增减、边界重划、触发条件变更） |
 | round 机制 | 复用 HitlRecord.round（同一契约多次变更递增 round） |
 | 与子 Plan 审批关系 | 契约审批是**总控级**（planName=总控 Plan）；子 Plan 审批独立进行（互不阻塞） |
-| 哨兵 | `.qoder/hitl/.tongyi-{contractName}`（复用现有哨兵机制） |
+| 哨兵 | `{{magicDir}}/hitl/.tongyi-{contractName}`（复用当前 adapter 的哨兵机制） |
 | 审计 | 契约审批记录入 HitlRecord（type=COLLAB_CONTRACT）→ query_audit_logs 可查 |
 
 ---

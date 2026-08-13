@@ -1,14 +1,9 @@
 #!/bin/bash
 # vocabulary.sh — 从 vocabulary markdown 表格加载触发词
-# 单一数据源: .qoder/vocabulary/add-governance-vocabulary.md §类别 A-F 表格
+# 单一数据源: 当前 adapter 的 vocabulary/add-governance-vocabulary.md §类别 A-F 表格
 
-# 动态探测 MAGIC_DIR
-if [ -z "${MAGIC_DIR:-}" ]; then
-  for m in ".claude" ".qoder" ".vscode" ".add"; do
-    [ -d "${PROJECT_DIR:-$PWD}/$m" ] && { MAGIC_DIR="$m"; break; }
-  done
-  MAGIC_DIR="${MAGIC_DIR:-.add}"
-fi
+# Codex 真源固定读取 `.codex`，禁止遍历或回退其他 magicDir。
+MAGIC_DIR=".codex"
 VOCABULARY_FILE="${PROJECT_DIR:-$PWD}/$MAGIC_DIR/vocabulary/add-governance-vocabulary.md"
 
 # 输出格式: 优先级::触发词正则::响应文本（:: 避免与触发词内的 | 冲突）

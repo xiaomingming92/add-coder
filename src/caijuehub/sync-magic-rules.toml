@@ -36,13 +36,7 @@ dest = ".add/hooks"
 name = ".add hooks"
 magic_dir = ".add"
 
-# ── Hook 同步：core → adapter 模板派生 ──
-[[hooks]]
-src = "templates/core/hooks"
-dest = "templates/adapters/codex/hooks"
-name = "codex hooks"
-magic_dir = ".codex"
-
+# ── Hook 同步：core 派生 ──
 [[hooks]]
 src = "templates/core/hooks"
 dest = "templates/adapters/trae/hooks"

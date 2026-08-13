@@ -1,12 +1,15 @@
 // 量化复检层合成数据验证（Task 2.1）——直接验证纯函数，不依赖 MCP
-// 运行: npx tsx tests/quant-recheck.similarity.test.ts
+// 运行: npx vitest run tests/quant-recheck.similarity.test.ts
+import { describe, expect, it } from "vitest";
 import { weightedJaccard, rrfScore, ewmaThreshold } from "../templates/core/scripts/mcp-server/tools/gateway/check_doc_similarity.js";
 
-let pass = 0, fail = 0;
-function check(name: string, cond: boolean, detail = "") {
-  if (cond) { pass++; console.log(`✅ ${name}`); }
-  else { fail++; console.log(`❌ ${name} ${detail}`); }
-}
+describe("量化复检层合成数据", () => {
+  it("区分形似义异、合法模板并观测 EWMA 阈值漂移", () => {
+    let pass = 0, fail = 0;
+    function check(name: string, cond: boolean, detail = "") {
+      if (cond) { pass++; console.log(`✅ ${name}`); }
+      else { fail++; console.log(`❌ ${name} ${detail}`); }
+    }
 
 // ── 2.1.1 形似义异：锚点齐全但语义偏离 → 相似度低 → WARN_BLOCKED ──
 {
@@ -69,5 +72,8 @@ function check(name: string, cond: boolean, detail = "") {
   check("冷启动用保守基线", tCold.lower === 0.16, `lower=${tCold.lower}`);
 }
 
-console.log(`\n==== 结果: PASS=${pass} FAIL=${fail} ====`);
-process.exit(fail > 0 ? 1 : 0);
+    console.log(`\n==== 结果: PASS=${pass} FAIL=${fail} ====`);
+    expect(fail).toBe(0);
+    expect(pass).toBe(6);
+  });
+});

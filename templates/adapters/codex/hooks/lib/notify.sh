@@ -12,7 +12,7 @@
 
 write_hook_event() {
   local hook="$1" decision="$2" cmd="$3" reason="$4" plan="${5:-unknown}" status="${6:-none}" extra="${7:-}"
-  local dir="${MAGIC_DIR:-.qoder}/reports"
+  local dir=".codex/reports"
   mkdir -p "$dir" 2>/dev/null || true
   local file="$dir/hook-events.jsonl"
 

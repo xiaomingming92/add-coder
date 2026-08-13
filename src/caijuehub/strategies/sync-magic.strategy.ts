@@ -12,7 +12,6 @@ export const SYNC_MAGIC_CONFIG = {
     { src: "templates/adapters/qoder/hooks", dest: ".qoder/hooks", name: "qoder hooks", magicDir: ".qoder" },
     { src: "templates/adapters/vscode/hooks", dest: ".vscode/hooks", name: "vscode hooks", magicDir: ".vscode" },
     { src: "templates/core/hooks", dest: ".add/hooks", name: ".add hooks", magicDir: ".add" },
-    { src: "templates/core/hooks", dest: "templates/adapters/codex/hooks", name: "codex hooks", magicDir: ".codex" },
     { src: "templates/core/hooks", dest: "templates/adapters/trae/hooks", name: "trae hooks", magicDir: ".trae" }
     ],
     CATEGORIES: [

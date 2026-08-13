@@ -92,7 +92,12 @@ export function render(content: string, config: AddCoderConfig): string {
     return result;
 }
 
-const TEMPLATES_ROOT = join(__dirname, "../templates");
+const TEMPLATES_ROOT = [
+    // Source mode: src/core/renderer.ts → ../../templates
+    join(__dirname, "../../templates"),
+    // Bundled mode: dist/index.js → ../templates
+    join(__dirname, "../templates"),
+].find(existsSync) ?? join(__dirname, "../templates");
 const CORE_DIR = join(TEMPLATES_ROOT, "core");
 const CORE_TARGET = ADD_DIR;
 const SKIP_DIRS = new Set(["prisma", "profiles"]); // Prisma schema 不进 IDE magic path; profiles 按 stack 按需注入
@@ -185,12 +190,33 @@ export function renderCore(
     return files;
 }
 
+/**
+ * 将 core 并列分发到多个 magicDir。每个目标必须用自己的 magicDir 独立渲染，
+ * 禁止复用某个 adapter 已烘焙的 content，否则 `.add` 会混入 `.codex` 等路径。
+ */
+export function renderCoreForTargets(
+    config: AddCoderConfig,
+    dryRun: boolean,
+    targets: Iterable<string>,
+    renderTarget: (targetConfig: AddCoderConfig, dryRun: boolean) => Map<string, string> = renderCore,
+): Map<string, string> {
+    const files = new Map<string, string>();
+    for (const target of new Set(targets)) {
+        const targetFiles = renderTarget({ ...config, magicDir: target }, dryRun);
+        for (const [relPath, content] of targetFiles) {
+            files.set(relPath.replace(/^\.add/, target), content);
+        }
+    }
+    return files;
+}
+
 // 统一适配器渲染：所有 IDE adapter 共用此函数
 export function renderAdapterBase(
     config: AddCoderConfig,
     magicPath: string,          // e.g. ".claude" ".qoder" ".vscode"
     githubHooksToRoot: boolean, // VS Code 需将 .github/hooks/ 输出到项目根
     dryRun: boolean,
+    includeCoreHooksLib = true,
 ): Map<string, string> {
     const files = new Map<string, string>();
     const adapterDir = join(TEMPLATES_ROOT, "adapters", magicPath.replace(".", ""));
@@ -218,7 +244,9 @@ export function renderAdapterBase(
     }
 
     walk(adapterDir, "");
-    walk(coreHooksLib, "", join(magicPath, "hooks", "lib"));
+    if (includeCoreHooksLib) {
+        walk(coreHooksLib, "", join(magicPath, "hooks", "lib"));
+    }
 
     if (dryRun) {
         console.log(`[dry-run] ${magicPath} adapter: ${files.size} files`);

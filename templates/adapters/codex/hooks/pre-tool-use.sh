@@ -1,217 +1,130 @@
 #!/bin/bash
-# pre-tool-use.sh — PreToolUse §A§B（阻断模式，通用适配版）
-# §A: Bash 裸写保护 — 拦截所有绕过 IDE 追踪的文件写操作
-# §B: Write/Edit 写入前置守卫 — Plan/Spec/Review 需要活跃 ADD Plan + 敏感文件保护
-# 治理卡位 #4: 危险命令拦截 / 模板路径兜底 / 写入前置守卫 / 敏感文件保护
+# pre-tool-use.sh — Codex PreToolUse：Bash 裸写保护 + apply_patch 文件守卫
 set -euo pipefail
 
 input=$(cat)
-
-# 探测 MAGIC_DIR 和 PROJECT_DIR（兼容多种 adapter）
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-PARENT="$(dirname "$HOOK_DIR")"
-MAGIC_DIR=".codex"
-PROJECT_DIR="$PWD"
+export CURRENT_MAGIC=".codex"
+export MAGIC_DIR=".codex"
+export PROJECT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# core notify helper 使用相对 MAGIC_DIR；统一 cwd，避免从 repo 子目录启动时写偏审计文件。
+cd "$PROJECT_DIR"
 
-# ── Hook 通知: 拦截事件写入 jsonl（旁路，失败不阻断 exit 2）──
-source "${HOOK_DIR}/lib/notify.sh" 2>/dev/null || true
-ACTIVE_PLAN=$(detect_active_add 2>/dev/null || true)
-if [ -n "$ACTIVE_PLAN" ]; then
-  PLAN_KEYWORD="${ACTIVE_PLAN%%::*}"
-  PLAN_STATUS="active"
+COMMON_LIB="$HOOK_DIR/lib/common.sh"
+[ -f "$COMMON_LIB" ] && source "$COMMON_LIB"
+source "$HOOK_DIR/lib/notify.sh" 2>/dev/null || true
+
+tool_name=$(echo "$input" | jq -r '.tool_name // empty')
+tool_command=$(echo "$input" | jq -r '.tool_input.command // empty')
+active_plan=$(detect_active_add 2>/dev/null || true)
+if [ -n "$active_plan" ]; then
+  plan_keyword="${active_plan%%::*}"
+  plan_status="active"
 else
-  PLAN_KEYWORD="no-active-plan"
-  PLAN_STATUS="none"
+  plan_keyword="no-active-plan"
+  plan_status="none"
 fi
 
-# ── §A 辅助函数: 阻断日志 ──
 _log_block() {
-  local rule="$1" cmd="$2"
-  mkdir -p "$PROJECT_DIR/$MAGIC_DIR/debug-dump"
-  cat >> "$PROJECT_DIR/$MAGIC_DIR/debug-dump/stdin.log" <<BLOCKLOG
-=== $(date) [BLOCKED by §A: ${rule}] ===
-command: ${cmd:0:300}
-=== DONE ===
-BLOCKLOG
+  local rule="$1" detail="$2"
+  mkdir -p "$PROJECT_DIR/$MAGIC_DIR/debug-dump" 2>/dev/null || return 0
+  printf '=== %s [BLOCKED: %s] ===\n%s\n=== DONE ===\n' \
+    "$(date -Iseconds)" "$rule" "${detail:0:500}" \
+    >> "$PROJECT_DIR/$MAGIC_DIR/debug-dump/stdin.log" 2>/dev/null || true
 }
 
-# ═══════════════ §A: Bash 工具写入保护 ═══════════════
-# 任何通过 Bash 修改文件内容的操作都会绕过 IDE 工具层（Write/SearchReplace），
-# 导致 Plan 关联检查、doc-format-guard、审计追踪全部失效。
-# 因此全局阻断所有可写文件的 Bash 命令，强制走 IDE 工具通道。
-command=$(echo "$input" | jq -r '.tool_input.command // empty')
-if [ -n "$command" ]; then
+_deny() {
+  local rule="$1" reason="$2" detail="${3:-$tool_name}"
+  echo "⛔ [ADD PreToolUse] $reason" >&2
+  jq -nc --arg reason "$reason" '{
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: $reason
+    }
+  }'
+  _log_block "$rule" "$detail"
+  write_hook_event "pre-tool-use" "deny" "$tool_name" "$reason" "$plan_keyword" "$plan_status" 2>/dev/null || true
+  exit "${EXIT_BLOCK:-2}"
+}
 
-  # 检测 1: 脚本解释器 — 可写任意文件，无法解析脚本内容做细粒度拦截
-  if echo "$command" | grep -qE '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'; then
-    _reason="禁止通过脚本解释器直接修改文件。请使用 Write 或 SearchReplace 工具操作文件。"
-    cat >&2 <<'EOF'
-⛔ [ADD PreToolUse §A] 阻断: 禁止通过脚本解释器直接修改文件。
+_require_hitl_for() {
+  local file_path="$1" do_hitl=false plan_name marker_base marker_full
 
-  python/node/ruby/perl/php 可在脚本中写入任意文件，绕过:
-    · Plan 关联检查（哪个文件属于哪个 ADD Plan？）
-    · doc-format-guard（章节/占位符/禁止词校验）
-    · 审计追踪（agentAudit 无法感知 Bash 内部的文件变更）
-
-  → 请改用 Write 或 SearchReplace 工具操作文件。
-  → 如需运行构建/测试脚本，使用 npx/pnpm/npm 命令。
-EOF
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
-    _log_block "脚本解释器" "$command"
-    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过脚本解释器直接修改文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
-    exit 2
+  if echo "$file_path" | grep -qE '(^|/)\.codex/plans/'; then
+    if ! echo "$file_path" | grep -qE -- '-handoff'; then
+      do_hitl=true
+    fi
+  elif echo "$file_path" | grep -qE '(^|/)\.codex/reviews/'; then
+    # Runtime Review 是运行时证据容器；Plan Review 与 Implementation Review 都必须走 create_hitl。
+    if ! echo "$file_path" | grep -qE -- '-runtime'; then
+      do_hitl=true
+    fi
   fi
 
-  # 检测 2: sed -i 原地编辑
-  if echo "$command" | grep -qE '\bsed\b.*-i'; then
-    _reason="禁止通过 sed -i 直接编辑文件。请使用 SearchReplace 工具。"
-    cat >&2 <<'EOF'
-⛔ [ADD PreToolUse §A] 阻断: 禁止通过 sed -i 原地编辑文件。
+  [ "$do_hitl" = true ] || return 0
 
-  sed -i 直接写入文件，绕过 IDE 工具层的所有校验。
-  → 请改用 SearchReplace 工具。
-EOF
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
-    _log_block "sed -i" "$command"
-    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过 sed -i 原地编辑" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
-    exit 2
+  plan_name=$(basename "$file_path" .md | sed 's/\.hitl$//')
+  marker_full="$PROJECT_DIR/$MAGIC_DIR/hitl/.tongyi-${plan_name}"
+  marker_base="$PROJECT_DIR/$MAGIC_DIR/hitl/.tongyi-$(echo "$plan_name" | sed 's/-plan-v[0-9]*$//;s/-add-route-v[0-9]*$//;s/-review-v[0-9]*$//;s/-review-implementation[^/]*$//')"
+  if [ ! -f "$marker_full" ] && [ ! -f "$marker_base" ]; then
+    _deny "hitl" "HITL 未同意: $file_path。请先 create_hitl，再由人工 update_hitl(TONGYI)。" "$file_path"
+  fi
+}
+
+_guard_file_path() {
+  local file_path="$1"
+  [ -n "$file_path" ] || return 0
+
+  if echo "$file_path" | grep -qE '(^|/)(\.env|\.env\.production|\.env\.local)$|credentials|secrets'; then
+    _deny "sensitive-file" "敏感文件受保护，禁止写入: $file_path" "$file_path"
   fi
 
-  # 检测 3: 输出重定向 (>/>>) 写入文件
-  if echo "$command" | grep -qE '[>]{1,2}\s+\S'; then
-    _reason="禁止通过重定向写入文件。请使用 Write 工具。"
-    cat >&2 <<'EOF'
-⛔ [ADD PreToolUse §A] 阻断: 禁止通过重定向(>/>>)写入文件。
+  _require_hitl_for "$file_path"
 
-  重定向写入绕过 IDE 工具层，变更无法追踪。
-  → 请改用 Write 工具。
-EOF
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
-    _log_block "重定向" "$command"
-    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过重定向写入文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
-    exit 2
+  if echo "$file_path" | grep -qE '(^|/)\.codex/(plans|specs|reviews)/'; then
+    if [ -z "$active_plan" ]; then
+      echo "[ADD PreToolUse] 正在修改 ADD 文档但未检测到活跃 Plan: $file_path" >&2
+    fi
   fi
+}
 
-  # 检测 4: tee / dd 写入
-  if echo "$command" | grep -qE '\btee\b|\bdd\b.*of='; then
-    _reason="禁止通过 tee/dd 写入文件。请使用 Write 或 SearchReplace 工具。"
-    cat >&2 <<'EOF'
-⛔ [ADD PreToolUse §A] 阻断: 禁止通过 tee/dd 写入文件。
-
-  → 请改用 Write 或 SearchReplace 工具。
-EOF
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
-    _log_block "tee/dd" "$command"
-    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过 tee/dd 写入文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
-    exit 2
+# Codex 对 Bash 与 apply_patch 都把 payload 放在 tool_input.command。
+# 只有 canonical Bash 才执行 shell 命令检查，避免把 patch body 误判成 shell。
+if [ "$tool_name" = "Bash" ]; then
+  if echo "$tool_command" | grep -qE '(^|;|\|\||&&|\|)[[:space:]]*(python3?|node|ruby|perl|php)([[:space:]]|$)'; then
+    _deny "script-interpreter" "禁止通过脚本解释器直接修改文件；请使用 apply_patch。" "$tool_command"
   fi
-
-  # 检测 5: cp / mv / touch — 可创建或覆盖文件
-  if echo "$command" | grep -qE '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'; then
-    _reason="禁止通过 cp/mv/touch 操作文件。请使用 Write 或 SearchReplace 工具。"
-    cat >&2 <<'EOF'
-⛔ [ADD PreToolUse §A] 阻断: 禁止通过 cp/mv/touch 操作文件。
-
-  → 请改用 Write 或 SearchReplace 工具。
-EOF
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"${_reason}\"}}"
-    _log_block "cp/mv/touch" "$command"
-    write_hook_event "pre-tool-use" "deny" "$command" "禁止通过 cp/mv/touch 操作文件" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
-    exit 2
+  # `-i` 必须是 sed 命令中的独立 option；不能把 session-init 等后续路径子串当成原地写入。
+  if echo "$tool_command" | grep -qE '(^|[;&|][[:space:]]*)sed[[:space:]]+([^;&|]*[[:space:]])?(-[[:alpha:]]*i[^[:space:];&|]*|--in-place(=[^[:space:];&|]*)?)([[:space:];&|]|$)'; then
+    _deny "sed-i" "禁止通过 sed -i 直接编辑文件；请使用 apply_patch。" "$tool_command"
   fi
-
-  # 放行: 构建工具(npx/pnpm/npm/yarn)、版本控制(git)、
-  #        只读操作(ls/cat/grep/find/head/tail/wc)、目录操作(mkdir/rmdir) 等
+  if echo "$tool_command" | grep -qE '[>]{1,2}[[:space:]]+[^[:space:]]'; then
+    _deny "redirect" "禁止通过重定向写入文件；请使用 apply_patch。" "$tool_command"
+  fi
+  if echo "$tool_command" | grep -qE '\btee\b|\bdd\b.*of='; then
+    _deny "tee-dd" "禁止通过 tee/dd 写入文件；请使用 apply_patch。" "$tool_command"
+  fi
+  if echo "$tool_command" | grep -qE '(^|;|\|\||&&|\|)[[:space:]]*(cp|mv|touch)\b'; then
+    _deny "copy-move-touch" "禁止通过 cp/mv/touch 改变文件；请使用 apply_patch。" "$tool_command"
+  fi
   exit 0
 fi
 
-# ═══════════════ §B: Write/Edit 文件写入前置守卫 ═══════════════
-# 非 Bash 工具（Write/Edit）的文件写入需要经过:
-#   1. Plan/Spec/Review 文档写入 → 需要活跃 ADD Plan
-#   2. 敏感文件保护 → 阻断写入
-#   3. Dev Action 标记 → 用于 Stop 检查
-# 注意: 不再对 src/**/*.ts 做 Plan 白名单放行，避免绕过 skill/rules 规定的 HITL。
-tool_name=$(echo "$input" | jq -r '.tool_name // empty')
-if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "SearchReplace" ]; then
-  file_path=$(echo "$input" | jq -r '.tool_input.file_path // empty')
-  [ -z "$file_path" ] && exit 0
-
-  if echo "$file_path" | grep -qE '\.(qoder|claude|add)/(plans|specs|reviews)/'; then
-    if type detect_active_add >/dev/null 2>&1; then
-      state=$(detect_active_add 2>/dev/null || true)
-      if [ -z "$state" ]; then
-        echo "[ADD 提示] 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——首次创建场景放行，建议先执行 add-paradigm 生成 Plan+add-route" >&2
-        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"无活跃 ADD Plan 但为 Plan/Spec/Review 写入（首次创建场景），提示而非拦截\"}}"
-        write_hook_event "pre-tool-use" "info" "$tool_name $file_path" "无活跃 ADD Plan 下写入 Plan/Spec/Review（首次创建放行）" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
-        exit 0
-      fi
-    fi
-  fi
-
-  if echo "$file_path" | grep -qE '\.env$|\.env\.production$|\.env\.local$|credentials|secrets'; then
-    echo "⛔ 敏感文件受保护，禁止写入: $file_path" >&2
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"敏感文件受保护\"}}"
-    exit 2
-  fi
-
-  # §C: 模板类型前置注入 — plans/ 写入前提示应选模板
-  if echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(plans)/'; then
-    fname=$(basename "$file_path")
-    if echo "$fname" | grep -qE 'plan-v[0-9]'; then
-      echo "💡 [ADD PreToolUse] 写入 Plan → 模板: standard-plan-template.md（标准）或 simple-plan-template.md（≤3文件）" >&2
-    elif echo "$fname" | grep -qE 'add-route'; then
-      echo "💡 [ADD PreToolUse] 写入 ADD Route → 模板: add-route-template.md" >&2
-    elif echo "$fname" | grep -qE 'handoff'; then
-      echo "💡 [ADD PreToolUse] 写入 Handoff → 模板: handoff-single-round-template.md（单轮）或 handoff-multi-round-template.md（多轮）" >&2
-    fi
-    # Write 大文件适配 — 已存在大文件建议用 SearchReplace 分块
-    if echo "$tool_name" | grep -qE 'Write' && [ -f "$file_path" ]; then
-      fsize=$(wc -c < "$file_path" 2>/dev/null || echo "0")
-      if [ "$fsize" -gt 2000 ] 2>/dev/null; then
-        echo "⚠️ [ADD PreToolUse] 文件已有 ${fsize} 字节，Write 全量覆盖可能触发工具 payload 限制。建议用 SearchReplace 分块追加。" >&2
-      fi
-    fi
-  fi
-
-  # §C: HITL tongyi 检查 — plans/ + PLAN_REVIEW reviews/ 写入前必须有 .hitl-tongyi-{planName} 哨兵
-  # implementation/runtime review 不需要 HITL，走 §B 活跃 Plan 检查
-  # handoff 是 Step 8 收敛产物（多轮交接手册），不经 HITL 审批，同样豁免
-  # TODO 应该caijuehub管理
-  if echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(plans)/'; then
-    if echo "$file_path" | grep -qE '\-handoff'; then
-      _do_hitl=false  # handoff 不被 HITL 拦截（Step 8 产物，无独立审批）
-    else
-      _do_hitl=true
-    fi
-  elif echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(reviews)/'; then
-    if echo "$file_path" | grep -qE '-(implementation|runtime)'; then
-      _do_hitl=false  # implementation/runtime review 不被 HITL 拦截
-    else
-      _do_hitl=true   # PLAN_REVIEW 需要 HITL
-    fi
-  else
-    _do_hitl=false
-  fi
-
-  if [ "$_do_hitl" = true ]; then
-    _relative=$(echo "$file_path" | sed 's|.*/\.\(qoder\|claude\|add\|vscode\|trae\)/\(plans\|reviews\)/||')
-    _planName=$(basename "$_relative" .md | sed 's/\.hitl$//;s/-plan-v[0-9]*$//;s/-add-route-v[0-9]*$//;s/-review-v[0-9]*$//;s/-review-implementation$//;s/-review-runtime$//')
-    if [ -n "$_planName" ]; then
-      _tongyi_marker="${PROJECT_DIR}/${MAGIC_DIR}/hitl/.tongyi-${_planName}"
-      if [ ! -f "$_tongyi_marker" ]; then
-        echo "⛔ [ADD PreToolUse §C] HITL 未 tongyi: $file_path" >&2
-        echo "   原因: 哨兵文件 $_tongyi_marker 不存在" >&2
-        echo "   操作: 请先调用 create_hitl 创建审批，再 update_hitl({ status: \"TONGYI\" })" >&2
-        _reason="HITL 未 tongyi: 哨兵 ${_tongyi_marker} 不存在。请先 create_hitl → 人工 tongyi → update_hitl 后再写入"
-        echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"${_reason}\",\"additionalContext\":\"${_reason}\"}}"
-        write_hook_event "pre-tool-use" "deny" "$tool_name $file_path" "HITL 未 tongyi: $_tongyi_marker" "$PLAN_KEYWORD" "$PLAN_STATUS" 2>/dev/null || true
-        exit 0
-      fi
-    fi
-  fi
-
+if [ "$tool_name" = "apply_patch" ]; then
+  patch_paths=$(printf '%s\n' "$tool_command" | sed -nE 's/^\*\*\* (Add|Update|Delete) File: (.+)$/\2/p')
+  while IFS= read -r file_path; do
+    [ -n "$file_path" ] && _guard_file_path "$file_path"
+  done <<< "$patch_paths"
   mark_dev_action 2>/dev/null || true
   exit 0
+fi
+
+# 兼容尚未 canonicalize 的宿主输入；当前 Codex 正常上报 apply_patch。
+if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "SearchReplace" ]; then
+  file_path=$(echo "$input" | jq -r '.tool_input.file_path // .tool_input.path // empty')
+  _guard_file_path "$file_path"
+  mark_dev_action 2>/dev/null || true
 fi
 
 exit 0

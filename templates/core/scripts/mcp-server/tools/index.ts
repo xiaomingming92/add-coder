@@ -20,6 +20,7 @@ const WRITE_MAX = 4
 const READ_TOOLS = new Set([
   "get_project_context", "find_related_docs", "get_db_schema", "query_audit_logs",
   "plan_status", "review_status", "status_hitl", "contract_status",
+  "render_hitl_approval",
   "check_dps", "check_rahs", "check_add_route_status", "check_spec_sync",
   "check_add_route_completeness", "check_phase_symmetry", "check_failure_path",
   "check_add_compliance", "get_hook_events",
@@ -100,8 +101,8 @@ export function registerAllTools(server: McpServer) {
   registerQualityTools(registrar)    // 4 tools
   registerGatewayTools(registrar)    // 5 tools
   registerHookEventTools(registrar)  // 1 tool: get_hook_events
-  registerHitlTools(registrar)       // 3 tools: create_hitl / update_hitl / status_hitl
+  registerHitlTools(registrar)       // 4 tools: create_hitl / update_hitl / status_hitl / render_hitl_approval
   registerPlanTools(registrar)       // 3 tools: plan_track / plan_status / plan_sync
   registerReviewTools(registrar)     // 3 tools: review_track / review_status / review_sync
-  // Total: 29 tools
+  // Total: 30 tools
 }

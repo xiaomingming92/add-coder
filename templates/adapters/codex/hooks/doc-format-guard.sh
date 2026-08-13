@@ -52,7 +52,7 @@ CONTENT=$(echo "$input" | jq -r '
   elif .tool_input.replacements then .tool_input.replacements[0].new_text
   else "" end')
 # L24: PostToolUse 不可阻断（仅反馈），PreToolUse exit 2 + ask 可拦截
-# L24: 文件在 .qoder/(plans|specs)/ 下但 Write 工具未传 content → 无法校验，阻断
+# L24: 文件在 .codex/(plans|specs)/ 下但 Write 工具未传 content → 无法校验，阻断
 if [ -z "$CONTENT" ]; then
   echo "⛔ 拒绝：Write 工具未传 file_content，无法校验手写文档格式" >&2
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"Write 工具未传 file_content，无法校验手写文档。请用 SearchReplace 改写已有文件，或用 Write 工具重试。"}}'

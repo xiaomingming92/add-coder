@@ -103,11 +103,14 @@ Server→Client 主动推送。hook.ts 通过 fs.watch 监听 `{magicDir}/report
 
 Server→Client 方向：服务端主动请求客户端 AI 执行 prompt。通过 `inputRequired.createMessage()` 实现，不直接注册到 McpServer，而是导出 builder 函数 `createReviewRequest()`，由 tool handler 在需要时调用并 return。
 
-> **v2 更新**：`createReviewRequest()` 已升级为 HITL 两步法流程（temporary.md → 人类拍板 → 完整 Review），支持 `plan`/`implementation`/`runtime` 三种 Review 类型。
+> **当前流程**：`createReviewRequest()` 支持 `plan` / `implementation` / `runtime` 三种 Review 类型，并按类型分流：
+>
+> - `plan`、`implementation`：读取对应模板，将审查发现整理为 `dimensions`，引导调用 `create_hitl(type: "PLAN_REVIEW")` 生成 `*.hitl.md` 与 `HitlRecord(DRAFT)`；人工通过 `update_hitl` 拍板，且 `status_hitl` 确认为 `TONGYI` 后才生成正式 Review。
+> - `runtime`：确认 implementation checklist 的 `[T]` 项全部通过后，按 runtime 模板直接生成并持久化证据，不走 HITL。
 
 | 文件 | 架构角色 |
 |------|------|
-| `review.ts` | `createReviewRequest(planKeyword, reviewType)` — 读取对应 Review 模板，引导 HITL 两步法（先写 temporary.md → 人类拍板 → 完整 Review），支持 plan/implementation/runtime 三种类型 |
+| `review.ts` | `createReviewRequest(planKeyword, reviewType)` — 读取对应 Review 模板；方案/实现 Review 引导 `dimensions → create_hitl → update_hitl → status_hitl → 正式 Review`，Runtime Review 在 `[T]` 通过后直接生成 |
 | `index.ts` | 导出 `createReviewRequest` |
 
 ### 2.7 elicitation/ — 用户确认（2 文件）

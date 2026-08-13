@@ -1,5 +1,5 @@
 #!/bin/bash
-# prompt-submit.sh — UserPromptSubmit 触发词智能路由（通用适配版）
+# prompt-submit.sh — Codex UserPromptSubmit 触发词智能路由
 # 治理卡位 #3: Layer 1 精准触发 → Layer 2 阻断 → Layer 3 状态注入
 set -euo pipefail
 
@@ -8,8 +8,13 @@ prompt=$(echo "$input" | jq -r '.prompt // empty')
 [ -z "$prompt" ] && exit 0
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+export CURRENT_MAGIC=".codex"
+export MAGIC_DIR=".codex"
+export PROJECT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# Codex hook command 继承 session cwd；先统一 git root，确保状态与报告路径稳定。
+cd "$PROJECT_DIR"
 source "$HOOK_DIR/lib/vocabulary.sh" 2>/dev/null || true
-source "$HOOK_DIR/lib/state-detect.sh" 2>/dev/null || true
+source "$HOOK_DIR/lib/common.sh" 2>/dev/null || true
 source "$HOOK_DIR/lib/notify.sh" 2>/dev/null || true
 
 # ─── Layer 1: 精准 P0 触发词 ───
@@ -72,7 +77,7 @@ handoff=$(echo "$state" | awk -F'::' '{print $4}')
 echo "[ADD 状态] Plan: ${plan}, 轮次: ${rounds}, Step: ${step}, handoff: ${handoff}"
 
 # ─── Hook 治理日报（注入 AI 上下文）───
-HOOK_JSONL="${MAGIC_DIR:-.qoder}/reports/hook-events.jsonl"
+HOOK_JSONL="${MAGIC_DIR:-.codex}/reports/hook-events.jsonl"
 if [ -f "$HOOK_JSONL" ]; then
   TODAY="$(date +%Y-%m-%d)"
   TOTAL=$(grep -c "\"ts\":\"${TODAY}" "$HOOK_JSONL" 2>/dev/null || echo 0)
