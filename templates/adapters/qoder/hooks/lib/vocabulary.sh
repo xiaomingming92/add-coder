@@ -1,15 +1,21 @@
 #!/bin/bash
 # vocabulary.sh — 从 vocabulary markdown 表格加载触发词
-# 单一数据源: .qoder/vocabulary/add-governance-vocabulary.md §类别 A-F 表格
+# 单一数据源: {MAGIC_DIR}/vocabulary/add-governance-vocabulary.md §类别 A-F 表格
+# 协议层契约（Review P1 #5）: 仅当前 magicDir scope；入口注入 MAGIC_DIR 或物理位置推导；
+# 禁止跨端扫描与 .add fallback，禁止 adapter 名称默认值。
 
-# 动态探测 MAGIC_DIR
+# MAGIC_DIR 解析: 入口注入优先；未注入时从脚本物理位置（<magicDir>/hooks/lib/）反推
 if [ -z "${MAGIC_DIR:-}" ]; then
-  for m in ".claude" ".qoder" ".vscode" ".add"; do
-    [ -d "${PROJECT_DIR:-$PWD}/$m" ] && { MAGIC_DIR="$m"; break; }
-  done
-  MAGIC_DIR="${MAGIC_DIR:-.add}"
+  if [ -n "${HOOK_DIR:-}" ]; then
+    MAGIC_DIR="$(basename "$(dirname "$HOOK_DIR")")"
+  else
+    # 无注入且无物理位置 → 无法判定 → 返回空（调用方 fail-closed，禁止猜测 adapter）
+    VOCABULARY_FILE=""
+  fi
 fi
-VOCABULARY_FILE="${PROJECT_DIR:-$PWD}/$MAGIC_DIR/vocabulary/add-governance-vocabulary.md"
+if [ -n "${MAGIC_DIR:-}" ]; then
+  VOCABULARY_FILE="${PROJECT_DIR:-$PWD}/$MAGIC_DIR/vocabulary/add-governance-vocabulary.md"
+fi
 
 # 输出格式: 优先级::触发词正则::响应文本（:: 避免与触发词内的 | 冲突）
 load_triggers() {

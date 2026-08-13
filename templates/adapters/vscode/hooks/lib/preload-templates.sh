@@ -21,9 +21,10 @@
 
 set -euo pipefail
 
-# 模板目录（相对于本脚本）
+# 模板目录（分发期物化到各 adapter 本地：<magicDir>/templates；禁止回指源仓）
+# 协议层契约（模板预载）: 读 ${magicDir}/templates 本地物化副本；目录/标准模板缺失 fail-fast
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TEMPLATES_DIR="${SCRIPT_DIR}/../../../core/templates"
+TEMPLATES_DIR="${SCRIPT_DIR}/../../templates"
 
 # tpl-injected 标记文件路径（项目级，/tmp 下按项目 hash 区分）
 PROJECT_HASH=$(echo "${PROJECT_DIR:-$PWD}" | md5sum 2>/dev/null | cut -c1-8 || echo "default")
@@ -85,6 +86,27 @@ read_template_content() {
       in_fm && /^---$/ { in_fm=0; next }
       !in_fm { print }
     ' "$file"
+  fi
+}
+
+# ── 模板目录存在性校验（fail-fast）──
+
+validate_templates_dir() {
+  if [ ! -d "$TEMPLATES_DIR" ]; then
+    echo "[ADD preload] 模板目录不存在: $TEMPLATES_DIR（生成态物化缺失，请执行 add-coder sync 后重试）" >&2
+    exit 1
+  fi
+
+  local available=0
+  local tmpl
+  for tmpl in "${PRIORITY_ORDER[@]}"; do
+    if [ -f "$TEMPLATES_DIR/$tmpl" ]; then
+      available=$((available + 1))
+    fi
+  done
+  if [ "$available" -eq 0 ]; then
+    echo "[ADD preload] 模板目录中未找到 ADD 标准模板: $TEMPLATES_DIR（缺失清单: ${PRIORITY_ORDER[*]}）" >&2
+    exit 1
   fi
 }
 
@@ -164,6 +186,9 @@ main() {
       *) shift ;;
     esac
   done
+
+  # 入口校验：目录缺失/标准模板缺失 → fail-fast（不再静默空输出）
+  validate_templates_dir
 
   case "$mode" in
     index)

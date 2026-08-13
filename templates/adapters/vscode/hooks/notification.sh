@@ -22,12 +22,10 @@ state=$(detect_active_add 2>/dev/null || true)
 
 IFS='::' read -r plan _ _ _ _ <<< "$state"
 
-# 动态探测
+# 当前 magicDir 解析（入口注入优先；未注入时物理位置反推）
 if [ -z "${MAGIC_DIR:-}" ]; then
-  for m in ".claude" ".qoder" ".vscode" ".add"; do
-    [ -d "${PROJECT_DIR:-$PWD}/$m" ] && { MAGIC_DIR="$m"; break; }
-  done
-  MAGIC_DIR="${MAGIC_DIR:-.add}"
+  HOOK_DIR_ABS="$(cd "$(dirname "$0")" && pwd)"
+  MAGIC_DIR="$(basename "$(dirname "$HOOK_DIR_ABS")")"
 fi
 reviews_dir="${PROJECT_DIR}/$MAGIC_DIR/reviews"
 if ls "$reviews_dir"/*.md >/dev/null 2>&1; then
