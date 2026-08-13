@@ -3,10 +3,9 @@ import { join, dirname } from "path";
 import { parse } from "smol-toml";
 import { findUpSync } from "find-up";
 import { projectRoot } from "../../shared/paths.js";
-import type { CaijueEntry, CaijueIndex, RuleGenerator, FieldSpec } from "./types.js";
+import type { CaijueIndex, RuleGenerator, FieldSpec } from "./types.js";
 import { HEADER, GENERATED_MARKER, GENERATED_END } from "./constants.js";
-import { createReader } from "./reader.js";
-import { createTsConstGenerator, genGuardSchema } from "./factories.js";
+import { createTsConstGenerator } from "./factories.js";
 import { GENERATORS } from "./generators/custom.js";
 import { SHELL_GENERATORS } from "./generators/shell.js";
 
@@ -30,7 +29,8 @@ function readExistingUserCode(filePath: string): string {
 
 export function transcribe(caijueDir?: string, outputRoot?: string) {
     // find-up 锚点（轮次 3）：caijue.toml 所在目录 = caijuehub；magicDir 向上 = 项目根——不手算层级
-    const baseDir = caijueDir || (findUpSync("caijue.toml", { cwd: __dirname, type: "file" }) ?? __dirname);
+    const foundCaijue = findUpSync("caijue.toml", { cwd: __dirname, type: "file" });
+    const baseDir = caijueDir || (foundCaijue ? dirname(foundCaijue) : __dirname);
     const outRoot = outputRoot || (projectRoot(baseDir) ?? join(baseDir, ".."));
 
     const caijuePath = join(baseDir, "caijue.toml");

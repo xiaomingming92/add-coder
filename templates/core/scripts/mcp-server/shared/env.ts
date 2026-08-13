@@ -1,7 +1,8 @@
 import dotenv from "dotenv"
 import { dirname, resolve, basename, join } from "path"
-import { existsSync, readdirSync } from "fs"
+import { existsSync } from "fs"
 import { resolveProjectRoot } from "./project-root-strategy.js";
+import { createRuntimeContext, type RuntimeContextKey } from "./runtime-context.js"
 
 const __dirname = import.meta.dirname
 
@@ -26,17 +27,23 @@ export const MAGIC_DIR = process.env.MAGIC_DIR || (() => {
 })()
 export const PROJECT_ID = basename(PROJECT_ROOT)
 
+let runtimeContext: Readonly<RuntimeContextKey> | undefined
+export function getRuntimeContext(): Readonly<RuntimeContextKey> {
+  runtimeContext ??= createRuntimeContext(PROJECT_ROOT, MAGIC_DIR)
+  return runtimeContext
+}
+
 const ENV_CANDIDATES = [".env.development.local", ".env.development", ".env.local", ".env"]
 let loaded = false
 for (const base of [PROJECT_ROOT, process.cwd()]) {
   if (loaded) break
   for (const f of ENV_CANDIDATES) {
     const p = resolve(base, f)
-    if (existsSync(p)) { dotenv.config({ path: p, override: true }); loaded = true; break }
+    if (existsSync(p)) { dotenv.config({ path: p, override: true, quiet: true }); loaded = true; break }
   }
 }
 
-export const DATABASE_URL = process.env.DATABASE_URL
+export const DATABASE_URL: string = process.env.DATABASE_URL ?? ""
 if (!DATABASE_URL) {
   throw new Error("DATABASE_URL 未设置，请在 .env 中配置数据库连接串")
 }

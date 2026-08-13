@@ -19,8 +19,10 @@ import {
 } from "../../shared/fs.js";
 import { prisma } from "../../shared/prisma.js";
 import { runCommand } from "../../shared/run-command.js";
+import { getRuntimeContext } from "../../shared/env.js";
 
 export function registerCheckRahs(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext();
   server.registerTool(
     "check_rahs",
     {
@@ -66,12 +68,14 @@ export function registerCheckRahs(server: ToolRegistrar) {
                   0,
                   100 - tsc.stderr.split("\n").filter(Boolean).length * 5,
                 );
-        } catch {}
+        } catch { /* type check is best-effort */ }
         try {
           const logs = (await (
             prisma.devOperation as Record<string, (...a: unknown[]) => unknown>
           ).findMany({
             where: {
+              projectKey: runtimeContext.projectKey,
+              producerAdapterKey: runtimeContext.adapterKey,
               OR: [
                 { planKeyword: { contains: pp, mode: "insensitive" } },
                 { targetId: { contains: pp, mode: "insensitive" } },
@@ -81,7 +85,7 @@ export function registerCheckRahs(server: ToolRegistrar) {
             take: 20,
           })) as Array<{ id: string }>;
           auditScore = Math.min(100, logs.length * 10);
-        } catch {}
+        } catch { /* audit score remains conservative */ }
         // ── 范围保真度 / Spec 合规 / 阶段对称性：从静态基线改为动态计算（修复：
         //    三个维度原为固定 80，任何 Plan 的 RAHS 上限 88 永远无法通过）──
         try {
@@ -101,7 +105,7 @@ export function registerCheckRahs(server: ToolRegistrar) {
               ? Math.max(70, Math.round((done / checks.length) * 100))
               : 70;
           }
-        } catch {}
+        } catch { /* add-route progress unavailable */ }
         try {
           // Spec 合规：checklist [T] 项勾选率（[R] 运行时项不计入）
           const specDir = join(PROJECT_ROOT, MAGIC_DIR, "specs");
@@ -115,7 +119,7 @@ export function registerCheckRahs(server: ToolRegistrar) {
               ? Math.max(70, Math.round((tDone / tItems.length) * 100))
               : 70;
           }
-        } catch {}
+        } catch { /* checklist progress unavailable */ }
         try {
           // 范围保真度：git diff 变更文件与 add-route 附录清单匹配率
           const arFile = apf.find(
@@ -146,7 +150,7 @@ export function registerCheckRahs(server: ToolRegistrar) {
               scopeScore = Math.max(70, Math.round((matched / diffFiles.length) * 100));
             }
           }
-        } catch {}
+        } catch { /* git scope evidence unavailable */ }
         const parts = [
           "=== RAHS：Runtime Architecture Health Score ===",
           `Plan 关键词: "${pp}"`,

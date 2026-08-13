@@ -28,8 +28,10 @@ import {
   fftWeights,
   getEmbeddings,
 } from "./helpers.js";
+import { getRuntimeContext } from "../../shared/env.js";
 
 export function registerCheckDps(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext();
   server.registerTool(
     "check_dps",
     {
@@ -112,8 +114,7 @@ export function registerCheckDps(server: ToolRegistrar) {
         //   子维度 A: 映射结构 (40%) — 映射表是否存在 + 覆盖行数
         //   子维度 B: 延续性 (60%) — Plan 决策文本 vs Spec §N 内容的 embedding 余弦相似度
         const planTerms = tokenize(pc),
-          specTermsRaw = tokenize(sc),
-          reviewTerms = tokenize(rc);
+          specTermsRaw = tokenize(sc);
         const planMapping = pc.match(/###\s+\d+\.\d+\s+Plan.*?Spec.*?实施映射/);
         let mappingTotal = 0,
           mappingMatched = 0;
@@ -462,12 +463,16 @@ export function registerCheckDps(server: ToolRegistrar) {
 
         // FFT 自适应权重
         const fourScores = [semScore, entropyScore, cpmScore, structFinal];
-        let histMatrix: number[][] = [];
+        const histMatrix: number[][] = [];
         try {
           const history = (await (
             prisma.planRecord as Record<string, (...a: unknown[]) => unknown>
           ).findMany({
-            where: { dpsComposite: { not: null } },
+            where: {
+              projectKey: runtimeContext.projectKey,
+              adapterKey: runtimeContext.adapterKey,
+              dpsComposite: { not: null },
+            },
             orderBy: { updatedAt: "desc" },
             take: CFG.FFT_HISTORY_LIMIT,
           })) as {
@@ -540,7 +545,11 @@ export function registerCheckDps(server: ToolRegistrar) {
             (...a: unknown[]) => unknown
           >;
           await planRec.updateMany({
-            where: { planName: { contains: pp } },
+            where: {
+              projectKey: runtimeContext.projectKey,
+              adapterKey: runtimeContext.adapterKey,
+              planName: { contains: pp },
+            },
             data: {
               dpsSemScore: semScore,
               dpsEntropyScore: entropyScore,

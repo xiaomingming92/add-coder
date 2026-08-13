@@ -59,7 +59,7 @@ approval = "auto"
 [[caijue]]
 id = "hitl-interaction"
 type = "strategy"
-description = "HITL 人机交互策略：每个 IDE 独立声明审批交互模式（genui / inputRequired）"
+description = "HITL 人机交互策略：每个 IDE 独立声明审批交互模式（mcpApps / genui / inputRequired）"
 rules = "hitl-interaction-rules.toml"
 implementation = "templates/core/scripts/mcp-server/shared/hitl-interaction.strategy.ts"
 line_type = "custom"

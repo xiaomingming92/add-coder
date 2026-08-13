@@ -20,7 +20,11 @@ import * as z from "zod/v4"
 
 export const PlanRowSchema = z.looseObject({
   id: z.string(),
+  projectKey: z.string(),
+  adapterKey: z.string(),
   planName: z.string(),
+  lifecycle: z.enum(["DRAFT", "ACTIVE", "BLOCKED", "REJECTED", "CLOSED", "ABANDONED"]),
+  revision: z.number(),
   planPath: z.string(),
   planKeyword: z.string().nullable(),
   specPath: z.string().nullable(),
@@ -45,6 +49,8 @@ export const PlanRowSchema = z.looseObject({
 
 export const HitlRowSchema = z.looseObject({
   id: z.string(),
+  projectKey: z.string(),
+  adapterKey: z.string(),
   planName: z.string(),
   round: z.number(),
   type: z.enum(["PLAN", "PLAN_REVIEW", "COLLAB_CONTRACT"]),
@@ -58,6 +64,8 @@ export const HitlRowSchema = z.looseObject({
 
 export const ReviewRowSchema = z.looseObject({
   id: z.string(),
+  projectKey: z.string(),
+  adapterKey: z.string(),
   planName: z.string(),
   type: z.enum(["PLAN_REVIEW", "IMPLEMENTATION", "RUNTIME"]),
   reviewPath: z.string().nullable(),
@@ -70,6 +78,9 @@ export const ReviewRowSchema = z.looseObject({
 
 export const AuditLogRowSchema = z.looseObject({
   id: z.string(),
+  projectKey: z.string(),
+  producerAdapterKey: z.string(),
+  contextId: z.string(),
   action: z.string(),
   targetType: z.string(),
   targetId: z.string(),
@@ -83,6 +94,11 @@ export const AuditLogRowSchema = z.looseObject({
 export const DevOperationRowSchema = z.looseObject({
   id: z.string(),
   userId: z.string(),
+  projectKey: z.string(),
+  producerAdapterKey: z.string(),
+  contextId: z.string(),
+  toolName: z.string(),
+  operationKey: z.string(),
   planKeyword: z.string(),
   action: z.string(),
   targetType: z.string(),
@@ -103,9 +119,13 @@ export const AddUserRowSchema = z.looseObject({
 
 export const CollabContractRowSchema = z.looseObject({
   id: z.string(),
+  projectKey: z.string(),
+  ownerAdapterKey: z.string(),
   contractName: z.string(),
   contractPath: z.string(),
   masterPlanName: z.string(),
+  masterProjectKey: z.string(),
+  masterAdapterKey: z.string(),
   participants: z.unknown(),
   abilityMatrix: z.unknown().nullable(),
   stages: z.unknown(),
@@ -151,6 +171,7 @@ export interface TableDelegate<T> {
   findMany(args?: QueryArgs<T>): Promise<T[]>
   findUnique(args: { where: Record<string, unknown>; select?: Record<string, unknown> }): Promise<T | null>
   create(args: { data: Partial<T> }): Promise<T>
+  upsert(args: { where: Record<string, unknown>; create: Partial<T>; update: Partial<T> }): Promise<T>
   update(args: { where: Partial<T>; data: Partial<T> }): Promise<T>
   updateMany(args: { where: Record<string, unknown>; data: Partial<T> }): Promise<BatchResult>
   delete(args: { where: Partial<T> }): Promise<T>
@@ -187,22 +208,26 @@ export function validatedDelegate<T>(
 
   return {
     async findFirst(args) {
-      const row = await raw.findFirst(args as never)
+      const row = await raw.findFirst(args)
       return row === null ? null : parseRow(row)
     },
     async findMany(args) {
-      const rows = await raw.findMany(args as never)
+      const rows = await raw.findMany(args)
       return rows.map(parseRow)
     },
     async findUnique(args) {
       if (!raw.findUnique) throw new Error(`表 ${tableName} 不支持 findUnique`)
-      const row = await raw.findUnique(args as never)
+      const row = await raw.findUnique(args)
       return row === null ? null : parseRow(row)
     },
-    async create(args) { return parseRow(await raw.create(args as never)) },
-    async update(args) { return parseRow(await raw.update(args as never)) },
-    async updateMany(args) { return raw.updateMany(args as never) as Promise<BatchResult> },
-    async delete(args) { return parseRow(await raw.delete(args as never)) },
-    async deleteMany(args) { return raw.deleteMany(args as never) as Promise<BatchResult> },
+    async create(args) { return parseRow(await raw.create(args)) },
+    async upsert(args) {
+      if (!raw.upsert) throw new Error(`表 ${tableName} 不支持 upsert`)
+      return parseRow(await raw.upsert(args))
+    },
+    async update(args) { return parseRow(await raw.update(args)) },
+    async updateMany(args) { return raw.updateMany(args) },
+    async delete(args) { return parseRow(await raw.delete(args)) },
+    async deleteMany(args) { return raw.deleteMany(args) },
   }
 }

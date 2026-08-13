@@ -24,4 +24,5 @@ mode = "inputRequired"
 
 # ─── Codex ───
 [codex]
-mode = "inputRequired"
+mode = "mcpApps"
+widget_path = "templates/core/templates/hitl-approval-widget.html"

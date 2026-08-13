@@ -1,9 +1,21 @@
 import type { McpServer } from "@modelcontextprotocol/server"
 import { join } from "path"
-import { existsSync, watch, readFileSync, statSync } from "fs"
+import {
+  appendFileSync,
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readSync,
+  statSync,
+  watch,
+  writeFileSync,
+} from "fs"
 import { readFile } from "fs/promises"
+import { createHash } from "crypto"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
+import { getRuntimeContext } from "../shared/env.js"
 
 // ── 类型定义 ──
 interface HookEvent {
@@ -29,6 +41,7 @@ interface QueueState {
 const REPORT_DIR = join(PROJECT_ROOT, MAGIC_DIR, "reports")
 const JSONL_FILE = join(REPORT_DIR, "hook-events.jsonl")
 const OVERFLOW_FILE = join(REPORT_DIR, "hook-events-overflow.jsonl")
+const runtimeContext = getRuntimeContext()
 
 // ── 内存缓冲队列 ──
 const MAX_QUEUE = 50
@@ -98,6 +111,13 @@ async function flushToDB(events: HookEvent[]): Promise<number> {
     const ops = prisma.devOperation as Record<string, (...a: unknown[]) => unknown>
     const data = unique.map(e => ({
       userId,
+      projectKey: runtimeContext.projectKey,
+      producerAdapterKey: runtimeContext.adapterKey,
+      contextId: runtimeContext.contextId,
+      toolName: "hook-event-notification",
+      operationKey: createHash("sha256")
+        .update(`${runtimeContext.contextId}\0${dedupKey(e)}\0${e.decision}\0${e.cmd}`)
+        .digest("hex"),
       action: "HOOK_INTERCEPT",
       targetType: e.hook,
       targetId: e.cmd.substring(0, 500),
@@ -106,7 +126,7 @@ async function flushToDB(events: HookEvent[]): Promise<number> {
       afterState: JSON.stringify({ planStatus: e.planStatus }),
     }))
 
-    await ops.createMany({ data })
+    await ops.createMany({ data, skipDuplicates: true })
     return unique.length
   } catch (err) {
     console.error("[hook-notify] flushToDB 失败:", err instanceof Error ? err.message : String(err))
@@ -125,7 +145,6 @@ async function drainOverflowFile(): Promise<HookEvent[]> {
       if (ev) events.push(ev)
     }
     // 清空溢出文件
-    const { writeFileSync } = await import("fs")
     writeFileSync(OVERFLOW_FILE, "", "utf-8")
   } catch {
     // 忽略，下次 flush 重试
@@ -145,7 +164,6 @@ async function doFlush(): Promise<void> {
 
   const count = await flushToDB(allEvents)
   if (count > 0 && serverRef) {
-    const noPlanCount = allEvents.filter(e => e.planKeyword === "no-active-plan").length
     const msg = `[Hook] ${count} 条拦截事件已审计落库（计划: ${[...new Set(allEvents.map(e => e.planKeyword))].join(", ")}）`
     serverRef.sendLoggingMessage({ level: "warning" as const, data: msg }).catch(() => {})
   }
@@ -156,7 +174,6 @@ function enqueue(event: HookEvent): void {
   if (q.events.length >= MAX_QUEUE) {
     // 降级写入溢出文件
     try {
-      const { appendFileSync } = require("fs") as typeof import("fs")
       appendFileSync(OVERFLOW_FILE, JSON.stringify(event) + "\n", "utf-8")
     } catch { /* 静默 */ }
     return
@@ -191,10 +208,10 @@ function readNewLines(): void {
     if (st.size <= q.bytesRead) return
 
     // 只读增量部分
-    const fd = require("fs").openSync(JSONL_FILE, "r")
+    const fd = openSync(JSONL_FILE, "r")
     const buf = Buffer.alloc(st.size - q.bytesRead)
-    require("fs").readSync(fd, buf, 0, buf.length, q.bytesRead)
-    require("fs").closeSync(fd)
+    readSync(fd, buf, 0, buf.length, q.bytesRead)
+    closeSync(fd)
 
     const text = buf.toString("utf-8")
     for (const line of text.split("\n")) {
@@ -242,7 +259,6 @@ export function registerHookNotifications(server: McpServer) {
   void initialScan().then(() => {
     // 确保 jsonl 文件存在（fs.watch 要求文件已存在）
     try {
-      const { mkdirSync, writeFileSync } = require("fs") as typeof import("fs")
       mkdirSync(REPORT_DIR, { recursive: true })
       if (!existsSync(JSONL_FILE)) writeFileSync(JSONL_FILE, "", "utf-8")
     } catch { /* ok */ }

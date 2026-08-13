@@ -3,8 +3,10 @@ import { join } from "path"
 import { existsSync } from "fs"
 import { readFileSafe, readdirRecursive, PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
+import { getRuntimeContext } from "../shared/env.js"
 
 export function registerHitlNotifications(server: McpServer) {
+  const runtimeContext = getRuntimeContext()
   // ── HITL 表扫描 ──
   const scanHitl = async () => {
     const plansDir = join(PROJECT_ROOT, MAGIC_DIR, "plans")
@@ -29,7 +31,13 @@ export function registerHitlNotifications(server: McpServer) {
       const ops = prisma.devOperation as Record<string, (...a: unknown[]) => unknown>
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
       const count = await ops.count({
-        where: { action: "HOOK_INTERCEPT", planKeyword: "no-active-plan", createdAt: { gte: since } },
+        where: {
+          action: "HOOK_INTERCEPT",
+          planKeyword: "no-active-plan",
+          projectKey: runtimeContext.projectKey,
+          producerAdapterKey: runtimeContext.adapterKey,
+          createdAt: { gte: since },
+        },
       }) as number
       if (count >= 10 && count !== lastWarnedCount) {
         lastWarnedCount = count

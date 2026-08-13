@@ -9,35 +9,46 @@ model AddUser {
 }
 
 model DevOperation {
-  id          String   @id @default(cuid())
-  userId      String
-  user        AddUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  planKeyword String
-  action      String
-  targetType  String
-  targetId    String
-  beforeState Json?
-  afterState  Json?
-  reason      String?
-  createdAt   DateTime @default(now())
+  id                 String   @id @default(cuid())
+  userId             String
+  user               AddUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectKey         String   @default("legacy-unknown")
+  producerAdapterKey String   @default("legacy-unknown")
+  contextId          String   @default("legacy-unknown")
+  toolName           String   @default("record_dev_operation")
+  operationKey       String   @default(cuid())
+  planKeyword        String
+  action             String
+  targetType         String
+  targetId           String
+  beforeState        Json?
+  afterState         Json?
+  reason             String?
+  createdAt          DateTime @default(now())
 
+  @@unique([projectKey, producerAdapterKey, toolName, operationKey])
   @@index([planKeyword])
+  @@index([projectKey, producerAdapterKey, planKeyword])
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String
-  user        AddUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action      String
-  targetType  String
-  targetId    String
-  traceId     String?
-  beforeState Json?
-  afterState  Json?
-  reason      String?
-  createdAt   DateTime @default(now())
+  id                 String   @id @default(cuid())
+  userId             String
+  user               AddUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectKey         String   @default("legacy-unknown")
+  producerAdapterKey String   @default("legacy-unknown")
+  contextId          String   @default("legacy-unknown")
+  action             String
+  targetType         String
+  targetId           String
+  traceId            String?
+  beforeState        Json?
+  afterState         Json?
+  reason             String?
+  createdAt          DateTime @default(now())
 
   @@index([traceId])
+  @@index([projectKey, producerAdapterKey, contextId])
 }
 
 // ===== HITL 人机审核架构 =====
@@ -61,10 +72,21 @@ enum ReviewType {
   RUNTIME
 }
 
+enum PlanLifecycleStatus {
+  DRAFT
+  ACTIVE
+  BLOCKED
+  REJECTED
+  CLOSED
+  ABANDONED
+}
+
 model HitlRecord {
   id           String     @id @default(cuid())
+  projectKey   String     @default("legacy-unknown")
+  adapterKey   String     @default("legacy-unknown")
   planName     String
-  plan         PlanRecord @relation(fields: [planName], references: [planName])
+  plan         PlanRecord @relation(fields: [projectKey, adapterKey, planName], references: [projectKey, adapterKey, planName], onDelete: Cascade)
   round        Int        @default(1)
   type         HitlType   @default(PLAN)
   status       HitlStatus @default(DRAFT)
@@ -76,50 +98,59 @@ model HitlRecord {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  @@unique([planName, round])
-  @@index([planName])
+  @@unique([projectKey, adapterKey, planName, type, round])
+  @@index([projectKey, adapterKey, planName])
   @@index([status])
 }
 
 model PlanRecord {
-  id              String         @id @default(cuid())
-  planName        String         @unique
-  planPath        String
-  specPath        String?
-  tasksPath       String?
-  checklistPath   String?
-  addRoutePath    String?
-  totalTasks      Int            @default(0)
-  doneTasks       Int            @default(0)
-  checklistT      Int            @default(0)
-  checklistTDone  Int            @default(0)
-  checklistR      Int            @default(0)
-  planKeyword     String?
+  id               String                     @id @default(cuid())
+  projectKey       String                     @default("legacy-unknown")
+  adapterKey       String                     @default("legacy-unknown")
+  planName         String
+  lifecycle        PlanLifecycleStatus        @default(DRAFT)
+  revision         Int                        @default(0)
+  planPath         String
+  specPath         String?
+  tasksPath        String?
+  checklistPath    String?
+  addRoutePath     String?
+  totalTasks       Int                        @default(0)
+  doneTasks        Int                        @default(0)
+  checklistT       Int                        @default(0)
+  checklistTDone   Int                        @default(0)
+  checklistR       Int                        @default(0)
+  planKeyword      String?
   // 并发协作契约：该 Plan 在契约中的角色（MASTER=总控 / SUB=子 Plan）
-  contractRole    ContractRole?
+  contractRole     ContractRole?
   // 所属契约名（与 CollabContract.contractName 对应，反查用）
-  contractName    String?
+  contractName     String?
   // 作为总控 Plan 持有的契约（masterPlanName 外键方向）
-  masterContract  CollabContract?
+  masterContract   CollabContract?            @relation("MasterPlan")
+  contractBindings CollaborationPlanBinding[]
   // DPS 四维评分历史（check_dps 调用后回写，供 FFT 自适应权重消费）
-  dpsSemScore     Int? // 语义相关性 0-100
-  dpsEntropyScore Int? // 信息熵匹配 0-100
-  dpsCpmScore     Int? // CPM 关键路径 0-100
-  dpsStructScore  Int? // 结构完整度 0-100
-  dpsComposite    Int? // 加权 DPS 总分 0-100
-  hitls           HitlRecord[]
-  reviews         ReviewRecord[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  dpsSemScore      Int? // 语义相关性 0-100
+  dpsEntropyScore  Int? // 信息熵匹配 0-100
+  dpsCpmScore      Int? // CPM 关键路径 0-100
+  dpsStructScore   Int? // 结构完整度 0-100
+  dpsComposite     Int? // 加权 DPS 总分 0-100
+  hitls            HitlRecord[]
+  reviews          ReviewRecord[]
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
 
+  @@unique([projectKey, adapterKey, planName])
   @@index([planKeyword])
   @@index([contractName])
+  @@index([projectKey, adapterKey, lifecycle])
 }
 
 model ReviewRecord {
   id           String     @id @default(cuid())
+  projectKey   String     @default("legacy-unknown")
+  adapterKey   String     @default("legacy-unknown")
   planName     String
-  plan         PlanRecord @relation(fields: [planName], references: [planName], onDelete: Cascade)
+  plan         PlanRecord @relation(fields: [projectKey, adapterKey, planName], references: [projectKey, adapterKey, planName], onDelete: Cascade)
   type         ReviewType @default(PLAN_REVIEW)
   reviewPath   String?
   p0Count      Int        @default(0)
@@ -128,33 +159,60 @@ model ReviewRecord {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  @@index([planName])
+  @@index([projectKey, adapterKey, planName])
   @@index([type])
 }
 
 enum ContractRole {
-  MASTER  // 总控 Plan（契约持有者）
-  SUB     // 子 Plan（契约实施单元）
+  MASTER // 总控 Plan（契约持有者）
+  SUB // 子 Plan（契约实施单元）
+}
+
+enum CollaborationBindingRole {
+  MASTER
+  MEMBER
 }
 
 // 并发协作契约（多智能体并行实施规则集，对应 collab-contract 文档）
 model CollabContract {
-  id                 String   @id @default(cuid())
-  contractName       String   @unique
+  id                 String                     @id @default(cuid())
+  projectKey         String                     @default("legacy-unknown")
+  ownerAdapterKey    String                     @default("legacy-unknown")
+  contractName       String
   contractPath       String
   // 外键：总控 Plan（契约持有者，ContractRole=MASTER，一对一）
-  masterPlanName     String   @unique
-  masterPlan         PlanRecord @relation(fields: [masterPlanName], references: [planName], onDelete: Restrict)
-  participants       Json     // [{role, platformEntity, boundPlan, planKeyword, description}]
-  abilityMatrix      Json?    // {能力: {专家: boolean}}
-  stages             Json     // [{stage, expert, trigger, parallelism}]
-  dependencyGraph    String?  // ASCII 图 + 机器可读声明
-  fileBoundaries     Json     // [{expert, exclusiveDomain, forbidden, isolationMode}]  isolationMode: file/worktree
-  completionCriteria Json?    // {专家: 完成标志}
-  status             String   @default("ACTIVE") // ACTIVE / SUPERSEDED
-  version            Int      @default(1)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  masterProjectKey   String                     @default("legacy-unknown")
+  masterAdapterKey   String                     @default("legacy-unknown")
+  masterPlanName     String
+  masterPlan         PlanRecord                 @relation("MasterPlan", fields: [masterProjectKey, masterAdapterKey, masterPlanName], references: [projectKey, adapterKey, planName], onDelete: Restrict)
+  bindings           CollaborationPlanBinding[]
+  participants       Json // [{role, platformEntity, boundPlan, planKeyword, description}]
+  abilityMatrix      Json? // {能力: {专家: boolean}}
+  stages             Json // [{stage, expert, trigger, parallelism}]
+  dependencyGraph    String? // ASCII 图 + 机器可读声明
+  fileBoundaries     Json // [{expert, exclusiveDomain, forbidden, isolationMode}]  isolationMode: file/worktree
+  completionCriteria Json? // {专家: 完成标志}
+  status             String                     @default("ACTIVE") // ACTIVE / SUPERSEDED
+  version            Int                        @default(1)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
 
-  @@index([masterPlanName])
+  @@unique([projectKey, contractName])
+  @@unique([masterProjectKey, masterAdapterKey, masterPlanName])
+  @@index([projectKey, ownerAdapterKey])
+}
+
+model CollaborationPlanBinding {
+  id         String                   @id @default(cuid())
+  contractId String
+  contract   CollabContract           @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  projectKey String
+  adapterKey String
+  planName   String
+  plan       PlanRecord               @relation(fields: [projectKey, adapterKey, planName], references: [projectKey, adapterKey, planName], onDelete: Cascade)
+  role       CollaborationBindingRole @default(MEMBER)
+  createdAt  DateTime                 @default(now())
+
+  @@unique([contractId, projectKey, adapterKey, planName])
+  @@index([projectKey, adapterKey, planName])
 }
