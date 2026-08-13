@@ -32,7 +32,7 @@ EOJSON
 fi
 
 # ── ③ §HITL 待审批检测 ──
-PLANS_DIR="${PROJECT_DIR}/${MAGIC_DIR:-.qoder}/plans"
+PLANS_DIR="${PROJECT_DIR}/${MAGIC_DIR}/plans"
 if [ -d "$PLANS_DIR" ]; then
   hitl_count=$(find "$PLANS_DIR" -name "*.hitl.md" -mtime -7 -type f 2>/dev/null | wc -l)
   if [ "$hitl_count" -gt 0 ] 2>/dev/null; then

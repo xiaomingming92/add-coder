@@ -7,6 +7,8 @@ import { readFileSafe, readdirRecursive, PROJECT_ROOT, MAGIC_DIR } from "../shar
 import { prisma } from "../shared/prisma.js"
 import type { PlanRow, ReviewRow } from "../shared/db-types.js"
 import { PlanRowSchema, ReviewRowSchema, validatedDelegate } from "../shared/db-types.js"
+import { getRuntimeContext } from "../shared/env.js"
+import { assertPathInRuntimeScope } from "../shared/runtime-context.js"
 
 const db = {
   get review() { return validatedDelegate<ReviewRow>(prisma.reviewRecord, ReviewRowSchema, "ReviewRecord") },
@@ -34,6 +36,7 @@ function countIssueType(content: string): { p0: number; p1: number; backflow: nu
 }
 
 export function registerReviewTools(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext()
 
   // ===== review_track =====
   server.registerTool("review_track", {
@@ -44,7 +47,7 @@ export function registerReviewTools(server: ToolRegistrar) {
     }),
   }, async (args: Record<string, unknown>) => {
     try {
-      const { planName, scanAll } = args as { planName?: string; scanAll?: boolean }
+      const { planName } = args as { planName?: string; scanAll?: boolean }
       const pn = typeof planName === "string" ? planName : ""
       const reviewsDir = join(PROJECT_ROOT, MAGIC_DIR, "reviews")
       if (!existsSync(reviewsDir)) return errorResponse(`reviews 目录不存在: ${reviewsDir}`)
@@ -57,7 +60,7 @@ export function registerReviewTools(server: ToolRegistrar) {
         const fullPath = join(reviewsDir, rf)
         // 从文件名推导 planName
         // 格式: {plan-name}-review-v1.md 或 {plan-name}-review-implementation.md
-        let derivedPlan = basename(rf, ".md")
+        const derivedPlan = basename(rf, ".md")
           .replace(/-review-.*$/, "")
           .replace(/-implementation.*$/, "")
           .replace(/-runtime.*$/, "")
@@ -69,7 +72,11 @@ export function registerReviewTools(server: ToolRegistrar) {
         // 而 derivedPlan 为 {planPrefix}（从 review 文件名中去掉了 -review-v{n}）
         // 需要用 contains 匹配，而不是 exact match
         const planMatch = await db.plan.findFirst({
-          where: { planName: { contains: derivedPlan } },
+          where: {
+            projectKey: runtimeContext.projectKey,
+            adapterKey: runtimeContext.adapterKey,
+            planName: { contains: derivedPlan },
+          },
         })
         const actualPlanName = planMatch
           ? planMatch.planName
@@ -81,7 +88,12 @@ export function registerReviewTools(server: ToolRegistrar) {
         const rtype = detectReviewType(rf)
         const stats = countIssueType(content)
         const record = await db.review.findFirst({
-          where: { planName: actualPlanName, type: rtype },
+          where: {
+            projectKey: runtimeContext.projectKey,
+            adapterKey: runtimeContext.adapterKey,
+            planName: actualPlanName,
+            type: rtype,
+          },
         })
 
         const data = {
@@ -95,7 +107,13 @@ export function registerReviewTools(server: ToolRegistrar) {
           results.push(`🔄 ${rf} (${rtype}) P0=${stats.p0} P1=${stats.p1}`)
         } else {
           await db.review.create({
-            data: { planName: actualPlanName, type: rtype, ...data },
+            data: {
+              projectKey: runtimeContext.projectKey,
+              adapterKey: runtimeContext.adapterKey,
+              planName: actualPlanName,
+              type: rtype,
+              ...data,
+            },
           })
           results.push(`✅ ${rf} (${rtype}) P0=${stats.p0} P1=${stats.p1}`)
         }
@@ -118,7 +136,11 @@ export function registerReviewTools(server: ToolRegistrar) {
     try {
       const { planName } = args as { planName: string }
       const rows = await db.review.findMany({
-        where: { planName },
+        where: {
+          projectKey: runtimeContext.projectKey,
+          adapterKey: runtimeContext.adapterKey,
+          planName,
+        },
         orderBy: { type: "asc" },
       })
 
@@ -130,9 +152,9 @@ export function registerReviewTools(server: ToolRegistrar) {
 
       const lines = [`📝 Review: ${planName}`, ``]
       for (const r of rows) {
-        const p0 = r.p0Count as number || 0
-        const p1 = r.p1Count as number || 0
-        const br = r.backflowRate as number || 0
+        const p0 = r.p0Count || 0
+        const p1 = r.p1Count || 0
+        const br = r.backflowRate || 0
         const total = p0 + p1
         lines.push(
           `  [${r.type}] P0=${p0} P1=${p1} (合计 ${total}) 回流=${br}`,
@@ -140,8 +162,8 @@ export function registerReviewTools(server: ToolRegistrar) {
         )
       }
       // 汇总
-      const tP0 = rows.reduce((s: number, r) => s + (r.p0Count as number || 0), 0)
-      const tP1 = rows.reduce((s: number, r) => s + (r.p1Count as number || 0), 0)
+      const tP0 = rows.reduce((s: number, r) => s + (r.p0Count || 0), 0)
+      const tP1 = rows.reduce((s: number, r) => s + (r.p1Count || 0), 0)
       lines.push(``, `总计: P0=${tP0} P1=${tP1}`)
       return textResponse(lines.join("\n"))
     } catch (e) {
@@ -158,7 +180,13 @@ export function registerReviewTools(server: ToolRegistrar) {
   }, async (args: Record<string, unknown>) => {
     try {
       const { planName } = args as { planName: string }
-      const rows = await db.review.findMany({ where: { planName } })
+      const rows = await db.review.findMany({
+        where: {
+          projectKey: runtimeContext.projectKey,
+          adapterKey: runtimeContext.adapterKey,
+          planName,
+        },
+      })
 
       if (!rows.length) return errorResponse(`无 ReviewRecord: ${planName}`)
 
@@ -169,10 +197,11 @@ export function registerReviewTools(server: ToolRegistrar) {
           results.push(`⚠️ 文件不存在: ${rp || r.type}`)
           continue
         }
+        assertPathInRuntimeScope(runtimeContext, rp)
         const content = readFileSync(rp, "utf-8")
-        const p0 = r.p0Count as number || 0
-        const p1 = r.p1Count as number || 0
-        const br = r.backflowRate as number || 0
+        const p0 = r.p0Count || 0
+        const p1 = r.p1Count || 0
+        const br = r.backflowRate || 0
 
         const metaLines = [
           "<!-- REVIEW_META",

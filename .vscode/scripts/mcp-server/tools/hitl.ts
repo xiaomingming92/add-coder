@@ -7,16 +7,26 @@ import { textResponse, errorResponse } from "../shared/response.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
 import { HITL_INTERACTION_CONFIG } from "../shared/hitl-interaction.strategy.js"
-import type { HitlRow, PlanRow } from "../shared/db-types.js"
-import { HitlRowSchema, PlanRowSchema, validatedDelegate } from "../shared/db-types.js"
+import type { HitlRow } from "../shared/db-types.js"
+import { HitlRowSchema, validatedDelegate } from "../shared/db-types.js"
+import { getRuntimeContext } from "../shared/env.js"
+import {
+  decideHitlAndPublish,
+  type HitlLifecycleDatabase,
+} from "../shared/hitl-lifecycle-mutation.js"
+import {
+  createHitlProposalAndPublish,
+  type HitlProposalDatabase,
+} from "../shared/hitl-proposal-mutation.js"
+import { HITL_APPROVAL_WIDGET_URI } from "../shared/hitl-ui.js"
 
 // 无类型边界单点（zod 托管）：动态加载的 prisma client 在此一次性转为运行期校验的泛型委托
 const db = {
   get hitl() { return validatedDelegate<HitlRow>(prisma.hitlRecord, HitlRowSchema, "HitlRecord") },
-  get plan() { return validatedDelegate<PlanRow>(prisma.planRecord, PlanRowSchema, "PlanRecord") },
 }
 
 export function registerHitlTools(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext()
 
   // ═══════════════ 辅助：按安装环境裁决交互模式（caijuehub: hitl-interaction-rules.toml） ═══════════════
   const _interaction = (() => {
@@ -109,6 +119,90 @@ export function registerHitlTools(server: ToolRegistrar) {
     } catch { return [] }
   }
 
+  function updateHitlProposal(
+    filePath: string,
+    status: HitlRow["status"],
+    dimensions?: { name: string; content?: string }[],
+  ): void {
+    let proposal = readFileSync(filePath, "utf-8")
+    proposal = proposal.replace(/(状态:\s*)[A-Z_]+/, `$1${status}`)
+
+    if (dimensions?.length) {
+      const byName = new Map(dimensions.map((d) => [d.name.trim(), d.content ?? ""]))
+      const escapeCell = (value: string) => value.replace(/\|/g, "\\|").replace(/\r?\n/g, "<br>")
+      proposal = proposal.split("\n").map((line) => {
+        const match = line.match(/^(\|\s*\d+\s*\|\s*)(.+?)(\s*\|\s*)(.+?)(\s*\|\s*.+?\s*\|)$/)
+        if (!match) return line
+        const name = match[2].trim()
+        const next = byName.get(name)
+        return next === undefined ? line : `${match[1]}${match[2]}${match[3]}${escapeCell(next)}${match[5]}`
+      }).join("\n")
+    }
+
+    writeFileSync(filePath, proposal, "utf-8")
+  }
+
+  server.registerTool("render_hitl_approval", {
+    title: "Review ADD HITL proposal",
+    description: "只读渲染最新 scoped HITL 提案。Codex MUST 用此工具打开 core approval widget；最终裁决由 widget 调用 update_hitl，render 本身不修改 DB。",
+    inputSchema: z.object({
+      planName: z.string().describe("Plan 名称"),
+      type: z.enum(["PLAN", "PLAN_REVIEW", "COLLAB_CONTRACT"]).default("PLAN"),
+    }),
+    outputSchema: z.object({
+      planName: z.string(),
+      type: z.string(),
+      round: z.number(),
+      status: z.string(),
+      dimensions: z.array(z.object({ name: z.string(), content: z.string() })),
+    }),
+    annotations: { readOnlyHint: true },
+    _meta: {
+      ui: { resourceUri: HITL_APPROVAL_WIDGET_URI },
+      "openai/outputTemplate": HITL_APPROVAL_WIDGET_URI,
+      "openai/toolInvocation/invoking": "正在加载 HITL 审批表…",
+      "openai/toolInvocation/invoked": "HITL 审批表已加载",
+    },
+  }, async (args: Record<string, unknown>) => {
+    try {
+      const planName = typeof args.planName === "string" ? args.planName : ""
+      const type = (typeof args.type === "string" ? args.type : "PLAN") as HitlRow["type"]
+      const rows = await db.hitl.findMany({
+        where: {
+          projectKey: runtimeContext.projectKey,
+          adapterKey: runtimeContext.adapterKey,
+          planName,
+          type,
+        },
+        orderBy: { round: "desc" },
+        take: 1,
+      })
+      const current = rows[0]
+      if (!current) return errorResponse(`未找到 scoped HITL: ${planName} (${type})`)
+      if (!["DRAFT", "SUBMITTED"].includes(current.status)) {
+        return errorResponse(`HITL round ${current.round} 已是终态 ${current.status}，不可再次审批`)
+      }
+      const proposalPath = findHitlFile(planName)
+      const dimensions = proposalPath ? parseHitlDimensions(proposalPath) : []
+      if (!dimensions.length) {
+        return errorResponse(`HITL 提案缺少可渲染维度: ${proposalPath ?? planName}`)
+      }
+      const output = {
+        planName,
+        type,
+        round: current.round,
+        status: current.status,
+        dimensions,
+      }
+      return {
+        content: [{ type: "text" as const, text: `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。请在 widget 中拍板。` }],
+        structuredContent: output,
+      }
+    } catch (e) {
+      return errorResponse(`render_hitl_approval 失败: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  })
+
   // ===== create_hitl =====
   server.registerTool("create_hitl", {
     description: "HITL 审批：创建提案。写入 HitlRecord（status=DRAFT，自动递增 round），并生成 hitl.md 提案文件供人工审核。\n" +
@@ -180,7 +274,7 @@ export function registerHitlTools(server: ToolRegistrar) {
             }
             const requiredKeys: string[] = ["globalAction"]
 
-            dimensions!.forEach((d, i) => {
+            dimensions.forEach((d, i) => {
               const prefix = `dim_${i}`
               props[`${prefix}_content`] = { type: "string", description: `${d.name}: ${d.content || ""}` }
               props[`${prefix}_decision`] = {
@@ -191,11 +285,11 @@ export function registerHitlTools(server: ToolRegistrar) {
               requiredKeys.push(`${prefix}_decision`)
             })
 
-            const dimDesc = dimensions!.map((d, i) => `${i+1}. ${d.name}${d.content ? `: ${d.content}` : ""}`).join("\n")
+            const dimDesc = dimensions.map((d, i) => `${i+1}. ${d.name}${d.content ? `: ${d.content}` : ""}`).join("\n")
             return inputRequired({
               inputRequests: {
                 confirm: inputRequired.elicit({
-                  message: `确认创建 HITL 提案\n\nplan: ${planName}\ntype: ${type}\n\n共 ${dimensions!.length} 个决策维度：\n${dimDesc}`,
+                  message: `确认创建 HITL 提案\n\nplan: ${planName}\ntype: ${type}\n\n共 ${dimensions.length} 个决策维度：\n${dimDesc}`,
                   requestedSchema: { type: "object", properties: props, required: requiredKeys } as any
                 })
               }
@@ -207,10 +301,10 @@ export function registerHitlTools(server: ToolRegistrar) {
           }
 
           if (decResp.globalAction === "同意全部") {
-            finalDims = dimensions!.map(d => ({ name: d.name, content: d.content || "" }))
+            finalDims = dimensions.map(d => ({ name: d.name, content: d.content || "" }))
           } else {
             // 逐项处理：合并调整内容
-            finalDims = dimensions!.map((d, i) => {
+            finalDims = dimensions.map((d, i) => {
               const decision = decResp[`dim_${i}_decision`] as string | undefined
               if (decision === "调整") {
                 const adjusted = decResp[`dim_${i}_adjusted`] as string | undefined
@@ -252,32 +346,18 @@ export function registerHitlTools(server: ToolRegistrar) {
       //    Plan 文件写出后由 plan_track 回刷真实路径——机器占位机器回刷，不消耗 LLM 认知。
       //    D5（Review 回流）：占位路径按 type 分流——PLAN_REVIEW 指向 reviews/ 目录，
       //    review 文档写出后由 review_track/plan_track 回刷消解（避免永久悬空）。 ──
-      let planProvisioned = false
-      const existingPlan = await db.plan.findFirst({ where: { planName } })
-      if (!existingPlan) {
-        const placeholderPath = type === "PLAN_REVIEW"
-          ? join(PROJECT_ROOT, MAGIC_DIR, "reviews", yyyyMM, dd, `${planName}.md`)
-          : join(plansDir, `${planName}.md`)
-        await db.plan.create({
-          data: {
-            planName,
-            planPath: placeholderPath,
-            planKeyword: String(planName).replace(/-(plan|collab-contract|review)-v\d+$/, ""),
-            totalTasks: 0, doneTasks: 0, checklistT: 0, checklistTDone: 0, checklistR: 0,
-          },
-        })
-        planProvisioned = true
-      }
-
-      const rows = await db.hitl.findMany({
-        where: { planName },
-        orderBy: { round: "desc" },
-        take: 1,
+      const placeholderPath = type === "PLAN_REVIEW"
+        ? join(PROJECT_ROOT, MAGIC_DIR, "reviews", yyyyMM, dd, `${planName}.md`)
+        : join(plansDir, `${planName}.md`)
+      const proposal = await createHitlProposalAndPublish(prisma as unknown as HitlProposalDatabase, {
+        context: runtimeContext,
+        planName,
+        planPath: placeholderPath,
+        planKeyword: String(planName).replace(/-(plan|collab-contract|review)-v\d+$/, ""),
+        type: type as HitlRow["type"],
       })
-      const round = (rows[0]?.round ?? 0) + 1
-      const record = await db.hitl.create({
-        data: { planName, round, type: type as HitlRow["type"], status: "DRAFT" },
-      })
+      const round = proposal.hitl.round
+      const record = proposal.hitl
       // 生成 hitl.md
       const isoNow = now.toISOString()
 
@@ -324,7 +404,7 @@ export function registerHitlTools(server: ToolRegistrar) {
         `recordId: ${record.id}`,
       ]
       if (finalDims.length > 0) lines.push(`dimensions: ${finalDims.length} 项`)
-      if (planProvisioned) lines.push(`PlanRecord: 自动预置（占位行，Plan 文件写出后 plan_track 回刷真实路径）`)
+      if (proposal.planProvisioned) lines.push(`PlanRecord: 自动预置（占位行，Plan 文件写出后 plan_track 回刷真实路径）`)
       if (_fallback) lines.push(`mode:     _fallback (跳过 dialog，原始代码降级)`)
       return textResponse(lines.join("\n"))
     } catch (e) {
@@ -344,6 +424,7 @@ export function registerHitlTools(server: ToolRegistrar) {
     description: "HITL 审批：更新状态。SUBMITTED→TONGYI/BOHUI。\n" +
       "交互模式按安装环境自动裁决（caijuehub: hitl-interaction-rules.toml）：\n" +
       "- genui 模式环境（如 Qoder）：MUST 先用 genui show_widget 渲染审批表单（维度取自 hitl.md），用户拍板后以 _use_genui=true + status(TONGYI/BOHUI) 调用本工具。不带模式参数调用会返回 genui 引导而非弹框。\n" +
+      "- MCP Apps 模式环境（如 Codex）：MUST 先调用 render_hitl_approval 打开 core widget，widget 以 _use_widget=true 回调本工具；不得展开高维 inputRequired。\n" +
       "- 支持 elicitation 的客户端：inputRequired 弹框确认→确认后写哨兵+更新 DB。\n" +
       "降级模式（_fallback=true）：genui 与弹框均不可用时兜底，跳过弹框直接写哨兵+更新 DB。\n" +
       "_use_genui=true：genui widget 回调后使用，跳过弹框直接以传入的 status/reason 更新。\n" +
@@ -353,26 +434,45 @@ export function registerHitlTools(server: ToolRegistrar) {
       type: z.enum(["PLAN", "PLAN_REVIEW", "COLLAB_CONTRACT"]).describe("审批类型"),
       status: z.enum(["SUBMITTED", "TONGYI", "BOHUI"]).optional().describe("降级模式(_fallback)或 genui 模式(_use_genui)必填：目标状态"),
       reason: z.string().optional().describe("驳回原因（降级模式手动传，genui 模式从 widget 回调获取）"),
+      dimensions: z.array(z.object({
+        name: z.string(),
+        content: z.string().optional(),
+      })).optional().describe("widget 中由用户明确保存的维度调整；仅 _use_widget/_use_genui 路径消费"),
       _fallback: z.boolean().optional().default(false).describe("降级模式：跳过 inputRequired，按原始代码行为直接写哨兵+更新 DB"),
       _use_genui: z.boolean().optional().default(false).describe("genui 模式：genui widget 回调后使用，跳过弹框直接更新（status/reason 需传最终值）"),
+      _use_widget: z.boolean().optional().default(false).describe("MCP Apps widget 回调：跳过 inputRequired，按用户提交的 status/reason/dimensions 更新"),
     }),
   }, async (args: Record<string, unknown>, ctx: Record<string, unknown>) => {
     try {
-      const _raw = args as Record<string, string | boolean | undefined>
-      const planName = String(_raw.planName ?? "")
-      const type = String(_raw.type ?? "")
+      const _raw = args
+      const planName = typeof _raw.planName === "string" ? _raw.planName : ""
+      const type = typeof _raw.type === "string" ? _raw.type : ""
       const status = typeof _raw.status === "string" ? _raw.status : undefined
       const reason = typeof _raw.reason === "string" ? _raw.reason : undefined
       const _fallback = _raw._fallback === true
       const _use_genui = _raw._use_genui === true
+      const _use_widget = _raw._use_widget === true
+      const dimensions = Array.isArray(_raw.dimensions)
+        ? _raw.dimensions.filter((item): item is { name: string; content?: string } => {
+          if (!item || typeof item !== "object") return false
+          const row = item as Record<string, unknown>
+          return typeof row.name === "string" && (row.content === undefined || typeof row.content === "string")
+        })
+        : undefined
 
       // ── 交互式确认（非降级模式且非 genui 模式） ──
-      let effectiveStatus = status as string | undefined
+      let effectiveStatus = status
 
-      if (!_fallback && !_use_genui) {
+      if (!_fallback && !_use_genui && !_use_widget) {
+        if (_interaction.mode === "mcpApps") {
+          return textResponse(
+            `Codex 高维 HITL 使用 core widget，不展开 inputRequired。\n` +
+            `请调用 render_hitl_approval({ planName: "${planName}", type: "${type}" })，由用户在 widget 中拍板。`,
+          )
+        }
         // 环境裁决：genui 模式下不发起注定失败的 elicitation，引导 LLM 走 widget 流程
         if (_interaction.mode === "genui") {
-          const gPath = findHitlFile(planName as string)
+          const gPath = findHitlFile(planName)
           const gDims = gPath ? parseHitlDimensions(gPath) : []
           const gDesc = gDims.map((d, i) => `${i + 1}. ${d.name}: ${d.content}`).join("\n")
           return textResponse(
@@ -381,7 +481,7 @@ export function registerHitlTools(server: ToolRegistrar) {
           )
         }
         // 尝试读取 hitl.md 文件解析维度
-        const hitlPath = findHitlFile(planName as string)
+        const hitlPath = findHitlFile(planName)
         const dims = hitlPath ? parseHitlDimensions(hitlPath) : []
 
         if (dims.length > 0) {
@@ -450,40 +550,22 @@ export function registerHitlTools(server: ToolRegistrar) {
       }
 
       // 降级模式必须传 status
+      if (!effectiveStatus || !["SUBMITTED", "TONGYI", "BOHUI"].includes(effectiveStatus)) {
+        return errorResponse("update_hitl 必须得到有效 status: SUBMITTED/TONGYI/BOHUI")
+      }
 
       // ── 原始业务逻辑（更新 DB + 写哨兵文件。降级模式也走此路） ──
       const s = effectiveStatus as HitlRow["status"]
       const qType = type as HitlRow["type"]
-      const rows = await db.hitl.findMany({
-        where: { planName, type: qType },
-        orderBy: { round: "desc" },
-        take: 1,
+      const decision = await decideHitlAndPublish(prisma as unknown as HitlLifecycleDatabase, {
+        context: runtimeContext,
+        planName,
+        type: qType,
+        status: s as "SUBMITTED" | "TONGYI" | "BOHUI",
+        reason,
       })
-      if (!rows.length) return errorResponse(`未找到 HITL 记录: planName=${planName}, type=${type}`)
-      const r = rows[0]
-      const prevStatus = r.status
-      if (prevStatus === "TONGYI" || prevStatus === "BOHUI") {
-        return errorResponse(`HITL 已终态（${prevStatus}），不可再更新。BOHUI 后请用 create_hitl 新建 round。`)
-      }
-      // 更新
-      const data: Partial<HitlRow> = { status: s }
-      if (s === "TONGYI") data.approvedAt = new Date()
-      if (s === "BOHUI") {
-        data.rejectedAt = new Date()
-        if (reason) data.rejectReason = String(reason)
-      }
-      await db.hitl.update({ where: { id: r.id }, data })
-      // ── BOHUI 清算：Plan 文件不存在 → 预置 PlanRecord 无存续理由，连同本 plan 全部 HitlRecord 删除（孤儿即时归零）。
-      //    已写出文件的驳回 Plan 保留记录（历史价值）。 ──
-      let orphanCleaned = ""
-      if (s === "BOHUI") {
-        const planRow = await db.plan.findFirst({ where: { planName } })
-        if (planRow && !existsSync(planRow.planPath)) {
-          await db.hitl.deleteMany({ where: { planName } })
-          await db.plan.delete({ where: { id: planRow.id } })
-          orphanCleaned = `预置数据已清算（Plan 文件不存在: ${planRow.planPath}）`
-        }
-      }
+      const r = decision.hitl
+      const prevStatus = decision.previousStatus
       // 写哨兵文件（双命名：原始 planName + pre-tool-use hook §C 剥后缀推导名，保持闸门一致）
       const markerDir = join(PROJECT_ROOT, MAGIC_DIR, "hitl")
       mkdirSync(markerDir, { recursive: true })
@@ -503,9 +585,7 @@ export function registerHitlTools(server: ToolRegistrar) {
       // P3 #6：回写 .hitl.md 提案文件状态（DRAFT → TONGYI/BOHUI），保证双通道校验一致
       const proposalPath = findHitlFile(String(planName))
       if (proposalPath) {
-        let proposal = readFileSync(proposalPath, "utf-8")
-        proposal = proposal.replace(/(状态:\s*)[A-Z_]+/, `$1${s}`)
-        writeFileSync(proposalPath, proposal, "utf-8")
+        updateHitlProposal(proposalPath, s, (_use_widget || _use_genui) ? dimensions : undefined)
       }
       // 响应
       const lines = [
@@ -516,11 +596,11 @@ export function registerHitlTools(server: ToolRegistrar) {
         `status:   ${prevStatus} → ${s}`,
       ]
       if (_fallback) lines.push(`mode:     _fallback (跳过 dialog，原始代码降级)`)
+      if (_use_widget) lines.push(`mode:     mcpApps widget`)
       if (s === "TONGYI") lines.push(`marker:   ${marker} (stat() O(1) 兜底)`)
       if (s === "BOHUI") {
         lines.push(`marker:   ${marker}`)
         lines.push(`reason:   ${reason || "—"}`)
-        if (orphanCleaned) lines.push(`cleanup:  ${orphanCleaned}`)
         lines.push(``, `💡 驳回后请用 create_hitl 新建 round ${r.round + 1} 重新发起审批。`)
       }
       return textResponse(lines.join("\n"))
@@ -541,7 +621,12 @@ export function registerHitlTools(server: ToolRegistrar) {
       const { planName, type } = args as { planName: string; type?: string }
       const qType = (type || "PLAN") as HitlRow["type"]
       const rows = await db.hitl.findMany({
-        where: { planName, type: qType },
+        where: {
+          projectKey: runtimeContext.projectKey,
+          adapterKey: runtimeContext.adapterKey,
+          planName,
+          type: qType,
+        },
         orderBy: { round: "desc" },
         take: 1,
       })

@@ -62,8 +62,9 @@ EOF
     exit 2
   fi
 
-  # 检测 2: sed -i 原地编辑
-  if echo "$command" | grep -qE '\bsed\b.*-i'; then
+  # 检测 2: sed -i 原地编辑（精确判定：`-i` 必须是 sed 独立 option；不把路径子串如 session-init 误判）
+  # 协议层契约（Review P0 #3/命令分类）: 与 codex 已实现版本同契约语义
+  if echo "$command" | grep -qE '(^|[;&|][[:space:]]*)sed[[:space:]]+([^;&|]*[[:space:]])?(-[[:alpha:]]*i[^[:space:];&|]*|--in-place(=[^[:space:];&|]*)?)([[:space:];&|]|$)'; then
     _reason="禁止通过 sed -i 直接编辑文件。请使用 SearchReplace 工具。"
     cat >&2 <<'EOF'
 ⛔ [ADD PreToolUse §A] 阻断: 禁止通过 sed -i 原地编辑文件。
@@ -136,7 +137,8 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "
   file_path=$(echo "$input" | jq -r '.tool_input.file_path // empty')
   [ -z "$file_path" ] && exit 0
 
-  if echo "$file_path" | grep -qE '\.(qoder|claude|add)/(plans|specs|reviews)/'; then
+  # §B: 写入守卫按当前 magicDir 限域（Review P1 #5: 禁止多端路径正则）
+  if echo "$file_path" | grep -qE "${MAGIC_DIR}/(plans|specs|reviews)/"; then
     if type detect_active_add >/dev/null 2>&1; then
       state=$(detect_active_add 2>/dev/null || true)
       if [ -z "$state" ]; then
@@ -154,8 +156,8 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "
     exit 2
   fi
 
-  # §C: 模板类型前置注入 — plans/ 写入前提示应选模板
-  if echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(plans)/'; then
+  # §C: 模板类型前置注入 — 仅当前 magicDir plans/ 写入前提示应选模板
+  if echo "$file_path" | grep -qE "${MAGIC_DIR}/(plans)/"; then
     fname=$(basename "$file_path")
     if echo "$fname" | grep -qE 'plan-v[0-9]'; then
       echo "💡 [ADD PreToolUse] 写入 Plan → 模板: standard-plan-template.md（标准）或 simple-plan-template.md（≤3文件）" >&2
@@ -177,13 +179,13 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "
   # implementation/runtime review 不需要 HITL，走 §B 活跃 Plan 检查
   # handoff 是 Step 8 收敛产物（多轮交接手册），不经 HITL 审批，同样豁免
   # TODO 应该caijuehub管理
-  if echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(plans)/'; then
+  if echo "$file_path" | grep -qE "${MAGIC_DIR}/(plans)/"; then
     if echo "$file_path" | grep -qE '\-handoff'; then
       _do_hitl=false  # handoff 不被 HITL 拦截（Step 8 产物，无独立审批）
     else
       _do_hitl=true
     fi
-  elif echo "$file_path" | grep -qE '\.(qoder|claude|add|vscode|trae)/(reviews)/'; then
+  elif echo "$file_path" | grep -qE "${MAGIC_DIR}/(reviews)/"; then
     if echo "$file_path" | grep -qE '-(implementation|runtime)'; then
       _do_hitl=false  # implementation/runtime review 不被 HITL 拦截
     else
@@ -194,7 +196,11 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ] || [ "$tool_name" = "
   fi
 
   if [ "$_do_hitl" = true ]; then
-    _relative=$(echo "$file_path" | sed 's|.*/\.\(qoder\|claude\|add\|vscode\|trae\)/\(plans\|reviews\)/||')
+    _relative=$(echo "$file_path" | sed "s|.*/\.\(qoder\|claude\|add\|vscode\|trae\)/\(plans\|reviews\)/||")
+    # 限域: 仅当前 magicDir 下的 plans/reviews 触发 HITL 门禁
+    if ! echo "$file_path" | grep -qE "${MAGIC_DIR}/(plans|reviews)/"; then
+      _do_hitl=false
+    fi
     _planName=$(basename "$_relative" .md | sed 's/\.hitl$//;s/-plan-v[0-9]*$//;s/-add-route-v[0-9]*$//;s/-review-v[0-9]*$//;s/-review-implementation$//;s/-review-runtime$//')
     if [ -n "$_planName" ]; then
       _tongyi_marker="${PROJECT_DIR}/${MAGIC_DIR}/hitl/.tongyi-${_planName}"

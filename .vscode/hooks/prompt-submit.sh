@@ -77,7 +77,7 @@ cat <<EOF
 EOF
 
 # ─── Hook 治理日报（注入 AI 上下文）───
-HOOK_JSONL="${MAGIC_DIR:-.qoder}/reports/hook-events.jsonl"
+HOOK_JSONL="${MAGIC_DIR}/reports/hook-events.jsonl"
 if [ -f "$HOOK_JSONL" ]; then
   TODAY="$(date +%Y-%m-%d)"
   TOTAL=$(grep -c "\"ts\":\"${TODAY}" "$HOOK_JSONL" 2>/dev/null || echo 0)

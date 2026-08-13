@@ -7,6 +7,7 @@ import { readdirRecursive, PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
 import type { CollabContractRow, PlanRow } from "../shared/db-types.js"
 import { CollabContractRowSchema, PlanRowSchema, validatedDelegate } from "../shared/db-types.js"
+import { getRuntimeContext } from "../shared/env.js"
 
 const db = {
   get collabContract() { return validatedDelegate<CollabContractRow>(prisma.collabContract, CollabContractRowSchema, "CollabContract") },
@@ -67,6 +68,7 @@ function parseContractDoc(content: string): ParsedContract {
 }
 
 export function registerContractTools(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext()
 
   // ===== contract_track =====
   server.registerTool("contract_track", {
@@ -124,13 +126,30 @@ export function registerContractTools(server: ToolRegistrar) {
           results.push(`⚠️ ${name}  缺少「总控 Plan:」声明，跳过`)
           continue
         }
-        const existing = await db.collabContract.findFirst({ where: { contractName: name } })
+        const masterPlan = await db.plan.findFirst({
+          where: {
+            projectKey: runtimeContext.projectKey,
+            adapterKey: runtimeContext.adapterKey,
+            planName: masterPlanName,
+          },
+        })
+        if (!masterPlan) {
+          results.push(`⚠️ ${name}  当前 RuntimeContextKey 下不存在 Master Plan: ${masterPlanName}`)
+          continue
+        }
+        const existing = await db.collabContract.findFirst({
+          where: { projectKey: runtimeContext.projectKey, contractName: name },
+        })
         const version = (existing?.version as number ?? 0) + 1
 
         const data = {
           contractName: name,
+          projectKey: runtimeContext.projectKey,
+          ownerAdapterKey: runtimeContext.adapterKey,
           contractPath: path,
           masterPlanName,
+          masterProjectKey: runtimeContext.projectKey,
+          masterAdapterKey: runtimeContext.adapterKey,
           participants: parsed.participants as never,
           abilityMatrix: parsed.abilityMatrix as never,
           stages: parsed.stages as never,
@@ -142,7 +161,7 @@ export function registerContractTools(server: ToolRegistrar) {
         }
 
         if (existing) {
-          await db.collabContract.update({ where: { contractName: name }, data })
+          await db.collabContract.update({ where: { id: existing.id }, data })
           results.push(`📄 ${name}  ✅ 已更新 (v${version})`)
         } else {
           await db.collabContract.create({ data })
@@ -152,8 +171,12 @@ export function registerContractTools(server: ToolRegistrar) {
         // 若 masterPlan 存在，标记 PlanRecord 角色
         if (masterPlanName) {
           await db.plan.updateMany({
-            where: { planName: masterPlanName },
-            data: { contractRole: "MASTER", contractName: name } as never,
+            where: {
+              projectKey: runtimeContext.projectKey,
+              adapterKey: runtimeContext.adapterKey,
+              planName: masterPlanName,
+            },
+            data: { contractRole: "MASTER", contractName: name },
           })
         }
       }
@@ -173,7 +196,9 @@ export function registerContractTools(server: ToolRegistrar) {
   }, async (args: Record<string, unknown>) => {
     try {
       const { contractName } = args as { contractName: string }
-      const contract = await db.collabContract.findFirst({ where: { contractName } })
+      const contract = await db.collabContract.findFirst({
+        where: { projectKey: runtimeContext.projectKey, contractName },
+      })
       if (!contract) {
         return textResponse(`📋 契约: 未跟踪\ncontractName: ${contractName}\n\n操作: contract_track({ contractName: "${contractName}" })`)
       }
@@ -182,11 +207,11 @@ export function registerContractTools(server: ToolRegistrar) {
       const boundaries = (contract.fileBoundaries as unknown[]) || []
       const parallelCount = stages.filter((s) => (s as Record<string, unknown>).parallelism === "parallel").length
       const serialCount = stages.filter((s) => (s as Record<string, unknown>).parallelism === "serial").length
-      const versionStr = String(contract.version as number ?? "?")
-      const statusStr = String(contract.status as string ?? "?")
-      const masterStr = String(contract.masterPlanName as string ?? "(未绑定)")
+      const versionStr = String(contract.version ?? "?")
+      const statusStr = String(contract.status ?? "?")
+      const masterStr = String(contract.masterPlanName ?? "(未绑定)")
       const depStr = contract.dependencyGraph ? "已声明" : "未声明"
-      const pathStr = String(contract.contractPath as string ?? "(无)")
+      const pathStr = String(contract.contractPath ?? "(无)")
       return textResponse(
         `📊 ${contractName}\n` +
         `版本:      v${versionStr} (${statusStr})\n` +

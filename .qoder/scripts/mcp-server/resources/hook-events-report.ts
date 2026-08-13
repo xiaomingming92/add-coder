@@ -1,7 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/server"
 import { prisma } from "../shared/prisma.js"
+import { getRuntimeContext } from "../shared/env.js"
 
 export function registerHookEventResources(server: McpServer) {
+  const runtimeContext = getRuntimeContext()
 
   // ── 日报 Resource ──
   server.registerResource("hook-events-daily", "add-coder://report/hook-events/daily",
@@ -11,7 +13,12 @@ export function registerHookEventResources(server: McpServer) {
       const ops = prisma.devOperation as Record<string, (...a: unknown[]) => unknown>
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
       const logs = await ops.findMany({
-        where: { action: "HOOK_INTERCEPT", createdAt: { gte: since } },
+        where: {
+          action: "HOOK_INTERCEPT",
+          projectKey: runtimeContext.projectKey,
+          producerAdapterKey: runtimeContext.adapterKey,
+          createdAt: { gte: since },
+        },
         orderBy: { createdAt: "desc" },
         take: 500,
       }) as Array<Record<string, unknown>>
@@ -60,7 +67,12 @@ export function registerHookEventResources(server: McpServer) {
       const ops = prisma.devOperation as Record<string, (...a: unknown[]) => unknown>
       const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       const logs = await ops.findMany({
-        where: { action: "HOOK_INTERCEPT", createdAt: { gte: since } },
+        where: {
+          action: "HOOK_INTERCEPT",
+          projectKey: runtimeContext.projectKey,
+          producerAdapterKey: runtimeContext.adapterKey,
+          createdAt: { gte: since },
+        },
         orderBy: { createdAt: "desc" },
         take: 2000,
       }) as Array<Record<string, unknown>>

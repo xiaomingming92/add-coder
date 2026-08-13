@@ -4,15 +4,25 @@ import { readFile } from "fs/promises"
 import { readdir } from "fs/promises"
 import { stat } from "fs/promises"
 import { existsSync } from "fs"
-import { basename, join, relative } from "path"
+import { join, relative } from "path"
 import { textResponse, errorResponse } from "../shared/response.js"
-import { readFileSafe, readdirRecursive } from "../shared/fs.js"
+import { readFileSafe } from "../shared/fs.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
-import type { PlanRow } from "../shared/db-types.js"
-import { PlanRowSchema, validatedDelegate } from "../shared/db-types.js"
+import type { PlanRow, ReviewRow } from "../shared/db-types.js"
+import { PlanRowSchema, ReviewRowSchema, validatedDelegate } from "../shared/db-types.js"
+import { getRuntimeContext } from "../shared/env.js"
+import { resolvePlanStatus } from "../shared/plan-lifecycle.js"
+import { createPrismaPlanStatusStore } from "../shared/plan-status-store.js"
+import { assertPathInRuntimeScope } from "../shared/runtime-context.js"
+import {
+  formatSchemaTopology,
+  loadPrismaSchemaTopology,
+  type SchemaView,
+} from "../shared/schema-topology.js"
 
 export function registerContextTools(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext()
 
   // ===== get_project_context (L166-430) =====
   server.registerTool(
@@ -91,95 +101,73 @@ export function registerContextTools(server: ToolRegistrar) {
 
         if (scope === "all" || scope === "structure" || scope === "add-state") {
           parts.push("=== ADD 工作流状态 ===")
-          const plansDir = join(PROJECT_ROOT, MAGIC_DIR, "plans")
-          const reviewsDir = join(PROJECT_ROOT, MAGIC_DIR, "reviews")
-          const specsDir = join(PROJECT_ROOT, MAGIC_DIR, "specs")
+          parts.push(`contextId: ${runtimeContext.contextId}`)
+          parts.push("source: database")
 
-          let activePlan = ""
-          let activePlanPath = ""
-          if (existsSync(plansDir)) {
-            const candidates = (await readdirRecursive(plansDir))
-              .filter(f => /-plan-v\d+\.md$/.test(f) && !f.endsWith(".hitl.md"))
-            const planFiles = (await Promise.all(candidates.map(async (file) => ({
-              file,
-              mtimeMs: (await stat(join(plansDir, file))).mtimeMs,
-            }))))
-              .sort((a, b) => a.mtimeMs - b.mtimeMs || a.file.localeCompare(b.file))
-              .map(({ file }) => file)
-            if (planFiles.length > 0) {
-              activePlan = planFiles[planFiles.length - 1]
-              activePlanPath = join(plansDir, activePlan)
-              parts.push(`最近 Plan: ${activePlan}`)
-              const allPlanFiles = await readdirRecursive(plansDir)
-              const planKeyword = basename(activePlan).replace(/-plan-v\d+\.md$/, "")
-              const addRouteFile = allPlanFiles.find(f =>
-                f.includes("add-route") && f.toLowerCase().includes(planKeyword.toLowerCase()),
-              )
-              const handoffFiles = allPlanFiles.filter(f => f.includes("handoff"))
-              const hasHandoff = handoffFiles.some(f => f.toLowerCase().includes(planKeyword.toLowerCase()))
-              parts.push(` add-route: ${addRouteFile ? "✅ " + addRouteFile : "❌ 缺失（需回退 Step 0.5）"}`)
-              parts.push(` handoff: ${hasHandoff ? "✅ 已生成" : "❌ 缺失（需回退 Step 0.5）"}`)
-            } else { parts.push("最近 Plan: 无") }
-          } else { parts.push("最近 Plan: 无") }
-
-          let reviewFileName = ""; let reviewP0Count = 0; let reviewP1Count = 0; let reviewBackflowRate = 0
-          if (existsSync(reviewsDir) && activePlan) {
-            const reviewFiles = await readdir(reviewsDir)
-            const planKeyword = basename(activePlan).replace(/-plan-v\d+\.md$/, "")
-            const matchingReview = reviewFiles.find(f => f.toLowerCase().includes(planKeyword.toLowerCase()) && f.includes("-review-v"))
-              || reviewFiles.find(f => f.toLowerCase().includes(planKeyword.toLowerCase()))
-            if (matchingReview) {
-              reviewFileName = matchingReview
-              const reviewContent = await readFileSafe(join(reviewsDir, matchingReview)) || ""
-              const reviewLines = reviewContent.split("\n")
-              let inP0 = false, inP1 = false
-              for (const line of reviewLines) {
-                if (line.match(/P0|ADD.*合规|阻断/)) { inP0 = true; inP1 = false; continue }
-                if (line.match(/P1|架构设计.*缺口/)) { inP0 = false; inP1 = true; continue }
-                if (line.match(/P2|中等|影响评估|决策结论|方案对比/)) { inP0 = false; inP1 = false; continue }
-                if ((inP0 || inP1) && line.trim().startsWith("|") && !line.includes("---")) {
-                  const cols = line.split("|").map(c => c.trim()).filter(Boolean)
-                  if (cols.length >= 4 && cols[0].match(/^\d+$/)) {
-                    if (inP0) reviewP0Count++; else if (inP1) reviewP1Count++
-                  }
-                }
-              }
-              const planContent = await readFileSafe(activePlanPath) || ""
-              if ((reviewP0Count + reviewP1Count) > 0 && planContent) {
-                const indicators = ["add-route", "specs/", "handoff", "Task Group", "perExpertTopK", "agri_tech", "ChromaCollectionManager", "迁移路线图", "8 个 Expert", "冗余策略"]
-                let hit = 0
-                for (const ind of indicators) { if (planContent.toLowerCase().includes(ind.toLowerCase())) hit++ }
-                reviewBackflowRate = Math.min(100, Math.round((hit / Math.max(reviewP0Count + reviewP1Count, 1)) * 100))
-              }
-              parts.push(""); parts.push(`关联 Review: ${matchingReview}`)
-              parts.push(`  P0 问题: ${reviewP0Count} 个, P1 问题: ${reviewP1Count} 个`)
-              parts.push(`  回流状态: 约 ${reviewBackflowRate}%`)
-              parts.push(reviewBackflowRate < 70 ? "  ⚠️ Review 结论未充分回流至 Plan — 需执行 0.6.5 卡位" : "  ✅ Review 结论基本回流至 Plan")
-            } else { parts.push(""); parts.push("关联 Review: 无（该 Plan 尚未生成方案评审）") }
-          }
-
-          if (activePlan) {
-            const planKeyword = basename(activePlan).replace(/-plan-v\d+\.md$/, "")
-            const specDirs = existsSync(specsDir) ? await readdir(specsDir) : []
-            const matchingSpec = specDirs.find(d => d.toLowerCase().includes(planKeyword.toLowerCase()))
+          const planDb = validatedDelegate<PlanRow>(prisma.planRecord, PlanRowSchema, "PlanRecord")
+          const reviewDb = validatedDelegate<ReviewRow>(prisma.reviewRecord, ReviewRowSchema, "ReviewRecord")
+          const resolution = await resolvePlanStatus(
+            createPrismaPlanStatusStore(prisma),
+            runtimeContext,
+            { activeOnly: true },
+          )
+          let activePlan: PlanRow | null = null
+          let reviewRows: ReviewRow[] = []
+          if (resolution.availability === "STATUS_UNAVAILABLE") {
+            parts.push(`状态: ⛔ STATUS_UNAVAILABLE — ${resolution.reason}`)
+            parts.push("裁决: fail closed；未回退 Plan/Handoff/add-route 文件猜测")
+          } else if (resolution.planName === null) {
+            parts.push("活跃 Plan: 无（DB lifecycle 无 ACTIVE/BLOCKED）")
+          } else {
+            activePlan = await planDb.findFirst({
+              where: {
+                projectKey: runtimeContext.projectKey,
+                adapterKey: runtimeContext.adapterKey,
+                planName: resolution.planName,
+              },
+            })
+            if (!activePlan) throw new Error(`resolver 返回 Plan 后记录消失: ${resolution.planName}`)
+            assertPathInRuntimeScope(runtimeContext, activePlan.planPath)
+            parts.push(`活跃 Plan: ${activePlan.planName}`)
+            parts.push(` lifecycle: ${resolution.lifecycle} | revision: ${resolution.revision}`)
+            parts.push(` approval: ${resolution.approvalStatus ?? "—"}`)
+            parts.push(` tasks: ${resolution.progress.doneTasks}/${resolution.progress.totalTasks}`)
+            parts.push(` Plan: ${activePlan.planPath}`)
+            parts.push(` add-route: ${activePlan.addRoutePath && existsSync(activePlan.addRoutePath) ? `✅ ${activePlan.addRoutePath}` : "❌ 缺失"}`)
+            parts.push(" handoff: 不参与 active 裁决（仅 Step 8 交接产物）")
             parts.push("")
-            if (matchingSpec) {
-              const hasSpec = existsSync(join(specsDir, matchingSpec, "spec.md"))
-              const hasTasks = existsSync(join(specsDir, matchingSpec, "tasks.md"))
-              const hasChecklist = existsSync(join(specsDir, matchingSpec, "checklist.md"))
-              parts.push(`Specs: ${matchingSpec}/`)
-              parts.push(`  spec.md:      ${hasSpec ? "✅" : "❌"}`)
-              parts.push(`  tasks.md:     ${hasTasks ? "✅" : "❌"}`)
-              parts.push(`  checklist.md: ${hasChecklist ? "✅" : "❌"}`)
-            } else { parts.push("Specs: ❌ 缺失") }
+            parts.push("Specs:")
+            parts.push(` spec.md: ${activePlan.specPath && existsSync(activePlan.specPath) ? "✅" : "❌"}`)
+            parts.push(` tasks.md: ${activePlan.tasksPath && existsSync(activePlan.tasksPath) ? "✅" : "❌"}`)
+            parts.push(` checklist.md: ${activePlan.checklistPath && existsSync(activePlan.checklistPath) ? "✅" : "❌"}`)
+            reviewRows = await reviewDb.findMany({
+              where: {
+                projectKey: runtimeContext.projectKey,
+                adapterKey: runtimeContext.adapterKey,
+                planName: activePlan.planName,
+              },
+              orderBy: { updatedAt: "desc" },
+            })
+            parts.push("")
+            if (reviewRows.length === 0) {
+              parts.push("关联 Review: 无")
+            } else {
+              parts.push(`关联 Review: ${reviewRows.length} 条（DB scoped）`)
+              for (const review of reviewRows) {
+                parts.push(`  ${review.type}: P0=${review.p0Count}, P1=${review.p1Count}, backflow=${review.backflowRate}`)
+              }
+            }
           }
 
           parts.push(""); parts.push("=== 悬空 Plan 对账（记录在、文件缺失） ===")
-          // 孤儿可见性：create_hitl 预置行被中断 / 放弃未清理 → 开局即提示，不静默累积
           try {
-            // 无类型边界单点（zod 托管）：动态 client → 运行期校验的泛型委托
-            const planDb = validatedDelegate<PlanRow>(prisma.planRecord, PlanRowSchema, "PlanRecord")
-            const allPlans = await planDb.findMany({ orderBy: { createdAt: "desc" } })
+            const allPlans = await planDb.findMany({
+              where: {
+                projectKey: runtimeContext.projectKey,
+                adapterKey: runtimeContext.adapterKey,
+              },
+              orderBy: { createdAt: "desc" },
+            })
             const orphans = allPlans.filter(p => !existsSync(p.planPath))
             if (orphans.length > 0) {
               const cutoff = Date.now() - 14 * 86400000
@@ -192,23 +180,19 @@ export function registerContextTools(server: ToolRegistrar) {
 
           parts.push(""); parts.push("=== 待执行 ADD 操作（按流程顺序） ===")
           const todoItems: string[] = []
-          if (!activePlan) { todoItems.push("1. [未开始] 用户提出需求 → 生成 Plan") }
-          else {
-            if (!reviewFileName) { todoItems.push("1. [Step 0] 生成 Plan Review（ADD-9 方案评审）") }
-            else if (reviewP0Count + reviewP1Count > 0 && reviewBackflowRate < 70) {
-              todoItems.push("1. [0.6.5] Review 结论回流至 Plan — P0/P1 未写入 Plan 体")
-              todoItems.push("2. [check_dps] DPS 门禁预计不通过（回流完整度 < 70%）")
+          if (resolution.availability === "STATUS_UNAVAILABLE") {
+            todoItems.push("1. [阻断] 恢复 DB/MCP resolver；禁止按文件继续")
+          } else if (!activePlan) { todoItems.push("1. [未开始] 用户提出需求 → 生成 Plan + HITL") }
+          else if (resolution.planName !== null) {
+            if (resolution.approvalStatus !== "TONGYI") todoItems.push("1. [HITL] 完成当前 Plan 审批")
+            if (reviewRows.length === 0) todoItems.push("2. [Step 0] 生成并追踪 Plan Review")
+            if (reviewRows.some(review => review.p0Count + review.p1Count > 0 && review.backflowRate === 0)) {
+              todoItems.push("3. [0.6.5] Review P0/P1 回流至 Plan")
             }
-            const planKw = basename(activePlan).replace(/-plan-v\d+\.md$/, "")
-            const allPlanDir = await readdirRecursive(plansDir)
-            const hasAddRoute = allPlanDir.some(f => {
-              const lower = f.toLowerCase()
-              return lower.includes("add-route") && lower.includes(planKw.toLowerCase())
-            })
-            if (!hasAddRoute && reviewBackflowRate >= 70) { todoItems.push("2. [Step 0.5] 生成 add-route") }
-            const sd = existsSync(specsDir) ? await readdir(specsDir) : []
-            if (!sd.some(d => d.toLowerCase().includes(planKw.toLowerCase())) && reviewBackflowRate >= 70) { todoItems.push("3. [Step 0] 生成 Specs 三元组") }
-            if (todoItems.length === 0) { todoItems.push("✅ ADD 就绪 — check_dps ≥ {{dpsPass}} 后可进入 Step 1") }
+            if (!activePlan.addRoutePath || !existsSync(activePlan.addRoutePath)) todoItems.push("4. [Step 0.5] 生成 add-route")
+            if (!activePlan.specPath || !activePlan.tasksPath || !activePlan.checklistPath) todoItems.push("5. [Step 0] 补齐 Specs 三元组")
+            if (activePlan.doneTasks < activePlan.totalTasks) todoItems.push(`6. [实施] 继续未完成 Task（${activePlan.doneTasks}/${activePlan.totalTasks}）`)
+            if (todoItems.length === 0) todoItems.push("✅ DB lifecycle 与文档链已就绪，可进入 Review/closure")
           }
           for (const item of todoItems) parts.push(item)
           parts.push(""); parts.push("快速指令: 说「执行 add-paradigm Step 0」进入文档先行流程")
@@ -253,39 +237,41 @@ export function registerContextTools(server: ToolRegistrar) {
   server.registerTool(
     "get_db_schema",
     {
-      description: "获取 Prisma 数据库 Schema 定义（MCP-1 上下文优先）。返回指定模型的结构、字段、关系。AI 助手在编写数据库查询代码时应调用此工具获取真实的 Schema 信息，避免凭记忆假设。",
-      inputSchema: z.object({ model: z.string().optional().describe("可选的模型名称（不区分大小写）。不指定则返回所有模型概况。指定则返回该模型的完整字段定义。") }),
+      description: "获取 topology-aware Prisma Schema。兼容单库多文件 schema folder 与 ADD_DATABASE_URL 分库；返回扫描文件、数据库边界、模型来源和诊断。",
+      inputSchema: z.object({
+        model: z.string().optional().describe("可选模型或枚举名称（不区分大小写）"),
+        view: z.enum(["business", "add", "all"]).optional().default("all").describe("Schema 视图；分库时 all 仅分组汇总，不表示可跨库 join"),
+      }),
     },
-    async (args: { model?: string }) => {
+    async (args: { model?: string; view?: SchemaView }) => {
       try {
-        const schemaPath = join(PROJECT_ROOT, "prisma", "schema.prisma")
-        const schema = await readFileSafe(schemaPath)
-        if (!schema) return errorResponse("未找到 prisma/schema.prisma 文件")
-        const modelName = args?.model?.toLowerCase()
-        if (modelName) {
-          const modelRegex = new RegExp(`model\\s+${modelName}\\s*\\{`, "i")
-          const match = schema.match(modelRegex)
-          if (match) {
-            const startIdx = match.index ?? 0; const braceIdx = schema.indexOf("{", startIdx)
-            if (braceIdx !== -1) { let depth = 1; let endIdx = braceIdx + 1; while (depth > 0 && endIdx < schema.length) { if (schema[endIdx] === "{") depth++; else if (schema[endIdx] === "}") depth--; endIdx++ }; return textResponse(`=== Model: ${args.model} ===\n\nmodel ${args.model} ${schema.slice(braceIdx, endIdx)}`) }
+        const topology = await loadPrismaSchemaTopology({
+          projectRoot: PROJECT_ROOT,
+          splitDatabase: Boolean(process.env.ADD_DATABASE_URL?.trim()),
+          view: args?.view ?? "all",
+        })
+        const requested = args?.model?.trim().toLowerCase()
+        if (requested) {
+          const declaration = [...topology.models, ...topology.enums]
+            .find(item => item.name.toLowerCase() === requested)
+          if (!declaration) {
+            return errorResponse(`未在 view=${topology.view} 找到模型或枚举: ${args.model}。扫描: ${topology.files.map(file => file.file).join(", ")}`)
           }
-          const enumMatch = schema.match(new RegExp(`enum\\s+${modelName}\\s*\\{`, "i"))
-          if (enumMatch) return textResponse(`=== Enum: ${args.model} ===\n\n可用的枚举值见不传参调用结果。`)
-          return errorResponse(`未找到模型或枚举: ${args.model}。可用模型见不传参调用结果。`)
+          return textResponse([
+            `=== ${declaration.kind === "model" ? "Model" : "Enum"}: ${declaration.name} ===`,
+            `mode: ${topology.mode}`,
+            `view: ${topology.view}`,
+            `boundary: ${declaration.boundary}`,
+            `source: ${relative(PROJECT_ROOT, declaration.sourcePath)}`,
+            "",
+            `${declaration.kind} ${declaration.name} ${declaration.body}`,
+          ].join("\n"))
         }
-        const models: Array<{ name: string; fieldCount: number }> = []
-        const modelRegex = /model\s+(\w+)\s*\{/g; let m
-        while ((m = modelRegex.exec(schema)) !== null) {
-          const startIdx = m.index; const braceIdx = schema.indexOf("{", startIdx)
-          if (braceIdx !== -1) { let depth = 1; let endIdx = braceIdx + 1; while (depth > 0 && endIdx < schema.length) { if (schema[endIdx] === "{") depth++; else if (schema[endIdx] === "}") depth--; endIdx++ }; const body = schema.slice(braceIdx, endIdx); const fieldCount = body.split("\n").filter((l: string) => l.trim() && !l.trim().startsWith("//") && !l.trim().startsWith("@@")).length; models.push({ name: m[1], fieldCount }) }
-        }
-        const enums: string[] = []; const enumRegex = /enum\s+(\w+)\s*\{/g
-        while ((m = enumRegex.exec(schema)) !== null) { enums.push(m[1]) }
-        const parts = ["=== Prisma Schema 概况 ===", "", `模型 (${models.length} 个):`]
-        for (const model of models) parts.push(`  ${model.name} (${model.fieldCount} 字段)`)
-        if (enums.length > 0) { parts.push(""); parts.push(`枚举 (${enums.length} 个): ${enums.join(", ")}`) }
-        parts.push("", '提示: 指定 model 参数获取完整字段定义，例如: get_db_schema({ model: "User" })')
-        return textResponse(parts.join("\n"))
+        return textResponse([
+          formatSchemaTopology(topology, PROJECT_ROOT),
+          "",
+          '提示: 指定 model/view 获取完整定义，例如 get_db_schema({ model: "PlanRecord", view: "add" })',
+        ].join("\n"))
       } catch (error) { return errorResponse(`获取 Schema 失败: ${error instanceof Error ? error.message : String(error)}`) }
     }
   )

@@ -1,16 +1,41 @@
 <style>
 * { box-sizing:border-box; margin:0; padding:0 }
-body { font-family:var(--font-family); font-size:14px; color:var(--color-text); padding:16px; background:var(--color-bg) }
+html, body { width:100%; max-width:100%; min-height:620px; overflow:hidden }
+body {
+  font-family:var(--font-family, ui-sans-serif, system-ui, sans-serif);
+  font-size:14px;
+  color:var(--color-text, #e8e8e8);
+  padding:8px;
+  background:var(--color-bg, #1f1f1f)
+}
+.app-shell {
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  height:clamp(600px, 78vh, 760px);
+  min-height:600px;
+  max-height:760px;
+  overflow:hidden;
+}
 
-.header { margin-bottom:16px }
+.header { flex:0 0 auto; margin-bottom:10px }
 .header h2 { font-size:16px; font-weight:500; margin-bottom:4px }
 .header .meta { font-size:12px; color:var(--color-text-muted) }
 .header .meta span { margin-right:12px }
 
-.table-wrap { border:1px solid var(--color-border); border-radius:8px; overflow:hidden }
+.table-wrap {
+  flex:1 1 auto;
+  min-height:160px;
+  max-height:620px;
+  border:1px solid var(--color-border, #444);
+  border-radius:8px;
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
 
-table { width:100%; border-collapse:collapse; font-size:13px }
-thead { background:var(--color-surface-elevated) }
+table { width:100%; min-width:680px; border-collapse:separate; border-spacing:0; font-size:13px }
+thead { position:sticky; top:0; z-index:3; background:var(--color-surface-elevated, #292929) }
 th { padding:8px 12px; text-align:left; font-weight:500; font-size:12px; color:var(--color-text-muted); border-bottom:1px solid var(--color-border) }
 th:first-child { width:32px; text-align:center }
 th:nth-child(4) { width:200px; text-align:center }
@@ -38,7 +63,17 @@ tr.adjusting .adj-input { display:block }
 .dirty-mark { font-size:11px; color:var(--color-warning); margin-left:4px }
 .saved-mark { font-size:11px; color:var(--color-success); margin-left:4px }
 
-.footer { display:flex; gap:8px; margin-top:16px; align-items:center }
+.footer {
+  position:sticky;
+  bottom:0;
+  z-index:4;
+  flex:0 0 auto;
+  display:flex;
+  gap:8px;
+  padding-top:10px;
+  align-items:center;
+  background:var(--color-bg, #1f1f1f)
+}
 .btn { padding:8px 16px; border:none; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer }
 .btn-primary { background:var(--color-accent); color:var(--color-accent-text) }
 .btn-primary:disabled { background:var(--color-text-muted); cursor:not-allowed; opacity:0.5 }
@@ -51,6 +86,7 @@ tr.adjusting .adj-input { display:block }
 .status-msg.warn { background:var(--color-warning); color:#000 }
 </style>
 
+<div class="app-shell">
 <div class="header">
   <h2 id="plan_title">— HITL 提案</h2>
   <div class="meta">
@@ -68,39 +104,111 @@ tr.adjusting .adj-input { display:block }
 </div>
 
 <div class="footer">
-  <button class="btn btn-primary" id="btn_tongyi" onclick="submit('TONGYI')">同意全部</button>
-  <button class="btn btn-danger" onclick="submit('BOHUI')">驳回全部</button>
-  <button class="btn btn-outline" onclick="resetAll()">重置</button>
+  <button type="button" class="btn btn-primary" id="btn_tongyi" data-verdict="TONGYI">同意全部</button>
+  <button type="button" class="btn btn-danger" id="btn_bohui" data-verdict="BOHUI">驳回全部</button>
+  <button type="button" class="btn btn-outline" id="btn_reset">重置</button>
   <span class="status-msg" id="status_msg" style="display:none"></span>
+</div>
 </div>
 
 <script>
-// 通过 window.__WIDGET_DATA__ 传入，无兜底默认值——缺失时直接报错
-// 格式: { planName, type, round, dimensions: [{ name, content }] }
-const data = window.__WIDGET_DATA__
-if (!data || !data.dimensions || !data.dimensions.length) {
-  document.getElementById('plan_title').textContent = '错误：缺少 dimensions 数据'
-  document.getElementById('plan_meta').textContent = '请通过 window.__WIDGET_DATA__.dimensions 传入决策维度'
-  throw new Error('missing dimensions')
+// core widget 数据契约：{ planName, type, round, status, dimensions: [{ name, content }] }
+// Qoder 可继续注入 window.__WIDGET_DATA__；Codex/OpenAI 与标准 MCP Apps 通过宿主桥异步注入。
+let data = null
+let dims = []
+let planName = ''
+let hitlType = 'PLAN'
+let round = 1
+let decisions = []
+let mcpAppsReady = false
+let rpcId = 0
+const pending = new Map()
+
+function extractData(value) {
+  if (!value || typeof value !== 'object') return null
+  const candidate = value.structuredContent || value.toolOutput || value.result?.structuredContent || value.result || value
+  return candidate && Array.isArray(candidate.dimensions) ? candidate : null
 }
 
-const dims = data.dimensions
-const planName = data.planName || ''
-const hitlType = data.type || 'PLAN'
-const round = data.round || 1
+function applyData(value) {
+  const next = extractData(value)
+  if (!next || !next.dimensions.length) return false
+  data = next
+  dims = next.dimensions
+  planName = next.planName || ''
+  hitlType = next.type || 'PLAN'
+  round = next.round || 1
+  decisions = dims.map(() => ({ action:'', adjusted:'', dirty:false, saved:false }))
+  document.getElementById('plan_title').textContent = planName + ' — HITL 提案 (round ' + round + ')'
+  document.getElementById('plan_meta').innerHTML =
+    '<span>类型: ' + esc(hitlType) + '</span><span>轮次: ' + round + '</span><span>状态: ' + esc(next.status || 'DRAFT') + '</span>'
+  render()
+  notifyHeight()
+  return true
+}
 
-document.getElementById('plan_title').textContent = planName + ' — HITL 提案 (round ' + round + ')'
-document.getElementById('plan_meta').innerHTML =
-  '<span>类型: ' + hitlType + '</span><span>轮次: ' + round + '</span><span>状态: DRAFT</span>'
+function notifyHeight() {
+  if (typeof window.openai?.notifyIntrinsicHeight === 'function') {
+    window.openai.notifyIntrinsicHeight()
+  }
+}
 
-// decisions[i] = { action: ''|'agree'|'adjust', adjusted: '', dirty: false, saved: false }
-let decisions = dims.map(() => ({ action:'', adjusted:'', dirty:false, saved:false }))
+function postRpc(method, params) {
+  const id = ++rpcId
+  window.parent.postMessage({ jsonrpc:'2.0', id, method, params }, '*')
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      pending.delete(id)
+      reject(new Error('MCP Apps request timeout'))
+    }, 5000)
+    pending.set(id, {
+      resolve: value => { clearTimeout(timeout); resolve(value) },
+      reject: error => { clearTimeout(timeout); reject(error) }
+    })
+  })
+}
+
+async function initializeMcpApps() {
+  if (window.parent === window) return
+  try {
+    await postRpc('ui/initialize', {
+      protocolVersion: '2025-06-18',
+      appCapabilities: {},
+      clientInfo: { name:'add-coder-hitl-widget', version:'1.0.0' }
+    })
+    mcpAppsReady = true
+    window.parent.postMessage({ jsonrpc:'2.0', method:'ui/notifications/initialized' }, '*')
+  } catch {
+    mcpAppsReady = false
+  }
+}
+
+window.addEventListener('message', (event) => {
+  const message = event.data
+  if (!message || message.jsonrpc !== '2.0') return
+  if (message.id && pending.has(message.id)) {
+    const request = pending.get(message.id)
+    pending.delete(message.id)
+    if (message.error) request.reject(new Error(message.error.message || 'MCP Apps request failed'))
+    else request.resolve(message.result)
+    return
+  }
+  if (message.method === 'ui/notifications/tool-result' || message.method === 'ui/notifications/tool-input') {
+    applyData(message.params)
+  }
+})
+
+window.addEventListener('openai:set_globals', (event) => {
+  const globals = event.detail?.globals || event.detail || {}
+  applyData(globals.toolOutput || globals.toolInput || globals)
+})
 
 function hasUnsaved() {
   return decisions.some(d => d.action === 'adjust' && !d.saved)
 }
 
 function render() {
+  if (!dims.length) return
   let html = ''
   dims.forEach((d, i) => {
     const dec = decisions[i]
@@ -111,17 +219,17 @@ function render() {
     html += '<td>' + esc(d.content || '—')
     if (isAdjust) {
       html += '<input class="adj-input" id="adj_' + i + '" value="' + esc(dec.adjusted) +
-        '" oninput="markDirty(' + i + ')" placeholder="输入调整后内容...">'
-      html += '<button class="btn-save-row" id="save_' + i + '" disabled onclick="saveRow(' + i + ')">保存</button>'
+        '" data-row="' + i + '" placeholder="输入调整后内容...">'
+      html += '<button type="button" class="btn-save-row" id="save_' + i + '" data-row="' + i + '" data-action="save" disabled>保存</button>'
       html += '<span class="dirty-mark" id="dirty_' + i + '" style="display:none">未保存</span>'
       html += '<span class="saved-mark" id="saved_' + i + '" style="display:' + (dec.saved ? 'inline' : 'none') + '">已保存</span>'
     }
     html += '</td>'
     html += '<td><div class="btn-group">'
-    html += '<button class="btn-row agree' + (dec.action === 'agree' ? ' active' : '') +
-      '" onclick="toggle(' + i + ',' + String.fromCharCode(39) + 'agree' + String.fromCharCode(39) + ')">同意</button>'
-    html += '<button class="btn-row adj' + (dec.action === 'adjust' ? ' active' : '') +
-      '" onclick="toggle(' + i + ',' + String.fromCharCode(39) + 'adjust' + String.fromCharCode(39) + ')">调整</button>'
+    html += '<button type="button" class="btn-row agree' + (dec.action === 'agree' ? ' active' : '') +
+      '" data-row="' + i + '" data-action="agree" aria-pressed="' + (dec.action === 'agree') + '">同意</button>'
+    html += '<button type="button" class="btn-row adj' + (dec.action === 'adjust' ? ' active' : '') +
+      '" data-row="' + i + '" data-action="adjust" aria-pressed="' + (dec.action === 'adjust') + '">调整</button>'
     html += '</div></td></tr>'
   })
   document.getElementById('tbody').innerHTML = html
@@ -138,10 +246,11 @@ function render() {
 
   // "同意全部"在有未保存调整时 disable
   document.getElementById('btn_tongyi').disabled = hasUnsaved()
+  notifyHeight()
 }
 
 function esc(s) {
-  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
 function toggle(i, action) {
@@ -188,7 +297,69 @@ function resetAll() {
   render()
 }
 
-function submit(verdict) {
+document.getElementById('tbody').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-row][data-action]')
+  if (!button) return
+  // 行级决定只更新 widget 草稿，不能被宿主当作聊天/工具提交事件。
+  event.preventDefault()
+  event.stopPropagation()
+  const index = Number(button.dataset.row)
+  if (!Number.isInteger(index) || !decisions[index]) return
+  if (button.dataset.action === 'save') saveRow(index)
+  else toggle(index, button.dataset.action)
+})
+
+document.getElementById('tbody').addEventListener('input', (event) => {
+  const input = event.target.closest('input[data-row]')
+  if (!input) return
+  event.stopPropagation()
+  const index = Number(input.dataset.row)
+  if (Number.isInteger(index) && decisions[index]) markDirty(index)
+})
+
+document.getElementById('btn_tongyi').addEventListener('click', () => submitDecision('TONGYI'))
+document.getElementById('btn_bohui').addEventListener('click', () => submitDecision('BOHUI'))
+document.getElementById('btn_reset').addEventListener('click', resetAll)
+
+async function sendCodexFollowUp(payload, cause) {
+  if (typeof window.openai?.sendFollowUpMessage !== 'function') throw cause
+  const prompt = [
+    '[ADD HITL Widget Submission]',
+    '用户已在 HITL 弹框中完成选择。请立即调用 update_hitl，严格使用下面 JSON 参数，不要替用户改写决策：',
+    JSON.stringify({ ...payload, _use_widget:true })
+  ].join('\n')
+  await window.openai.sendFollowUpMessage({
+    prompt,
+    title:'提交 HITL 决策',
+    context:{ source:'add-coder-hitl-widget', payload }
+  })
+  return { queued:true, fallbackReason:cause?.message || String(cause) }
+}
+
+async function callUpdateHitl(payload) {
+  const args = { ...payload, _use_widget:true }
+  if (typeof window.sendToAgent === 'function') {
+    return window.sendToAgent({ ...payload, _use_genui:true }, { submit:true })
+  }
+  if (mcpAppsReady || window.parent !== window) {
+    try {
+      return await postRpc('tools/call', { name:'update_hitl', arguments:args })
+    } catch (error) {
+      return sendCodexFollowUp(payload, error)
+    }
+  }
+  if (typeof window.openai?.callTool === 'function') {
+    try {
+      return await window.openai.callTool('update_hitl', args)
+    } catch (error) {
+      return sendCodexFollowUp(payload, error)
+    }
+  }
+  return sendCodexFollowUp(payload, new Error('当前宿主未提供直接 MCP tool bridge'))
+}
+
+async function submitDecision(verdict) {
+  if (!data) return
   if (verdict === 'TONGYI') {
     // 有未保存调整时禁止提交（按钮已 disabled，双重防护）
     if (hasUnsaved()) return
@@ -197,8 +368,8 @@ function submit(verdict) {
   }
   const msg = document.getElementById('status_msg')
   msg.style.display = 'inline-block'
-  msg.className = 'status-msg ' + (verdict === 'TONGYI' ? 'ok' : 'warn')
-  msg.textContent = verdict === 'TONGYI' ? '✓ 已通过' : '✗ 已驳回'
+  msg.className = 'status-msg warn'
+  msg.textContent = '正在提交…'
 
   // 回传数据对齐 create_hitl / update_hitl 字段
   const results = dims.map((d, i) => ({
@@ -215,8 +386,22 @@ function submit(verdict) {
     dimensions: results
   }
   if (verdict === 'BOHUI') payload.reason = '用户驳回全部提案'
-  sendToAgent(payload, { submit: true })
+  try {
+    const result = await callUpdateHitl(payload)
+    msg.className = 'status-msg ' + (verdict === 'TONGYI' ? 'ok' : 'warn')
+    msg.textContent = result?.queued
+      ? '✓ 已交给 Codex 执行 update_hitl'
+      : (verdict === 'TONGYI' ? '✓ 已通过' : '✗ 已驳回')
+  } catch (error) {
+    msg.className = 'status-msg warn'
+    msg.textContent = '提交失败：' + (error?.message || String(error))
+  }
+  notifyHeight()
 }
 
-render()
+document.getElementById('plan_title').textContent = '正在加载 HITL 提案…'
+document.getElementById('plan_meta').textContent = '等待宿主提供 scoped proposal data'
+applyData(window.__WIDGET_DATA__)
+applyData(window.openai?.toolOutput || window.openai?.toolInput)
+initializeMcpApps()
 </script>

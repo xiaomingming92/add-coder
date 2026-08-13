@@ -7,6 +7,19 @@ import { readFileSafe, readdirRecursive, PROJECT_ROOT, MAGIC_DIR } from "../shar
 import { prisma } from "../shared/prisma.js"
 import type { PlanRow } from "../shared/db-types.js"
 import { PlanRowSchema, validatedDelegate } from "../shared/db-types.js"
+import { getRuntimeContext } from "../shared/env.js"
+import { assertPathInRuntimeScope } from "../shared/runtime-context.js"
+import { resolvePlanStatus } from "../shared/plan-lifecycle.js"
+import { createPrismaPlanStatusStore } from "../shared/plan-status-store.js"
+import {
+  trackPlanAndPublish,
+  type PlanTrackingDatabase,
+} from "../shared/plan-tracking-mutation.js"
+import {
+  closePlanRoundAndPublish,
+  type PlanRoundDatabase,
+} from "../shared/plan-round-mutation.js"
+import { queryPlanRounds, type PlanRoundReadClient } from "../shared/plan-round-store.js"
 
 // 无类型边界单点（zod 托管）：动态加载的 prisma client 在此一次性转为运行期校验的泛型委托
 const db = {
@@ -14,6 +27,14 @@ const db = {
 }
 
 export function registerPlanTools(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext()
+  const statusStore = createPrismaPlanStatusStore(prisma)
+  const parseStructuredState = (value: string, field: string): Record<string, unknown> | unknown[] => {
+    let parsed: unknown
+    try { parsed = JSON.parse(value) } catch { throw new Error(`${field} 必须是有效 JSON`) }
+    if (parsed === null || typeof parsed !== "object") throw new Error(`${field} 必须是非 null JSON 对象或数组`)
+    return parsed as Record<string, unknown> | unknown[]
+  }
 
   // ===== plan_track =====
   server.registerTool("plan_track", {
@@ -24,7 +45,7 @@ export function registerPlanTools(server: ToolRegistrar) {
     }),
   }, async (args: Record<string, unknown>) => {
     try {
-      const { planName, scanAll } = args as { planName?: string; scanAll?: boolean }
+      const { planName } = args as { planName?: string; scanAll?: boolean }
       const pn = typeof planName === "string" ? planName : ""
       const plansDir = join(PROJECT_ROOT, MAGIC_DIR, "plans")
       const specsDir = join(PROJECT_ROOT, MAGIC_DIR, "specs")
@@ -32,7 +53,7 @@ export function registerPlanTools(server: ToolRegistrar) {
 
       if (!existsSync(plansDir)) return errorResponse(`plans 目录不存在: ${plansDir}`)
 
-      let targets: { name: string; path: string; keyword: string }[] = []
+      const targets: { name: string; path: string; keyword: string }[] = []
       const newPlans: string[] = []
       const allFiles = await readdirRecursive(plansDir)
       // 排除 .hitl.md（HITL 提案不是 Plan 本体，避免 plan_track 误扫为独立 Plan）
@@ -84,7 +105,6 @@ export function registerPlanTools(server: ToolRegistrar) {
         )
         const addRoutePath = addRouteFile ? join(plansDir, addRouteFile) : undefined
         // upsert PlanRecord
-        const existing = await db.plan.findFirst({ where: { planName: t.name } })
         const data: Partial<PlanRow> = {
           planPath: t.path,
           specPath: existsSync(specPath) ? specPath : undefined,
@@ -94,11 +114,16 @@ export function registerPlanTools(server: ToolRegistrar) {
           totalTasks, doneTasks, checklistT, checklistTDone, checklistR,
           planKeyword: keyword,
         }
-        if (existing) {
-          await db.plan.update({ where: { id: existing.id }, data })
+        assertPathInRuntimeScope(runtimeContext, t.path)
+        const tracked = await trackPlanAndPublish(prisma as unknown as PlanTrackingDatabase, {
+          context: runtimeContext,
+          planName: t.name,
+          planPath: t.path,
+          projection: data,
+        })
+        if (!tracked.created) {
           results.push(`  ✅ 已更新 (totalTasks=${totalTasks}, done=${doneTasks})` + (addRoutePath ? `, addRoute` : ``))
         } else {
-          await db.plan.create({ data: { ...data, planName: t.name, planPath: t.path } })
           results.push(`  ✅ 已创建 (totalTasks=${totalTasks}, done=${doneTasks})` + (addRoutePath ? `, addRoute` : ``))
           newPlans.push(t.name.replace(/-plan-v\d+$/, ""))
         }
@@ -106,7 +131,13 @@ export function registerPlanTools(server: ToolRegistrar) {
       // ── 孤儿对账（全量扫描时）：PlanRecord 存在但 planPath 文件缺失 → 悬空清单。
       //    来源：create_hitl 预置行被中断 / 用户放弃未清理。允许暂时存在，不允许不可见。 ──
       if (!pn) {
-        const allPlans = await db.plan.findMany({ orderBy: { createdAt: "desc" } })
+        const allPlans = await db.plan.findMany({
+          where: {
+            projectKey: runtimeContext.projectKey,
+            adapterKey: runtimeContext.adapterKey,
+          },
+          orderBy: { createdAt: "desc" },
+        })
         const orphans = allPlans.filter(p => !existsSync(p.planPath))
         if (orphans.length > 0) {
           results.push("", `⚠️ 悬空 Plan（记录在、文件缺失）— 续写或清理:`)
@@ -137,17 +168,35 @@ export function registerPlanTools(server: ToolRegistrar) {
   }, async (args: Record<string, unknown>) => {
     try {
       const { planName } = args as { planName: string }
-      const plan = await db.plan.findFirst({ where: { planName } })
-      if (!plan) return textResponse(`📋 Plan: 未跟踪\nplanName: ${planName}\n\n操作: plan_track({ planName: "${planName}" })`)
-      const t = plan.totalTasks || 0
-      const d = plan.doneTasks || 0
-      const ct = plan.checklistT || 0
-      const ctd = plan.checklistTDone || 0
+      const resolution = await resolvePlanStatus(statusStore, runtimeContext, planName)
+      if (resolution.availability === "STATUS_UNAVAILABLE") {
+        return errorResponse(`Plan status 不可用（禁止按文件猜测）: ${resolution.reason}`)
+      }
+      if (resolution.planName === null) {
+        return textResponse(`📋 Plan: 未跟踪\nplanName: ${planName}\nsource: database\ncontextId: ${runtimeContext.contextId}\n\n操作: plan_track({ planName: "${planName}" })`)
+      }
+      const plan = await db.plan.findFirst({
+        where: {
+          projectKey: runtimeContext.projectKey,
+          adapterKey: runtimeContext.adapterKey,
+          planName,
+        },
+      })
+      if (!plan) return errorResponse(`Plan status 解析后记录消失，请重试: ${planName}`)
+      const t = resolution.progress.totalTasks
+      const d = resolution.progress.doneTasks
+      const ct = resolution.progress.checklistT
+      const ctd = resolution.progress.checklistTDone
       const cr = plan.checklistR || 0
       const taskPct = t > 0 ? Math.round((d / t) * 100) : 0
       const lines = [
         `📊 ${planName}`,
         ``,
+        `lifecycle:    ${resolution.lifecycle} (${resolution.isActive ? "active" : "inactive"})`,
+        `approval:     ${resolution.approvalStatus ?? "—"}`,
+        `revision:     ${resolution.revision}`,
+        `source:       database`,
+        `contextId:    ${runtimeContext.contextId}`,
         `tasks.md:     ${d}/${t} (${taskPct}%) ${taskPct >= 100 ? "✅" : d > 0 ? "🔄" : "⬜"}`,
         `checklist:    [T] ${ctd}/${ct} | [R] ${cr} 项`,
         `planKeyword:  ${plan.planKeyword || "—"}`,
@@ -156,6 +205,7 @@ export function registerPlanTools(server: ToolRegistrar) {
         // P3 #5 契约角色展示（PlanRecord 已设置时）
         plan.contractRole ? `contractRole: ${plan.contractRole}` : null,
         plan.contractName ? `contractName: ${plan.contractName}` : null,
+        `machine:      ${JSON.stringify(resolution)}`,
       ].filter(Boolean)
       return textResponse(lines.join("\n"))
     } catch (e) {
@@ -172,9 +222,16 @@ export function registerPlanTools(server: ToolRegistrar) {
   }, async (args: Record<string, unknown>) => {
     try {
       const { planName } = args as { planName: string }
-      const plan = await db.plan.findFirst({ where: { planName } })
+      const plan = await db.plan.findFirst({
+        where: {
+          projectKey: runtimeContext.projectKey,
+          adapterKey: runtimeContext.adapterKey,
+          planName,
+        },
+      })
       if (!plan) return errorResponse(`PlanRecord 未找到: ${planName}`)
       const planPath = plan.planPath
+      assertPathInRuntimeScope(runtimeContext, planPath)
       if (!existsSync(planPath)) return errorResponse(`Plan 文件不存在: ${planPath}`)
       const content = readFileSync(planPath, "utf-8")
       const t = plan.totalTasks || 0
@@ -195,7 +252,6 @@ export function registerPlanTools(server: ToolRegistrar) {
       ].join("\n")
       // 用 indexOf 安全替换（不用跨行正则）
       const marker = "## 📊 Plan 进度快照"
-      const markerEnd = "\n## 📊 Plan 进度快照"
       // 找到现有快照区块的结束位置
       const startIdx = content.indexOf(marker)
       let newContent: string
@@ -214,6 +270,75 @@ export function registerPlanTools(server: ToolRegistrar) {
       return textResponse(`✅ plan_sync: "${planName}" 进度快照已回写`)
     } catch (e) {
       return errorResponse(`plan_sync 失败: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  })
+
+  // ===== plan_round_close =====
+  server.registerTool("plan_round_close", {
+    description: "关闭一个逻辑 PlanRound：在当前 RuntimeContextKey 内幂等写入 ROUND_CLOSED，并于同一 Prisma transaction 发布 PostgreSQL 唤醒通知。不会关闭整个 Plan，也不会修改 lifecycle/revision。",
+    inputSchema: z.object({
+      planName: z.string().min(1),
+      round: z.number().int().positive(),
+      beforeState: z.string().describe("非 null JSON 对象或数组字符串"),
+      afterState: z.string().describe("非 null JSON 对象或数组字符串，包含本轮产出摘要"),
+      reason: z.string().optional(),
+      operationKey: z.string().optional(),
+    }),
+  }, async (args: Record<string, unknown>) => {
+    try {
+      const input = args as { planName: string; round: number; beforeState: string; afterState: string; reason?: string; operationKey?: string }
+      const result = await closePlanRoundAndPublish(prisma as unknown as PlanRoundDatabase, {
+        context: runtimeContext,
+        planName: input.planName,
+        round: input.round,
+        beforeState: parseStructuredState(input.beforeState, "beforeState"),
+        afterState: parseStructuredState(input.afterState, "afterState"),
+        reason: input.reason,
+        operationKey: input.operationKey,
+      })
+      return textResponse([
+        "✅ PlanRound 已关闭",
+        `planName: ${result.plan.planName}`,
+        `round: ${input.round}`,
+        `operationId: ${result.operation.id}`,
+        `targetId: ${result.operation.targetId}`,
+        `lifecycle: ${result.plan.lifecycle} (未修改)`,
+        `revision: ${result.plan.revision} (未修改)`,
+        "source: database",
+      ].join("\n"))
+    } catch (e) {
+      return errorResponse(`plan_round_close 失败: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  })
+
+  // ===== plan_round_status =====
+  server.registerTool("plan_round_status", {
+    description: "查询当前 RuntimeContextKey 下的 ROUND_CLOSED 记录。数据库是权威状态；通知仅负责唤醒订阅者调用本查询。",
+    inputSchema: z.object({
+      planName: z.string().min(1),
+      round: z.number().int().positive().optional(),
+    }),
+  }, async (args: Record<string, unknown>) => {
+    try {
+      const input = args as { planName: string; round?: number }
+      const snapshot = await queryPlanRounds(prisma as unknown as PlanRoundReadClient, {
+        context: runtimeContext,
+        planName: input.planName,
+        round: input.round,
+      })
+      if (!snapshot.planId) return textResponse(`📋 PlanRound: 未找到 scoped Plan\nplanName: ${input.planName}\ncontextId: ${runtimeContext.contextId}`)
+      const lines = [
+        `📋 PlanRound: ${snapshot.planName}`,
+        `contextId: ${runtimeContext.contextId}`,
+        `source: database`,
+        `records: ${snapshot.rounds.length}`,
+      ]
+      for (const record of snapshot.rounds) {
+        lines.push(`- ${record.targetId} | ${record.createdAt.toISOString()} | operationId=${record.id}`)
+      }
+      return textResponse(lines.join("\n"))
+    } catch (e) {
+      return errorResponse(`plan_round_status 失败: ${e instanceof Error ? e.message : String(e)}`)
     }
   })
 

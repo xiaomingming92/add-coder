@@ -17,6 +17,7 @@ import {
   MAGIC_DIR,
 } from "../../shared/fs.js";
 import { prisma } from "../../shared/prisma.js";
+import { getRuntimeContext } from "../../shared/env.js";
 
 function scanCheckboxes(content: string) {
   let t = 0,
@@ -61,6 +62,7 @@ function scanCheckboxes(content: string) {
 }
 
 export function registerCheckAddRouteStatus(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext();
   server.registerTool(
     "check_add_route_status",
     {
@@ -85,8 +87,11 @@ export function registerCheckAddRouteStatus(server: ToolRegistrar) {
             prisma.auditLog as Record<string, (...a: unknown[]) => unknown>
           ).findMany({
             where: {
+              projectKey: runtimeContext.projectKey,
+              producerAdapterKey: runtimeContext.adapterKey,
               // 按当前 Plan 精准定位：targetId 同时含 planKeyword 与 add-route（与文件匹配语义一致）
               AND: [
+                { targetId: { startsWith: `${MAGIC_DIR}/` } },
                 { targetId: { contains: planKeyword, mode: "insensitive" } },
                 { targetId: { contains: "add-route", mode: "insensitive" } },
               ],
@@ -119,8 +124,11 @@ export function registerCheckAddRouteStatus(server: ToolRegistrar) {
             prisma.devOperation as Record<string, (...a: unknown[]) => unknown>
           ).findMany({
             where: {
+              projectKey: runtimeContext.projectKey,
+              producerAdapterKey: runtimeContext.adapterKey,
               // 按当前 Plan 精准定位（AND：planKeyword + add-route），命中集天然为当前 Plan 的 add-route 记录
               AND: [
+                { targetId: { startsWith: `${MAGIC_DIR}/` } },
                 { targetId: { contains: planKeyword, mode: "insensitive" } },
                 { targetId: { contains: "add-route", mode: "insensitive" } },
               ],

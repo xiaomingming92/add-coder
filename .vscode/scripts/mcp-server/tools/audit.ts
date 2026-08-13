@@ -1,12 +1,14 @@
 import * as z from "zod/v4"
+import { createHash } from "crypto"
 import type { ToolRegistrar } from "./registrar.js"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { prisma } from "../shared/prisma.js"
-import { PROJECT_ID, PROJECT_ROOT } from "../shared/env.js"
+import { PROJECT_ID, PROJECT_ROOT, getRuntimeContext } from "../shared/env.js"
 import type { AddUserRow, DevOperationRow } from "../shared/db-types.js"
 import { AddUserRowSchema, DevOperationRowSchema, validatedDelegate } from "../shared/db-types.js"
 
 export function registerAuditTools(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext()
 
   // 无类型边界单点（zod 托管）：动态 client → 运行期校验的泛型委托
   const devDb = validatedDelegate<DevOperationRow>(prisma.devOperation, DevOperationRowSchema, "DevOperation")
@@ -30,7 +32,10 @@ export function registerAuditTools(server: ToolRegistrar) {
   }, async (args: Record<string, string | number | undefined>, _ctx: unknown) => {
     try {
       const { targetType, action, targetId, planKeyword, keyword, sinceMinutes, limit = 20 } = args
-      const where: Record<string, unknown> = {}
+      const where: Record<string, unknown> = {
+        projectKey: runtimeContext.projectKey,
+        producerAdapterKey: runtimeContext.adapterKey,
+      }
       if (sinceMinutes !== undefined) where.createdAt = { gte: new Date(Date.now() - Number(sinceMinutes) * 60 * 1000) }
       if (targetType) where.targetType = s(targetType); if (action) where.action = s(action); if (targetId) where.targetId = s(targetId); if (planKeyword) where.planKeyword = s(planKeyword)
       const kw = s(keyword)
@@ -64,10 +69,11 @@ export function registerAuditTools(server: ToolRegistrar) {
       beforeState: z.string().describe("操作前的状态（非 null JSON 对象或数组字符串）。必填，用于审计回溯。"),
       afterState: z.string().describe("操作后的状态（非 null JSON 对象或数组字符串）。必填，用于审计回溯。"),
       reason: z.string().optional().describe("操作原因"),
+      operationKey: z.string().optional().describe("调用方提供的幂等键；未提供时按本次结构化操作内容计算"),
     }),
   }, async (args: Record<string, string | number | undefined>, _ctx: unknown) => {
     try {
-      const { action, targetType, targetId, planKeyword, beforeState, afterState, reason } = args
+      const { action, targetType, targetId, planKeyword, beforeState, afterState, reason, operationKey } = args
       const tId = s(targetId)
       const pathWarnings: string[] = []
       if (tId && (tId.startsWith("/") || /^[A-Z]:\\/.test(tId))) pathWarnings.push(`⚠️ targetId 使用了绝对路径: "${tId}"。请使用相对路径。`)
@@ -78,7 +84,39 @@ export function registerAuditTools(server: ToolRegistrar) {
       if (!isStructuredState(parsedBefore) || !isStructuredState(parsedAfter)) return errorResponse("beforeState/afterState 必须是非 null 的 JSON 对象或数组。")
       let systemUser = await userDb.findUnique({ where: { username: "ai-assistant" }, select: { id: true } })
       if (!systemUser) systemUser = await userDb.create({ data: { id: "ai-assistant", username: "ai-assistant", email: "ai-assistant@internal" } })
-      const log = await devDb.create({ data: { userId: systemUser.id, planKeyword: s(planKeyword) || "unknown", action: s(action), targetType: s(targetType), targetId: tId || "unknown", beforeState: parsedBefore, afterState: parsedAfter, reason: s(reason) || null } })
+      const operationPayload = {
+        projectKey: runtimeContext.projectKey,
+        producerAdapterKey: runtimeContext.adapterKey,
+        action: s(action),
+        targetType: s(targetType),
+        targetId: tId || "unknown",
+        planKeyword: s(planKeyword) || "unknown",
+        beforeState: parsedBefore,
+        afterState: parsedAfter,
+        reason: s(reason) || null,
+      }
+      const resolvedOperationKey = s(operationKey).trim() || createHash("sha256")
+        .update(JSON.stringify(operationPayload))
+        .digest("hex")
+      const scopedData: Partial<DevOperationRow> = {
+        ...operationPayload,
+        userId: systemUser.id,
+        contextId: runtimeContext.contextId,
+        toolName: "record_dev_operation",
+        operationKey: resolvedOperationKey,
+      }
+      const log = await devDb.upsert({
+        where: {
+          projectKey_producerAdapterKey_toolName_operationKey: {
+            projectKey: runtimeContext.projectKey,
+            producerAdapterKey: runtimeContext.adapterKey,
+            toolName: "record_dev_operation",
+            operationKey: resolvedOperationKey,
+          },
+        },
+        create: scopedData,
+        update: {},
+      })
       const lines = [`✅ 开发操作已记录`, `  落库项目: ${PROJECT_ID} (${PROJECT_ROOT})`, `  ID: ${log.id}`, `  action: ${s(action)}`, `  targetType: ${s(targetType)}`, `  targetId: ${tId || "unknown"}`, `  planKeyword: ${s(planKeyword) || "unknown"}`, `  beforeState: ${JSON.stringify(log.beforeState)}`, `  afterState: ${JSON.stringify(log.afterState)}`, `  createdAt: ${log.createdAt.toISOString()}`]
       if (pathWarnings.length > 0) { lines.push(""); lines.push(...pathWarnings) }
       lines.push("", `📋 落库回查（必须执行）:`, tId ? `  query_audit_logs({ targetId: "${tId}" }) — 确认本条记录已写入` : "")

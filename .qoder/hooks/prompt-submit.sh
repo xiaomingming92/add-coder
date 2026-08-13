@@ -78,7 +78,7 @@ add_route=$(echo "$state" | awk -F'::' '{print $5}')
 add_ctx="[ADD 状态] Plan: ${plan}, 轮次: ${rounds}, Step: ${step}, handoff: ${handoff}"
 
 # ─── Hook 治理日报 ───
-HOOK_JSONL="${MAGIC_DIR:-.qoder}/reports/hook-events.jsonl"
+HOOK_JSONL="${MAGIC_DIR}/reports/hook-events.jsonl"
 if [ -f "$HOOK_JSONL" ]; then
   TODAY="$(date +%Y-%m-%d)"
   TOTAL=$(grep -c "\"ts\":\"${TODAY}" "$HOOK_JSONL" 2>/dev/null || echo 0)

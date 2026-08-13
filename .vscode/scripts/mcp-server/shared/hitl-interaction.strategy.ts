@@ -8,7 +8,7 @@ export const HITL_INTERACTION_CONFIG = {
     claude: { mode: "inputRequired" as const },
     vscode: { mode: "inputRequired" as const },
     trae: { mode: "inputRequired" as const },
-    codex: { mode: "inputRequired" as const }
+    codex: { mode: "mcpApps" as const }
 } as const;
 
 export type HitlInteractionMode = (typeof HITL_INTERACTION_CONFIG)[keyof typeof HITL_INTERACTION_CONFIG]["mode"];

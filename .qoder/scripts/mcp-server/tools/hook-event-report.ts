@@ -2,8 +2,11 @@ import * as z from "zod/v4"
 import type { ToolRegistrar } from "./registrar.js"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { prisma } from "../shared/prisma.js"
+import { getRuntimeContext } from "../shared/env.js"
 
 export function registerHookEventTools(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext()
+  const display = (value: unknown, fallback: string): string => typeof value === "string" ? value : fallback
 
   server.registerTool("get_hook_events", {
     description:
@@ -24,7 +27,11 @@ export function registerHookEventTools(server: ToolRegistrar) {
     try {
       const { planKeyword, hook, sinceMinutes, untilMinutes, limit = 50 } = args
 
-      const where: Record<string, unknown> = { action: "HOOK_INTERCEPT" }
+      const where: Record<string, unknown> = {
+        action: "HOOK_INTERCEPT",
+        projectKey: runtimeContext.projectKey,
+        producerAdapterKey: runtimeContext.adapterKey,
+      }
       if (planKeyword) where.planKeyword = planKeyword
       if (hook) where.targetType = hook
 
@@ -70,7 +77,7 @@ export function registerHookEventTools(server: ToolRegistrar) {
       for (let i = 0; i < Math.min(logs.length, 20); i++) {
         const l = logs[i]
         lines.push(
-          `  [${(l.createdAt as Date).toISOString().slice(11, 19)}] ${l.targetType || "?"} → ${l.reason || "(无)"} | plan: ${l.planKeyword || "?"}`
+          `  [${(l.createdAt as Date).toISOString().slice(11, 19)}] ${display(l.targetType, "?")} → ${display(l.reason, "(无)")} | plan: ${display(l.planKeyword, "?")}`
         )
       }
 
