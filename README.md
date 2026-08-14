@@ -546,12 +546,15 @@ add-coder 当前是 **脚手架 + 治理层**：把 ADD 范式（裁决集中、
 ---
 ## 🔤 English README
 
-Make 0.75 into one.
+Make 0.75 into one. — Let the governance faction redefine the relations of production, toward a Type-1 civilization era.
 
 💡 [Cool = Standard Conformance × Entropy Control — I turned "cool" from an adjective into a verifiable engineering property](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) (design philosophy of the ADD paradigm, with benchmark evidence)
 > [![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder) [![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder) [![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder) <br/>
 > [📈 trend](https://www.npmcharts.com/compare/add-coder?interval=30)<br/>
 > 👍 Please star it if you hope more people will know about [add-coder](https://github.com/xiaomingming92/add-coder)
+>
+> 🎉 **Milestone**: 5,000+ downloads within 19 days of the 0.1.0 release (first time crossing the death valley). Full npm live data at the bottom of the Chinese section [📊 npm 实况数据](#-npm-实况数据).<br/>
+> Life is full of imperfections — but with add-coder and your participation, your brilliance will be remembered! Don't just download — [open an Issue](https://github.com/xiaomingming92/add-coder/issues) · [join the Discussion](https://github.com/xiaomingming92/add-coder/discussions)
 
 **AI Governance, Implemented** — The complete scaffolding from [codein2027](https://github.com/xiaomingming92/codein2027) for rapidly building the ADD programming paradigm. Built on the core principle of **Audit as Infrastructure**, it shatters the black-box programming process and cross-session amnesia, evolving the programming paradigm into an auditable, traceable, and convergent new era. [NPM](https://www.npmjs.com/package/add-coder) · [GitHub](https://github.com/xiaomingming92/add-coder)
 
