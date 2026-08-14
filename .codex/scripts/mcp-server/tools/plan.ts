@@ -75,8 +75,18 @@ export function registerPlanTools(server: ToolRegistrar) {
         // 提取 planKeyword（关键词: xxx）
         const kwMatch = content.match(/关键词[:：]\s*(.+)/) || content.match(/planKeyword[:：]\s*"?([^"\n]+)"?/)
         const keyword = kwMatch?.[1]?.trim() || t.name
-        // 定位 spec dir
-        const specDirName = basename(t.name).replace(/-plan-v\d+$/, "")
+        // 定位 spec dir（目录名可能带 -vN 版本后缀：优先带版本匹配，再回退不带版本，
+        // 最后回退解析 Plan §六 关联文档 Spec 路径真源）[Task 1.8 修复]
+        const planBase = basename(t.name).replace(/-plan-v\d+$/, "")
+        const versionSuffix = /-plan-(v\d+)$/.exec(basename(t.name))?.[1] ?? ""
+        const specCandidates = versionSuffix
+          ? [`${planBase}-${versionSuffix}`, planBase]
+          : [planBase]
+        const specRef = content.match(/specs\/([^/`\s]+)/)
+        if (specRef) specCandidates.push(specRef[1])
+        const specDirName =
+          specCandidates.find((d) => existsSync(join(specsDir, d))) ??
+          specCandidates[0]
         const tasksPath = join(specsDir, specDirName, "tasks.md")
         const checklistPath = join(specsDir, specDirName, "checklist.md")
         const specPath = join(specsDir, specDirName, "spec.md")

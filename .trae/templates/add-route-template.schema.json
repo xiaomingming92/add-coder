@@ -1,0 +1,76 @@
+{
+    "_generated": true,
+    "_generated_source": "guard-rules.toml",
+    "template": "add-route-template.md",
+    "sections": [
+        {
+            "id": "step0",
+            "required": true,
+            "heading": "## Step 0"
+        },
+        {
+            "id": "step0_plan_track",
+            "required": true,
+            "anchor": "plan_track",
+            "within": "## Step 0",
+            "pattern": "plan_track\\(\\{ planName:",
+            "description": "Step 0 产出必须包含 plan_track 落库步骤"
+        },
+        {
+            "id": "step1",
+            "required": true,
+            "heading": "## Step 1"
+        },
+        {
+            "id": "step2",
+            "required": true,
+            "heading": "## Step 2"
+        },
+        {
+            "id": "step3",
+            "required": true,
+            "heading": "## Step 3"
+        },
+        {
+            "id": "step3_5",
+            "required": false,
+            "heading": "## Step 3.5"
+        },
+        {
+            "id": "step4",
+            "required": true,
+            "heading": "## Step 4"
+        },
+        {
+            "id": "step5",
+            "required": true,
+            "heading": "## Step 5"
+        },
+        {
+            "id": "step8",
+            "required": true,
+            "heading": "## Step 8"
+        }
+    ],
+    "shared_by": [
+        "add-route-template.md",
+        "add-route-template-heavyweight.md"
+    ],
+    "placeholders": [
+        "{需求域名}",
+        "{核心内容}",
+        "{版本号}",
+        "{plan-path}",
+        "{spec-path}",
+        "{tasks-path}",
+        "{handoff-path}",
+        "{planName}",
+        "{planKeyword}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "Round",
+        "轮次",
+        "阶段"
+    ]
+}

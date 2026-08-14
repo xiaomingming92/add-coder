@@ -1,0 +1,23 @@
+{
+    "template": "hitl-template.md",
+    "sections": [
+        {
+            "id": "hitl-overview",
+            "heading": "## HITL 计划总览",
+            "required": true
+        },
+        {
+            "id": "conclusion",
+            "heading": "## 审批结论",
+            "required": true
+        }
+    ],
+    "subsections": [],
+    "placeholders": [
+        "{{planName}}",
+        "{{round}}",
+        "{{type}}",
+        "{{createdAt}}"
+    ],
+    "forbidden_terms": []
+}

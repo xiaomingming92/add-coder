@@ -1,0 +1,127 @@
+import * as z from "zod/v4"
+import { createHash } from "crypto"
+import type { ToolRegistrar } from "./registrar.js"
+import { textResponse, errorResponse } from "../shared/response.js"
+import { prisma } from "../shared/prisma.js"
+import { PROJECT_ID, PROJECT_ROOT, getRuntimeContext } from "../shared/env.js"
+import type { AddUserRow, DevOperationRow } from "../shared/db-types.js"
+import { AddUserRowSchema, DevOperationRowSchema, validatedDelegate } from "../shared/db-types.js"
+
+export function registerAuditTools(server: ToolRegistrar) {
+  const runtimeContext = getRuntimeContext()
+
+  // 无类型边界单点（zod 托管）：动态 client → 运行期校验的泛型委托
+  const devDb = validatedDelegate<DevOperationRow>(prisma.devOperation, DevOperationRowSchema, "DevOperation")
+  const userDb = validatedDelegate<AddUserRow>(prisma.addUser, AddUserRowSchema, "AddUser")
+
+  // args 窄化辅助：MCP 工具参数可能是 string | number | undefined，统一转 string
+  const s = (v: string | number | undefined): string => (typeof v === "number" ? String(v) : (v ?? ""))
+
+  // ===== query_audit_logs (L992-1109) =====
+  server.registerTool("query_audit_logs", {
+    description: "稀疏查询开发操作审计日志（DevOperation 表，MCP-5 稀疏推理恢复）。支持多维度检索，AI 可在不同对话会话中通过任意维度组合查询之前的开发操作记录，实现跨会话的上下文恢复。\n\n典型用法:\n- query_audit_logs({ targetType: \"API_ROUTE\" }) — 查所有 API 路由改动\n- query_audit_logs({ targetId: \"src/app/api/knowledge/route.ts\" }) — 查特定文件改动\n- query_audit_logs({ keyword: \"pagination\" }) — 按关键词搜索\n- query_audit_logs({ planKeyword: \"add-coder\" }) — 按 Plan 关键词查该 Plan 下所有 devlog\n- query_audit_logs({}) — 查最近的记录（session-init 会话恢复）",
+    inputSchema: z.object({
+      targetType: z.string().optional().describe("按目标类型精确过滤"),
+      action: z.string().optional().describe("按操作类型精确过滤"),
+      targetId: z.string().optional().describe("按目标标识精确过滤"),
+      planKeyword: z.string().optional().describe("按 Plan 关键词过滤"),
+      keyword: z.string().optional().describe("关键词搜索"),
+      sinceMinutes: z.number().optional().describe("时间窗口起始（分钟前）"),
+      limit: z.number().optional().default(20).describe("返回最大条数，默认 20，最大 100"),
+    }),
+  }, async (args: Record<string, string | number | undefined>, _ctx: unknown) => {
+    try {
+      const { targetType, action, targetId, planKeyword, keyword, sinceMinutes, limit = 20 } = args
+      const where: Record<string, unknown> = {
+        projectKey: runtimeContext.projectKey,
+        producerAdapterKey: runtimeContext.adapterKey,
+      }
+      if (sinceMinutes !== undefined) where.createdAt = { gte: new Date(Date.now() - Number(sinceMinutes) * 60 * 1000) }
+      if (targetType) where.targetType = s(targetType); if (action) where.action = s(action); if (targetId) where.targetId = s(targetId); if (planKeyword) where.planKeyword = s(planKeyword)
+      const kw = s(keyword)
+      if (kw) where.OR = [{ action: { contains: kw, mode: "insensitive" } },{ targetType: { contains: kw, mode: "insensitive" } },{ targetId: { contains: kw, mode: "insensitive" } },{ reason: { contains: kw, mode: "insensitive" } },{ planKeyword: { contains: kw, mode: "insensitive" } }]
+      const logs = await devDb.findMany({ where, orderBy: { createdAt: "desc" }, take: Math.min(Number(limit) || 20, 100), include: { user: { select: { username: true } } } })
+      if (logs.length === 0) {
+        const f: string[] = []; if (targetType) f.push(`targetType=${targetType}`); if (action) f.push(`action=${action}`); if (targetId) f.push(`targetId=${targetId}`); if (planKeyword) f.push(`planKeyword=${planKeyword}`); if (keyword) f.push(`keyword="${keyword}"`); if (sinceMinutes !== undefined) f.push(`sinceMinutes=${sinceMinutes}`)
+        return textResponse(`=== 开发操作审计日志 ===\n\n未找到匹配的审计记录（条件: ${f.length > 0 ? f.join(", ") : "无条件"}）。\n\n可能原因: 数据库未运行、尚无相关开发操作记录、或 filter 过于严格。`)
+      }
+      const fl: string[] = []; if (targetType) fl.push(`targetType=${targetType}`); if (action) fl.push(`action=${action}`); if (targetId) fl.push(`targetId=${targetId}`); if (planKeyword) fl.push(`planKeyword=${planKeyword}`); if (keyword) fl.push(`keyword="${keyword}"`); if (sinceMinutes !== undefined) fl.push(`最近${sinceMinutes}分钟`)
+      const lines = [`=== 开发操作审计日志 (条件: ${fl.length > 0 ? fl.join(", ") : "无过滤条件（最近全部）"}) ===`, `服务项目: ${PROJECT_ID} (${PROJECT_ROOT})`, `共 ${logs.length} 条记录`]
+      for (let i = 0; i < logs.length; i++) {
+        const l = logs[i]; lines.push(`[${i+1}] ${l.createdAt.toISOString()}`, `    action: ${l.action} | targetType: ${l.targetType} | targetId: ${l.targetId || "(无)"}`)
+        lines.push(`    beforeState: ${JSON.stringify(l.beforeState)}`, `    afterState: ${JSON.stringify(l.afterState)}`)
+        if (l.reason) lines.push(`    reason: ${l.reason}`); if (l.planKeyword) lines.push(`    planKeyword: ${l.planKeyword}`)
+      }
+      if (planKeyword) { lines.push("=== Plan 分组 ===", `planKeyword=${planKeyword} 的操作链:`); for (const l of logs) lines.push(`  ${l.createdAt.toISOString().slice(11,19)} ${l.action}`) }
+      lines.push("", "=== 稀疏推理建议 ===", "基于以上审计日志，可以恢复开发上下文。")
+      return textResponse(lines.join("\n"))
+    } catch (error) { return errorResponse(`查询审计日志失败: ${error instanceof Error ? error.message : String(error)}\n可能原因: 数据库未运行或 AuditLog 表不存在。`) }
+  })
+
+  // ===== record_dev_operation (L1111-1212) =====
+  server.registerTool("record_dev_operation", {
+    description: "记录一次开发操作到 DevOperation 表（ADD-7）。AI 助手在对代码进行任何修改/创建/删除操作后，必须调用此工具记录操作审计。\n\n**targetId 路径格式（强制）**：必须使用相对于 workspace 根目录的路径，禁止绝对路径。\n- ✅ src/middleware.ts\n- ✅ ${MAGIC_DIR}/plans/xxx.md\n- ❌ /absolute/path/to/src/middleware.ts",
+    inputSchema: z.object({
+      action: z.string().describe("操作类型: 'MODIFY', 'CREATE', 'DELETE', 'DOC_UPDATED', 'DOC_CREATED' 等"),
+      targetType: z.string().describe("目标类型: 'API_ROUTE', 'COMPONENT', 'SCHEMA', 'RULE', 'DOC', 'PLAN', 'SPEC', 'SKILL', 'AGENT' 等"),
+      targetId: z.string().optional().describe("目标标识（相对路径）"),
+      planKeyword: z.string().optional().describe("关联 Plan 的关键词"),
+      beforeState: z.string().describe("操作前的状态（非 null JSON 对象或数组字符串）。必填，用于审计回溯。"),
+      afterState: z.string().describe("操作后的状态（非 null JSON 对象或数组字符串）。必填，用于审计回溯。"),
+      reason: z.string().optional().describe("操作原因"),
+      operationKey: z.string().optional().describe("调用方提供的幂等键；未提供时按本次结构化操作内容计算"),
+    }),
+  }, async (args: Record<string, string | number | undefined>, _ctx: unknown) => {
+    try {
+      const { action, targetType, targetId, planKeyword, beforeState, afterState, reason, operationKey } = args
+      const tId = s(targetId)
+      const pathWarnings: string[] = []
+      if (tId && (tId.startsWith("/") || /^[A-Z]:\\/.test(tId))) pathWarnings.push(`⚠️ targetId 使用了绝对路径: "${tId}"。请使用相对路径。`)
+      if (!s(beforeState).trim() || !s(afterState).trim()) return errorResponse("beforeState/afterState 必须提供非空 JSON 字符串。")
+      let parsedBefore: unknown, parsedAfter: unknown
+      try { if (beforeState) parsedBefore = JSON.parse(s(beforeState)); if (afterState) parsedAfter = JSON.parse(s(afterState)) } catch { return errorResponse("beforeState/afterState 必须是有效的 JSON 字符串。") }
+      const isStructuredState = (value: unknown): value is Record<string, unknown> | unknown[] => typeof value === "object" && value !== null
+      if (!isStructuredState(parsedBefore) || !isStructuredState(parsedAfter)) return errorResponse("beforeState/afterState 必须是非 null 的 JSON 对象或数组。")
+      let systemUser = await userDb.findUnique({ where: { username: "ai-assistant" }, select: { id: true } })
+      if (!systemUser) systemUser = await userDb.create({ data: { id: "ai-assistant", username: "ai-assistant", email: "ai-assistant@internal" } })
+      const operationPayload = {
+        projectKey: runtimeContext.projectKey,
+        producerAdapterKey: runtimeContext.adapterKey,
+        action: s(action),
+        targetType: s(targetType),
+        targetId: tId || "unknown",
+        planKeyword: s(planKeyword) || "unknown",
+        beforeState: parsedBefore,
+        afterState: parsedAfter,
+        reason: s(reason) || null,
+      }
+      const resolvedOperationKey = s(operationKey).trim() || createHash("sha256")
+        .update(JSON.stringify(operationPayload))
+        .digest("hex")
+      const scopedData: Partial<DevOperationRow> = {
+        ...operationPayload,
+        userId: systemUser.id,
+        contextId: runtimeContext.contextId,
+        toolName: "record_dev_operation",
+        operationKey: resolvedOperationKey,
+      }
+      const log = await devDb.upsert({
+        where: {
+          projectKey_producerAdapterKey_toolName_operationKey: {
+            projectKey: runtimeContext.projectKey,
+            producerAdapterKey: runtimeContext.adapterKey,
+            toolName: "record_dev_operation",
+            operationKey: resolvedOperationKey,
+          },
+        },
+        create: scopedData,
+        update: {},
+      })
+      const lines = [`✅ 开发操作已记录`, `  落库项目: ${PROJECT_ID} (${PROJECT_ROOT})`, `  ID: ${log.id}`, `  action: ${s(action)}`, `  targetType: ${s(targetType)}`, `  targetId: ${tId || "unknown"}`, `  planKeyword: ${s(planKeyword) || "unknown"}`, `  beforeState: ${JSON.stringify(log.beforeState)}`, `  afterState: ${JSON.stringify(log.afterState)}`, `  createdAt: ${log.createdAt.toISOString()}`]
+      if (pathWarnings.length > 0) { lines.push(""); lines.push(...pathWarnings) }
+      lines.push("", `📋 落库回查（必须执行）:`, tId ? `  query_audit_logs({ targetId: "${tId}" }) — 确认本条记录已写入` : "")
+      return textResponse(lines.join("\n"))
+    } catch (error) { return errorResponse(`记录开发操作失败: ${error instanceof Error ? error.message : String(error)}`) }
+  })
+
+}

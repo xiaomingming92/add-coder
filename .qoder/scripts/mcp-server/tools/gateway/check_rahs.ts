@@ -109,7 +109,18 @@ export function registerCheckRahs(server: ToolRegistrar) {
         try {
           // Spec 合规：checklist [T] 项勾选率（[R] 运行时项不计入）
           const specDir = join(PROJECT_ROOT, MAGIC_DIR, "specs");
-          const sn = basename(pm, ".md").replace(/-plan-v\d+$/i, "");
+          // spec 目录名可能带 -vN 版本后缀：优先带版本匹配，回退不带版本 [Task 1.8 修复]
+          const rahsPlanBase = basename(pm, ".md").replace(/-plan-v\d+$/i, "");
+          const rahsVersionSuffix = /-plan-(v\d+)$/i.exec(basename(pm, ".md"))?.[1] ?? "";
+          const rahsCandidates = rahsVersionSuffix
+            ? [`${rahsPlanBase}-${rahsVersionSuffix}`, rahsPlanBase]
+            : [rahsPlanBase];
+          const planContent = (await readFileSafe(join(plansDir, pm))) || "";
+          const rahsSpecRef = planContent.match(/specs\/([^/`\s]+)/);
+          if (rahsSpecRef) rahsCandidates.push(rahsSpecRef[1]);
+          const sn =
+            rahsCandidates.find((d) => existsSync(join(specDir, d))) ??
+            rahsCandidates[0];
           const clPath = join(specDir, sn, "checklist.md");
           if (existsSync(clPath)) {
             const cl = (await readFileSafe(clPath)) || "";

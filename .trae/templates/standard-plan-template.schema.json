@@ -1,0 +1,88 @@
+{
+    "template": "standard-plan-template.md",
+    "sections": [
+        {
+            "id": "meta",
+            "heading": "## PLAN 元信息",
+            "required": true
+        },
+        {
+            "id": "hitl",
+            "heading": "## HITL 计划总览",
+            "required": true,
+            "note": "AI 必须先在此表中列出全部关键决策，等待人类拍板后再展开详细设计。"
+        },
+        {
+            "id": "review-backflow",
+            "heading": "## Review 回流记录",
+            "required": true,
+            "note": "总览索引表：记录所有 review 发现及其回流落点。列：'#' + '来源阶段' + '严重度' + '发现' + '回流落点'。来源阶段枚举：Plan Review / Impl Review / Runtime Review。",
+            "validation": {
+                "columns": ["#", "来源阶段", "严重度", "发现", "回流落点"],
+                "source_phase_enum": ["Plan Review", "Impl Review", "Runtime Review"]
+            }
+        },
+        {
+            "id": "background",
+            "heading": "## 一、背景与目标",
+            "required": true
+        },
+        {
+            "id": "approaches",
+            "heading": "## 二、方案选型",
+            "required": false
+        },
+        {
+            "id": "architecture",
+            "heading": "## 三、架构设计",
+            "required": true,
+            "subsections": [
+                {
+                    "id": "arch-dataflow",
+                    "heading": "### 3.1 数据流转"
+                },
+                {
+                    "id": "arch-topology",
+                    "heading": "### 3.2"
+                },
+                {
+                    "id": "arch-model",
+                    "heading": "### 3.3"
+                }
+            ]
+        },
+        {
+            "id": "steps",
+            "heading": "## 四、实施 Task 概要",
+            "required": true
+        },
+        {
+            "id": "acceptance",
+            "heading": "## 五、验收标准",
+            "required": true
+        },
+        {
+            "id": "references",
+            "heading": "## 六、关联文档",
+            "required": true
+        }
+    ],
+    "placeholders": [
+        "{需求域名}",
+        "{核心内容}",
+        "{版本号}",
+        "{ISO 时间戳}",
+        "{AI 助手标识}",
+        "{英文名}",
+        "{序号}",
+        "{YYYY-MM}",
+        "{DD}",
+        "{版本}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "Round",
+        "阶段"
+    ],
+    "forbidden_terms_note": "禁止使用 Phase/Round/阶段 作为 Task 分组词，必须使用模板规定的「轮次」。'步骤'和'轮次'不禁——它们是模板自身的结构关键词。"
+}

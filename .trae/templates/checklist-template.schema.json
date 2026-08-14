@@ -1,0 +1,20 @@
+{
+    "template": "checklist-template.md",
+    "sections": [
+        {
+            "id": "audit_note",
+            "heading": "审计链（证据→devlog→checklist）",
+            "required": true
+        },
+        {
+            "id": "compile",
+            "heading": "## 一、编译与 Lint 门禁",
+            "required": true
+        }
+    ],
+    "placeholders": [],
+    "forbidden_terms": [ "Phase", 
+        "阶段",
+        "步骤"
+    ]
+}

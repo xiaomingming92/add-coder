@@ -1,0 +1,46 @@
+{
+    "_generated": true,
+    "_generated_source": "guard-rules.toml",
+    "template": "tasks-template.md",
+    "sections": [
+        {
+            "id": "round_deps",
+            "required": true,
+            "heading": "## 轮次依赖"
+        },
+        {
+            "id": "plan_task_mapping",
+            "required": true,
+            "heading": "## Plan→Task 映射"
+        },
+        {
+            "id": "round_1",
+            "required": true,
+            "heading": "## 轮次 1:"
+        },
+        {
+            "id": "verification",
+            "required": true,
+            "heading": "## Verification"
+        },
+        {
+            "id": "plan_track_note",
+            "required": true,
+            "anchor": "plan_track",
+            "pattern": "plan_track\\(\\{ planName:"
+        }
+    ],
+    "placeholders": [
+        "{需求域名}",
+        "{核心内容}",
+        "{版本号}",
+        "{轮次名称}",
+        "{任务描述}",
+        "{子任务描述}"
+    ],
+    "forbidden_terms": [
+        "Phase",
+        "Round",
+        "阶段"
+    ]
+}
