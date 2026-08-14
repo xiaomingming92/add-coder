@@ -17,7 +17,7 @@ Claude Code 支持 17 种事件，按频率分三档：
 | 每次工具调用 | PreToolUse、PostToolUse、PostToolUseFailure、PermissionRequest、PermissionDenied |
 | 其他 | PreCompact、SubagentStart、SubagentStop、Notification、ConfigChange、WorktreeCreate/Remove |
 
-配置位置：`.claude/hooks/*.sh` + `.claude/settings.json`
+配置位置：`.claude/hooks/*.mjs`（TS 源码 esbuild 烘焙零依赖产物）+ `.claude/settings.json`（command 直调 node）——2026-08-14 hook node 化实态，bash 待退役
 
 ---
 
@@ -65,13 +65,13 @@ Claude Code 的注入通道为 **stdout → additionalContext**——hook 脚本
 │                                                      │
 │  SessionStart                                        │
 │  ├─ detect_active_add() 扫描 plans/ 恢复 ADD 状态    │
-│  ├─ preload-templates.sh --index                     │
+│  ├─ preload-templates.mjs --index                     │
 │  └─ stdout → additionalContext 注入                  │
 │        │                                             │
 │        ▼                                             │
 │  UserPromptSubmit                                    │
 │  ├─ match_trigger() 检测 ADD 触发词                  │
-│  ├─ 首次命中 → preload-templates.sh --full            │
+│  ├─ 首次命中 → preload-templates.mjs --full            │
 │  ├─ touch tpl-injected 标记                          │
 │  └─ 同会话二次命中 → 短路                             │
 │        │                                             │

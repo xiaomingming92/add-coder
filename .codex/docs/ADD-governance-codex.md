@@ -44,15 +44,15 @@ Notification ─────────────────→ ⑫ 开发�
 
 Codex 的注入通道为 **stdout**（与 Claude Code 兼容）。Codex 支持导入 Claude Code Hook 配置，可通过双通道架构获得完整治理：
 
-- **Codex 原生**（6 事件，`.codex/hooks.json` → `.codex/hooks/xxx.sh`）
-- **Claude Code 导入**（14 事件，`.claude/settings.json` → `.claude/hooks/xxx.sh`）——Codex 设置中开启「导入其他 agent 配置」即可。同一套脚本，两通道共享，脚本内置幂等保护。
+- **Codex 原生**（5 事件，`.codex/hooks.json` → `.codex/hooks/*.mjs` node 直调——2026-08-14 node 化实态，bash 待退役）
+- **Claude Code 导入**（11 事件，`.claude/settings.json` → `.claude/hooks/*.mjs`）——Codex 设置中开启「导入其他 agent 配置」即可。同一套产物，两通道共享，脚本内置幂等保护。
 
 ```
 npx add-coder init --adapter=codex
         │
-        ├──→ .codex/hooks.json （6 事件 → .codex/hooks/xxx.sh）
+        ├──→ .codex/hooks.json （5 事件 → .codex/hooks/*.mjs）
         ├──→ .codex/settings.json
-        └──→ .claude/ ★ （含完整 14 事件 hooks + settings.json + mcp.json）
+        └──→ .claude/ ★ （含完整 11 事件 hooks + settings.json + mcp.json）
 ```
 
 | 注入场景 | 触发事件 | 注入内容 | 通道 |
@@ -66,7 +66,7 @@ npx add-coder init --adapter=codex
 
 | 维度 | Codex | Claude Code |
 |---|---|---|
-| 事件数 | 0 (原生) / 14 (导入 Claude) | 17 |
+| 事件数 | 5 (原生) / 11 (导入 Claude) | 17 |
 | 配置格式 | `.codex/hooks.json` | `.claude/settings.json` |
 | Claude Hook 导入 | ✅ 原生支持（导入其他 agent 配置） | — |
 | 全局 Hook | `~/.codex/hooks.json` | `~/.claude/settings.json` |
