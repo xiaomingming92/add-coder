@@ -546,7 +546,7 @@ add-coder 当前是 **脚手架 + 治理层**：把 ADD 范式（裁决集中、
 ---
 ## 🔤 English README
 
-Make 0.75 into one. — Let the governance faction redefine the relations of production, toward a Type-1 civilization era.
+Make 0.75 into one. — Let the governance faction redefine the relations of production, toward humanity's Level-1 civilization era.
 
 💡 [Cool = Standard Conformance × Entropy Control — I turned "cool" from an adjective into a verifiable engineering property](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) (design philosophy of the ADD paradigm, with benchmark evidence)
 > [![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder) [![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder) [![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder) <br/>
