@@ -17,8 +17,12 @@
     "include": [
         "src",
         "templates/core/scripts",
-        "scripts/*.ts"
-, "scripts/benchmark/benchmark-sync.ts"    ],
+        "templates/core/hooks",
+        "templates/core/governance",
+        "templates/adapters/*/hooks",
+        "scripts/*.ts",
+        "scripts/benchmark/benchmark-sync.ts"
+    ],
     "exclude": [
         "node_modules",
         "dist"

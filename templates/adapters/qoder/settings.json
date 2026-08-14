@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/session-start.sh"
+            "command": "node .qoder/hooks/session-start.mjs"
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/prompt-submit.sh"
+            "command": "node .qoder/hooks/prompt-submit.mjs"
           }
         ]
       }
@@ -26,11 +26,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/pre-tool-use.sh"
+            "command": "node .qoder/hooks/pre-tool-use.mjs"
           },
           {
             "type": "command",
-            "command": "bash .qoder/hooks/doc-format-guard.sh"
+            "command": "node .qoder/hooks/doc-format-guard.mjs"
           }
         ]
       }
@@ -41,11 +41,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/post-tool-use.sh"
+            "command": "node .qoder/hooks/post-tool-use.mjs"
           },
           {
             "type": "command",
-            "command": "bash .qoder/hooks/doc-format-guard.sh"
+            "command": "node .qoder/hooks/doc-format-guard.mjs"
           }
         ]
       }
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/post-tool-failure.sh"
+            "command": "node .qoder/hooks/post-tool-failure.mjs"
           }
         ]
       }
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/stop-check.sh"
+            "command": "node .qoder/hooks/stop-check.mjs"
           }
         ]
       }
@@ -75,7 +75,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/subagent-guard.sh"
+            "command": "node .qoder/hooks/subagent-guard.mjs"
           }
         ]
       }
@@ -85,7 +85,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/subagent-guard.sh"
+            "command": "node .qoder/hooks/subagent-guard.mjs"
           }
         ]
       }
@@ -95,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/pre-compact.sh"
+            "command": "node .qoder/hooks/pre-compact.mjs"
           }
         ]
       }
@@ -106,7 +106,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/notification.sh"
+            "command": "node .qoder/hooks/notification.mjs"
           }
         ]
       }
@@ -116,7 +116,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .qoder/hooks/permission-gate.sh"
+            "command": "node .qoder/hooks/permission-gate.mjs"
           }
         ]
       }
