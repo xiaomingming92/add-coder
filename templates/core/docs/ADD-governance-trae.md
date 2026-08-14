@@ -42,7 +42,7 @@ Notification ─────────────────→ ⑫ 开发�
 
 ## 注入通道
 
-Trae 的注入通道为 **stdout**（与 Claude Code 兼容）。Trae 支持导入 Claude Code Hook 配置，因此 `prompt-submit.sh` 和 `session-start.sh` 的 stdout 输出方式与 Claude Code 端一致。
+Trae 的注入通道为 **stdout**（与 Claude Code 兼容）。Trae 支持导入 Claude Code Hook 配置，因此 `prompt-submit.mjs` 和 `session-start.mjs` 的 stdout 输出方式与 Claude Code 端一致（2026-08-14 node 化实态，bash 待退役）。
 
 | 注入场景 | 触发事件 | 注入内容 | 通道 |
 |---|---|---|---|
@@ -55,7 +55,7 @@ Trae 的注入通道为 **stdout**（与 Claude Code 兼容）。Trae 支持导�
 
 | 维度 | Trae | Claude Code |
 |---|---|---|
-| 事件数 | 0 (原生) / 14 (导入 Claude) | 17 |
+| 事件数 | 6 (原生) / 11 (导入 Claude) | 17 |
 | 配置格式 | `hooks.json` | `.claude/settings.json` |
 | Claude Hook 导入 | ✅ 原生支持 | — |
 | SessionEnd | ❌ | ✅ |

@@ -11,82 +11,20 @@ Make 0.75 into one.
 > 👍 星星之火可以燎原，让我们一起点赞
 [add-coder](https://github.com/xiaomingming92/add-coder)吧！
 
-```bash
-# 0.1.0 发布于2026-07-10 04:11 UTC（北京时间当天上午 12:11）至 2026-07-28 累计突破 5000 次下载，**首次过死亡谷耗时 19 天**。
-~ $ curl -s https://api.npmjs.org/downloads/point/last-month/add-coder
-{
-  "downloads": 5161,
-  "start": "2026-06-29",
-  "end": "2026-07-28",
-  "package": "add-coder"
-}
-
-~ $ npm info add-coder@0.1.0
-
-add-coder@0.1.0 | MIT | deps: 3 | versions: 35
-  Initialize ADD paradigm workflow templates for
-  Claude Code, Qoder, and VS Code.
-
-keywords:
-  add, add-paradigm, claude, qoder, vscode, mcp,
-  workflow, codein2027, 集中裁决层, caijuehub
-
-bin: add-coder
-
-dist
-  .tarball: https://registry.npmjs.org/add-coder/-/add-coder-0.1.0.tgz
-  .shasum: 3266ddb5304d303705694edec7c2f41efc24881d
-  .integrity: sha512-MxFICLEoAgTVxnHaiIOli5eVyCXvB+xnSzpfmu0mrigEeM9NxzBOm2Auzjn1GKUTXSWelT0FecwwlYmsCf+TWQ==
-  .unpackedSize: 704.9 kB
-
-dependencies:
-  zod: ^3.24.0
-  commander: ^13.1.0
-  smol-toml: ^1.7.0
-
-maintainers:
-  - wujixmm <wujixmm@gmail.com>
-
-dist-tags:
-  latest: 0.3.5
-  preview: 0.3.6-feature-hitl-enhance-v1.2
-
-published 2 weeks ago by wujixmm <wujixmm@gmail.com>
-```
+> 🎉 **里程碑**：0.1.0 发布后 **19 天累计突破 5000 次下载**（首次过死亡谷）。完整 npm 实况数据（下载曲线、依赖、版本矩阵）见文末 [📊 npm 实况数据](#-npm-实况数据)。
 
 
 ---
 
-> ## ⚠️ 数据共享知情清单（Data-Sharing Disclosure）
+> ## ⚠️ 数据共享知情
 >
-> add-coder 无意于搞各家厂商的对抗叙事。以下内容仅为**基于各家官方公开条款原文的事实摘录**，目的是让开发者在选择 AI 编程 IDE 前知情。条款可能随时变更，请以官方最新版本为准。
->
-> | 产品 | 运营主体 | 官方条款要点（原文摘录） | 产品实测（用户反馈） | 出处 | 核实日期 |
-> |------|---------|------------------------|---------------------|------|----------|
-> | **Qoder** | BRIGHT ZENITH PTE. LTD.（新加坡） | 用户内容（含聊天、编程及智能体会话的输入/输出，即含代码）默认用于"研究、开发和改进我们的服务"，保留期最长 5 年；条款文本称可关闭"共享与改进"（Share & Improve）退出，**但关闭前已为上述目的处理的数据仍保留和使用**；数据跨境存储于美国/新加坡/日本 | 实测为强制隐私共享模式，界面无有效切换入口 | [Qoder 隐私政策](https://qoder.com/zh/privacy-policy) | 2026-05-12 / 2026-08-04 |
-> | **Qoder CN** | 阿里云（通义灵码系列） | 官方 FAQ 称：仅在用户点赞/点踩后，针对聊天记录（不包含代码）脱敏去标识化处理，用于算法升级与迭代 | **实测（v1.10.0）：强制隐私共享模式，无切换功能**；官方 CLI 配置（`~/.qoder-cn/settings.json`）中亦无共享/改进开关项 | [阿里云帮助中心 FAQ](https://help.aliyun.com/zh/lingma/qoder-cn/support/faq) | 2026-07-15 / 2026-08-04 |
-> | **Trae CN** | 北京引力弹弓科技有限公司（字节跳动） | 服务所收集的数据经加密、严格去标识化且无法重新识别个人后，**可能用于模型训练**以优化模型效果与产品体验；可通过隐私模式"限制"该数据使用；代码文件不提供给其他第三方 | — | [Trae 隐私协议](https://www.trae.cn/privacy-policy) | 现行版 / 2026-08-04 |
->
-> **要点**：三家官方条款均为"**默认开启共享、需用户主动退出**"（opt-out）模式。**但产品实测层面**：Qoder / Qoder CN 的退出开关在实际产品中不可用（Qoder CN v1.10.0 无切换功能，CLI 配置亦无对应开关），条款上的退出承诺在 CN 产品中无落地入口，实际效果即强制共享。Qoder 明确将用户内容（含代码）用于改进服务并保留 5 年；Trae 明确将数据用于模型训练（可通过隐私模式限制）；Qoder CN 官方条款范围最窄（仅反馈后的聊天记录、不含代码）。
->
-> **建议**：涉及商业机密或个人数据的项目，使用前请逐项核对官方条款，并主动检查产品设置：Qoder（国际版）尝试关闭"共享与改进"；Qoder CN（v1.10.0 实测无开关）与 Trae CN 请结合隐私模式与最小化输入策略使用；必要时改用数据完全本地化的替代方案。
+> 主流 AI 编程 IDE（Qoder / Qoder CN / Trae CN）多为「**默认开启共享、需用户主动退出**」模式，部分 CN 产品实测**无退出入口**。涉及商业机密的项目请逐项核对官方条款——[完整知情清单](#-数据共享知情清单完整版)。
 
 ---
+
 > ### 🔮 下一步：add-coder IDE 插件（实施中）
-
-> add-coder 当前是 **脚手架 + 治理层**：把 ADD 范式（裁决集中、审计即基础设施、门禁驱动）部署进你的项目。
-> 下一阶段会以 **IDE 插件** 形式落地，让治理能力直接嵌在编辑与 Agent 生命周期里。
 >
-> **为什么值得期待：**
->
-> | 维度 | 说明 |
-> |------|------|
-> | **范式优势** | 不是「更好用的补全」，而是把规则、证据、审批、回溯做成一等公民。改规则不改代码，跨轮不靠聊天记忆。 |
-> | **与 LLM 低耦合** | 核心是结构与门禁，不是绑死某一家模型。换模型不换治理逻辑；模型只负责生成，裁决与审计由范式层承担。 |
-> | **与 IDE 低耦合** | 治理逻辑统一，适配层分离。今天支持 Claude Code / Qoder / VS Code / Trae / Codex，明天换宿主只需加适配，不必重写规则与审计链。 |
-> | **不收集用户隐私** | 不上传代码、对话与项目数据。审计与裁决默认留在本地 / 你自己的基础设施里，不做「默认共享、事后退出」。 |
->
-> 目标不是再做一个「AI 编程 IDE」，而是让 **任意 IDE + 任意 LLM** 都能跑在同一套可审计、可收敛、且不拿你数据的 ADD 之上。
+> 治理能力直接嵌入编辑与 Agent 生命周期：规则/证据/审批/回溯做成一等公民；不收集用户隐私，任意 IDE + 任意 LLM 同跑一套可审计、可收敛的 ADD——[完整预告](#-ide-插件预告完整版)。
 
 ---
 
@@ -121,15 +59,16 @@ npx add-coder init
 | 审计靠开发者自觉记录 | **MCP 审计工具链** 自动记录每次操作，系统闸门强制检查 |
 | 无关联性 | 审计事件天然关联 Plan → Spec → Task → Step → Tool Call，形成完整证据链 |
 
-### ② Caijuehub 集中裁决层：从 sync 到三域覆盖
+### ② Caijuehub 集中裁决层：规则供应链工厂
 
-Caijuehub 是 add-coder 历史上第一个实现 **TOML 规则声明 → 自动生成策略 → 业务代码消费** 的裁决引擎。从最初 sync --patch 的单域实验，到今天覆盖 HITL 审批和 DPS 评分的三域体系，演进路径本身证明了集中裁决层的扩展性。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
+Caijuehub 是 add-coder 的集中裁决引擎：从 sync --patch 单域实验，到覆盖 HITL 审批和 DPS 评分的三域体系，再到**供应链工厂化**——整个 caijuehub 就是一条规则供应链：**TOML 原料 → 加工车间（transcribe 工厂链：统一 reader 校验 → factories → generators）→ 出厂质检（幂等自动化）→ 审批放行 → 分销消费**。新规则在 caijue.toml 登记即自动进产线（15 条产线零接线代码），扩展规则域不再复制粘贴样板。详见 [docs/caijuehub.md](./docs/caijuehub.md)。
 
 | 裁决域 | 规则文件 | 消费者 | 说明 |
 |--------|---------|--------|------|
 | add-coder run sync --patch | `sync-rules.toml` | `sync.ts` | **npm 包史上首个集中裁决热更新案例**（eating my own dog food：add-coder 用 caijuehub 管理自己的模板同步） |
 | HITL 审批 | `hitl-interaction-rules.toml` | `hitl.ts` | 每 IDE 独立声明交互模式 |
 | DPS 评分 | `dps-scoring-rules.toml` | `gateway.ts` | 文档质量闸门：语义/熵/CPM/结构 四维权重+阈值，AI 调参不碰代码 |
+| Hook 治理协议层 | `hook-{guard,doc-format,context,event,protocol}-rules.toml` ×5 | core governance | 拦截链/识别规则/象限文本/事件阈值/协议形态——五端共享单一真源，治理维护走控制面 |
 
 > 📊 [sync-magic benchmark](./docs/sync-magic-benchmark-report.md)：caijuehub 改造实测——4 组对比，TS vs bash，熵值 vs 速度的场景价值分析。
 >
@@ -177,7 +116,7 @@ AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达�
 - **Plan 索引** — 所有 Plan 通过 `index.md` 集中索引，支持模糊匹配快速定位
 - **DevLog 时序记录** — 每一步操作写入 `{YYYY-MM}/{DD}/` 时间轴，可回溯任意历史状态
 
-### ⑥ Policy-Update-Loop：治理自我进化(脚手架不包含此架构能力,接下来会给到DEMO仓库让大家更好理解Policy-Update-Loop和Report体系)
+### ⑥ Policy-Update-Loop：治理自我进化
 
 不是静态模板，而是**闭环自适应系统**：
 
@@ -185,21 +124,33 @@ AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达�
 执行 → 审计 → 边界报告 → 规则调整 → 下一轮执行
 ```
 
-运行时产生的 Report 会反过来更新 governance rules，实现治理策略的持续进化。
+**已落地的闭环环节**：
+
+- **执行 → 审计（✓ 已接入）**：hook 拦截 / 文件写入事件 → jsonl → MCP 常驻消费 → DevOperation 落库（`HOOK_INTERCEPT`，幂等去重）——每个治理动作自动留痕，可回查可追溯
+- **审计 → 规则调整（✓ 已接入）**：caijuehub 规则中心改规则不改代码——DPS 四维评分 **FFT 自适应权重**（随历史数据自动调权）、`check_doc_similarity` 量化复检（形似义异文档自动识别）——审计数据驱动治理规则演进
+- **边界报告（Report 体系）**：Runtime 边界报告闭环待 DEMO 仓库演示——Policy-Update-Loop 与 Report 体系端到端实践
 
 ### ⑦ 多 IDE 的 Hook 即治理层
 
-hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中的 17 个确定性治理卡位**。每个 IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）有各自的 hook 机制，但治理逻辑统一——架构一致，适配层不同。
+hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中的 16 个确定性治理卡位**（14 通用 + 2 Claude 特有）。每个 IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）有各自的 hook 机制，但治理逻辑统一——架构一致，适配层不同。
 
-| IDE | 治理文档 | 覆盖事件 | Hook 配置 |
+**三层架构，能力可控可对齐可收敛**：
+
+- **治理契约层**：16 个治理卡位的判定逻辑收敛为单一契约实现（生命周期裁决 / 本地治理隔离 / 命令精确判定 / 模板守卫 / 审计链路），六端共享，行为一致性由契约保证
+- **Hook 独立实现**：各 IDE 事件机制差异（事件映射 / 输出形态 / 环境注入）由适配层隔离——IDE 能力演进只改适配层，治理语义零漂移，各端能力可随时对齐、可控收敛
+- **控制面管理**：规则 / 阈值 / 提示文本由 caijuehub 规则中心声明式托管（hook-*.toml 真源 → 生成常量 → 产物内联）——改规则不改代码，治理维护走控制面，五端一致性由一致性矩阵持续验证
+
+| IDE | 治理文档 | 注册事件 | Hook 配置（node 直调） |
 |---|---|---|---|
-| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
-| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
-| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
-| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
-| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 0 (原生) / 14 (导入 Claude) | `.codex/hooks.json` |
+| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 11/16 | `.claude/hooks/*.mjs`（settings.json command） |
+| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 11/16 | `.qoder/hooks/*.mjs`（settings.json command） |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/16 | `.vscode/hooks/*.mjs`（Agent Host 双通道） |
+| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/16 | `hooks.json` → `.trae/hooks/*.mjs` |
+| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 5/16 | `.codex/hooks.json` → `.codex/hooks/*.mjs` |
 
-> 实施 Plan: [add-coder-hook-full-alignment-plan-v1](./.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | 触发源: [GitHub Issue #6](https://github.com/xiaomingming92/add-coder/issues/6)
+> **16 卡位六端占位已齐**：86 个 hook 入口产物全量分发到六端（14/16/14/14/14/14），治理契约层（core 基类）共享。「注册事件」为 IDE 原生事件模型可注册数——事件模型不足的端（Codex 5 / Trae 6）产物已占位，IDE 事件扩展后零代码启用。
+
+> 实施 Plan: [add-coder-hook-node-refactor-plan-v1](./.qoder/plans/2026-08/14/add-coder-hook-node-refactor-plan-v1.md)（协议层 v2，已闭环）| 前序: [add-coder-hook-full-alignment-plan-v1](./.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | 触发源: [GitHub Issue #6](https://github.com/xiaomingming92/add-coder/issues/6)
 
 ### ⑧ HITL 人机审核：审批即基础设施
 
@@ -318,6 +269,8 @@ npx add-coder init
 | `init` | 初始化 ADD 模板，支持 `--adapter claude\|qoder\|vscode\|trae\|codex\|auto` |
 | `sync` | 增量同步缺失文件（`--patch` 含 Atlas 能力检测：就绪 / 自动安装 / 降级文档） |
 | `status` | 检查模板完整性 |
+| `stack` | 技术栈约束 profile 管理（`list` 注册表 / `set <name>` 启用 / `show` 当前）——约束文件 `{magicDir}/rules/profiles/{stack}-profile.md`，AI 会话自动注入当前技术栈约束 |
+| `model:download` | DPS 评分 embedding 模型预下载（`--force` 强制重下；`init` 自动预下载，`sync` 缓存缺失时提示） |
 
 ## Atlas 数据库同步能力
 
@@ -364,9 +317,31 @@ npx add-coder init
 |------|------|
 | `--adapter <type>` | 目标 IDE：claude / qoder / vscode / trae / codex / auto（自动检测，默认） |
 | `--config <path>` | 指定配置文件 |
-| `--yes` | 跳过交互，只创建新文件 |
 | `--force` | 覆盖已有文件 |
 | `--dry-run` | 预览模式，不写入 |
+| `--stack <name>` | 技术栈约束 profile 名（如 machineserver，可选） |
+| `--skip-model` | 跳过 embedding 模型预下载 |
+| `--print-mcp-config` | Codex：stdout 输出 config.toml 片段（不写盘，不初始化项目） |
+| `--write-user-config` | Codex：显式确认后写入 `~/.codex/config.toml`（先备份） |
+
+### sync 选项
+
+| 选项 | 说明 |
+|------|------|
+| `--adapter <type>` | 目标 IDE：claude / qoder / vscode / trae / codex |
+| `--patch` | 覆盖已有模板文件（不碰 plans/specs/reviews） |
+| `-i, --interactive` | 交互式选择要同步的文件 |
+| `--model` | 检测到缺失时下载 embedding 模型 |
+| `--yes` | 全部确认跳过询问 |
+
+### stack 用法
+
+```
+npx add-coder stack list          # 内置注册表 + 自定义 + 当前标记
+npx add-coder stack set <name>    # 启用技术栈约束 profile
+npx add-coder stack show          # 当前 stack + profile 路径
+npx add-coder stack --clear       # 清除技术栈设置（中性）
+```
 
 ## 生成内容
 
@@ -395,20 +370,17 @@ Elicitation        Server→Client     ✅ 已实现      向用户请求 HITL �
 Tasks (实验性)     双向              ✅ 已实现      长任务持久化 + 状态追踪
 ```
 
-**当前已实现的 18 个 Tools**：
+**当前已实现的 33 个 Tools**（按域分组）：
 
-| 工具 | 用途 | 触发场景 |
-|------|------|---------|
-| `record_dev_operation` | 记录开发操作审计（before/after/reason） | 每次文件变更、配置修改 |
-| `query_audit_logs` | 按 planKeyword / targetId 查询审计记录 | 跨会话恢复上下文、验证迭代证据 |
-| `get_project_context` | 获取 ADD 工作流状态快照 | 空白对话开局 |
-| `get_db_schema` | 获取 Prisma schema 信息 | 数据库相关操作 |
-| `check_dps` | DPS 闸门（设计/实现/文档/审计 四维各 25%） | Step 0 末尾 |
-| `check_rahs` | RAHS 闸门（运行时架构健康度） | Step 4/8 |
-| `check_add_route_status` | add-route 文件存在性校验 | Step 3 前 |
-| `check_spec_sync` | Spec 文档勾选状态与代码一致性 | Spec 执行后 |
-| `find_related_docs` | 检索相关架构/规范文档 | 语境理解 |
-| `get_hook_events` | 查询 Hook 拦截事件（planKeyword/hook/时间过滤+分组） | 治理审计、阈值告警 |
+| 域 | 工具 |
+|------|------|
+| 审计闭环 | `record_dev_operation` `query_audit_logs` `generate_audit_logger` `get_audit_logger_pattern` `get_hook_events` |
+| HITL 审批 | `create_hitl` `update_hitl` `status_hitl` `render_hitl_approval` |
+| Plan 追踪 | `plan_track` `plan_status` `plan_sync` `plan_round_status` `plan_round_close` |
+| Review 追踪 | `review_track` `review_status` `review_sync` |
+| 质量闸门 | `check_dps` `check_rahs` `check_add_route_status` `check_add_route_completeness` `check_spec_sync` `check_doc_similarity` `check_phase_symmetry` `check_failure_path` `check_add_compliance` |
+| 契约追踪 | `contract_track` `contract_status` |
+| 上下文检索 | `get_project_context` `get_db_schema` `get_spec_context` `get_add_template` `find_related_docs` |
 
 > 完整六能力架构设计见 [MCP 重构 Plan](.qoder/plans/2026-07/23/add-coder-mcp-restructure-plan-v1.md)。
 
@@ -419,36 +391,42 @@ Tasks (实验性)     双向              ✅ 已实现      长任务持久化 
                     │  ADD 范式    │
                     │  Step 0-9    │
                     └──────┬──────┘
-                           │ 门禁驱动
+                           │ 算法门禁驱动
               ┌────────────┼────────────┐
               ▼            ▼            ▼
        ┌──────────┐ ┌──────────┐ ┌──────────┐
-       │ DPS 闸门 │ │ RAHS 闸门│ │合规检查  │
+       │ DPS 闸门 │  │ RAHS 闸门│  │ 合规检查  │
        └────┬─────┘ └────┬─────┘ └────┬─────┘
             │            │            │
               ▼            ▼            ▼
        ┌─────────────────────────────────────┐
        │         审计基础设施层                │
-       │  DevOperation / AuditLog 表           │
+       │  DevOperation / AuditLog 表          │
        │  MCP 审计工具链                       │
        │  Handoff / DevLog 时序文档            │
-       └─────────────────────────────────────┘
-                           │
+       └──────────────────┬──────────────────┘
+                          │ 规则驱动
+                          ▼
+       ┌─────────────────────────────────────┐
+       │      Caijuehub 集中裁决层             │
+       │      规则供应链工厂                   │
+       │  TOML 原料 → 加工车间 → 出厂质检      │
+       │  → 审批放行 → 分销消费                │
+       └──────────────────┬──────────────────┘
+                          │ 生成常量 → 产物内联
+                          ▼
+       ┌─────────────────────────────────────┐
+       │       治理契约层（core 基类）         │
+       │  16 卡位判定逻辑收敛，六端共享        │
+       └──────────────────┬──────────────────┘
+                          │ 受控适配
     ┌──────────┬───────────┼────────┬─────┐
     ▼          ▼           ▼        ▼     ▼
 ┌──────┐ ┌──────┐ ┌──────────┐ ┌──────┐ ┌──────┐
 │Claude│ │Qoder │ │ VS Code  │ │ Trae │ │Codex │
-│Hooks │ │Hooks │ │  Config  │ │Hooks │ │Hooks │
-│14/17 │ │10/17 │ │  10/17   │ │ 6/17 │ │ 6/17 │
+│Hooks │ │Hooks │ │  Hooks   │ │Hooks │ │Hooks │
+│11/16 │ │11/16 │ │  10/16   │ │ 6/16 │ │ 5/16 │
 └──────┘ └──────┘ └──────────┘ └──────┘ └──────┘
-                           │
-                           |
-                           ▼
-       ┌─────────────────────────────────────┐
-       │     Caijuehub 集中裁决层               │
-       │  TOML 驱动的策略体系                 │
-       │  检测/适配/Prisma/写入 全可配置       │
-       └─────────────────────────────────────┘
 ```
 
 ## 前置条件
@@ -482,6 +460,88 @@ Tasks (实验性)     双向              ✅ 已实现      长任务持久化 
 | Hook 通知升级 | ✅ v0.2.9 Hook 拦截事件 jsonl → fs.watch → record_dev_operation 落库 + Notification + 治理信号 | 2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md |
 | ide插件 | 解耦ADD范式代码和被治理项目的代码 |在做了,大家拭目以待吧,让编程更有趣,我的目标其实不在于IDE,我的工作顺手的事情 |
 | 对话记忆增强 | 长期项目知识记忆和plan级别的稀疏记忆 |--|
+
+---
+
+## 📊 npm 实况数据
+
+```bash
+# 0.1.0 发布于2026-07-10 04:11 UTC（北京时间当天上午 12:11）至 2026-07-28 累计突破 5000 次下载，**首次过死亡谷耗时 19 天**。
+~ $ curl -s https://api.npmjs.org/downloads/point/last-month/add-coder
+{
+  "downloads": 5161,
+  "start": "2026-06-29",
+  "end": "2026-07-28",
+  "package": "add-coder"
+}
+
+~ $ npm info add-coder@0.1.0
+
+add-coder@0.1.0 | MIT | deps: 3 | versions: 35
+  Initialize ADD paradigm workflow templates for
+  Claude Code, Qoder, and VS Code.
+
+keywords:
+  add, add-paradigm, claude, qoder, vscode, mcp,
+  workflow, codein2027, 集中裁决层, caijuehub
+
+bin: add-coder
+
+dist
+  .tarball: https://registry.npmjs.org/add-coder/-/add-coder-0.1.0.tgz
+  .shasum: 3266ddb5304d303705694edec7c2f41efc24881d
+  .integrity: sha512-MxFICLEoAgTVxnHaiIOli5eVyCXvB+xnSzpfmu0mrigEeM9NxzBOm2Auzjn1GKUTXSWelT0FecwwlYmsCf+TWQ==
+  .unpackedSize: 704.9 kB
+
+dependencies:
+  zod: ^3.24.0
+  commander: ^13.1.0
+  smol-toml: ^1.7.0
+
+maintainers:
+  - wujixmm <wujixmm@gmail.com>
+
+dist-tags:
+  latest: 0.3.5
+  preview: 0.3.6-feature-hitl-enhance-v1.2
+
+published 2 weeks ago by wujixmm <wujixmm@gmail.com>
+```
+
+---
+
+## ⚠️ 数据共享知情清单（完整版）
+
+> add-coder 无意于搞各家厂商的对抗叙事。以下内容仅为**基于各家官方公开条款原文的事实摘录**，目的是让开发者在选择 AI 编程 IDE 前知情。条款可能随时变更，请以官方最新版本为准。
+
+| 产品 | 运营主体 | 官方条款要点（原文摘录） | 产品实测（用户反馈） | 出处 | 核实日期 |
+|------|---------|------------------------|---------------------|------|----------|
+| **Qoder** | BRIGHT ZENITH PTE. LTD.（新加坡） | 用户内容（含聊天、编程及智能体会话的输入/输出，即含代码）默认用于"研究、开发和改进我们的服务"，保留期最长 5 年；条款文本称可关闭"共享与改进"（Share & Improve）退出，**但关闭前已为上述目的处理的数据仍保留和使用**；数据跨境存储于美国/新加坡/日本 | 实测为强制隐私共享模式，界面无有效切换入口 | [Qoder 隐私政策](https://qoder.com/zh/privacy-policy) | 2026-05-12 / 2026-08-04 |
+| **Qoder CN** | 阿里云（通义灵码系列） | 官方 FAQ 称：仅在用户点赞/点踩后，针对聊天记录（不包含代码）脱敏去标识化处理，用于算法升级与迭代 | **实测（v1.10.0）：强制隐私共享模式，无切换功能**；官方 CLI 配置（`~/.qoder-cn/settings.json`）中亦无共享/改进开关项 | [阿里云帮助中心 FAQ](https://help.aliyun.com/zh/lingma/qoder-cn/support/faq) | 2026-07-15 / 2026-08-04 |
+| **Trae CN** | 北京引力弹弓科技有限公司（字节跳动） | 服务所收集的数据经加密、严格去标识化且无法重新识别个人后，**可能用于模型训练**以优化模型效果与产品体验；可通过隐私模式"限制"该数据使用；代码文件不提供给其他第三方 | — | [Trae 隐私协议](https://www.trae.cn/privacy-policy) | 现行版 / 2026-08-04 |
+
+**要点**：三家官方条款均为"**默认开启共享、需用户主动退出**"（opt-out）模式。**但产品实测层面**：Qoder / Qoder CN 的退出开关在实际产品中不可用（Qoder CN v1.10.0 无切换功能，CLI 配置亦无对应开关），条款上的退出承诺在 CN 产品中无落地入口，实际效果即强制共享。Qoder 明确将用户内容（含代码）用于改进服务并保留 5 年；Trae 明确将数据用于模型训练（可通过隐私模式限制）；Qoder CN 官方条款范围最窄（仅反馈后的聊天记录、不含代码）。
+
+**建议**：涉及商业机密或个人数据的项目，使用前请逐项核对官方条款，并主动检查产品设置：Qoder（国际版）尝试关闭"共享与改进"；Qoder CN（v1.10.0 实测无开关）与 Trae CN 请结合隐私模式与最小化输入策略使用；必要时改用数据完全本地化的替代方案。
+
+---
+
+## 🔮 IDE 插件预告（完整版）
+
+add-coder 当前是 **脚手架 + 治理层**：把 ADD 范式（裁决集中、审计即基础设施、门禁驱动）部署进你的项目。下一阶段会以 **IDE 插件** 形式落地，让治理能力直接嵌在编辑与 Agent 生命周期里。
+
+**为什么值得期待：**
+
+| 维度 | 说明 |
+|------|------|
+| **范式优势** | 不是「更好用的补全」，而是把规则、证据、审批、回溯做成一等公民。改规则不改代码，跨轮不靠聊天记忆。 |
+| **与 LLM 低耦合** | 核心是结构与门禁，不是绑死某一家模型。换模型不换治理逻辑；模型只负责生成，裁决与审计由范式层承担。 |
+| **与 IDE 低耦合** | 治理逻辑统一，适配层分离。今天支持 Claude Code / Qoder / VS Code / Trae / Codex，明天换宿主只需加适配，不必重写规则与审计链。 |
+| **不收集用户隐私** | 不上传代码、对话与项目数据。审计与裁决默认留在本地 / 你自己的基础设施里，不做「默认共享、事后退出」。 |
+
+目标不是再做一个「AI 编程 IDE」，而是让 **任意 IDE + 任意 LLM** 都能跑在同一套可审计、可收敛、且不拿你数据的 ADD 之上。
+
+---
 
 
 
@@ -523,15 +583,16 @@ Traditional AI development: Chat → Generate code → Dig through chat history 
 | Auditing relies on developer discipline | The **MCP audit toolchain** automatically records every operation; system gateways enforce checks |
 | No traceability | Audit events are naturally linked: Plan → Spec → Task → Step → Tool Call, forming a complete evidence chain |
 
-### ② Caijuehub — The Centralized Adjudication Layer: From Sync to Three Domains
+### ② Caijuehub — The Centralized Adjudication Layer: Rule Supply Chain Factory
 
-Caijuehub is add-coder's first implementation of **TOML declaration → auto-generated strategy → business code consumption**. From the initial sync --patch experiment to today's three-domain coverage spanning HITL and DPS, the evolution proves the extensibility of the centralized adjudication layer. Details: [docs/caijuehub.md](./docs/caijuehub.md).
+Caijuehub is add-coder's centralized adjudication engine: from the sync --patch single-domain experiment, to three-domain coverage spanning HITL approval and DPS scoring, to **supply-chain industrialization** — the whole caijuehub is a rule supply chain: **TOML raw material → fabrication plant (transcribe factory chain: unified reader validation → factories → generators) → factory QA (idempotent automation) → approval release → distribution & consumption**. New rules registered in caijue.toml automatically enter the production line (15 lines, zero wiring code) — extending rule domains no longer means copy-paste boilerplate. Details: [docs/caijuehub.md](./docs/caijuehub.md).
 
 | Domain | Rules File | Consumer | Description |
 |--------|---------|--------|------|
 | sync --patch | `sync-rules.toml` | `sync.ts` | **First centralized adjudication hot-update in npm history** (eating my own dog food: add-coder manages its own template sync via caijuehub) |
 | HITL Approval | `hitl-interaction-rules.toml` | `hitl.ts` | Per-IDE interaction mode declaration |
 | DPS Scoring | `dps-scoring-rules.toml` | `gateway.ts` | Doc quality gateway: semantic/entropy/CPM/structure 4D weights+thresholds, AI self-tuning without touching code |
+| Hook Governance Protocol | `hook-{guard,doc-format,context,event,protocol}-rules.toml` ×5 | core governance | Interception chains / recognition rules / quadrant text / event thresholds / protocol forms — single source of truth shared by all five IDEs |
 
 > 📊 [sync-magic benchmark](./docs/sync-magic-benchmark-report.md): Caijuehub refactoring measured — 4-group comparison, TS vs bash, scenario-value analysis of entropy vs speed.
 >
@@ -579,7 +640,7 @@ The fatal flaw of AI conversations: architectural decisions from last session, b
 - **Plan Index** — All Plans are centrally indexed via `index.md`, supporting fuzzy-match quick lookup
 - **DevLog Timeline** — Every operation is written to the `{YYYY-MM}/{DD}/` timeline, enabling full historical state traceability
 
-### ⑥ Policy-Update-Loop: Self-Evolving Governance (the scaffold itself does not include this architectural capability; a DEMO repo will be provided next to better illustrate the Policy-Update-Loop and Report system)
+### ⑥ Policy-Update-Loop: Self-Evolving Governance
 
 Not a static template, but a **closed-loop adaptive system**:
 
@@ -587,7 +648,11 @@ Not a static template, but a **closed-loop adaptive system**:
 Execute → Audit → Boundary Report → Rule Adjustment → Next Execution
 ```
 
-Runtime-generated Reports feed back into governance rules, enabling continuous evolution of governance strategies.
+**Closed-loop segments already in place**:
+
+- **Execute → Audit (✓ live)**: hook interception / file-write events → jsonl → MCP resident consumer → DevOperation persistence (`HOOK_INTERCEPT`, idempotent dedup) — every governance action leaves an audit trail, queryable and traceable
+- **Audit → Rule Adjustment (✓ live)**: caijuehub rule center — edit rules, not code: DPS 4-dimensional scoring with **FFT adaptive weights** (auto re-weighting from historical data), `check_doc_similarity` quantitative re-check (look-alike documents auto-detected) — audit data drives governance rule evolution
+- **Boundary Report (Report system)**: runtime boundary report loop pending DEMO repo — end-to-end Policy-Update-Loop and Report system practice
 
 ### ⑦ Multi-IDE Hooks as the Governance Layer
 
@@ -602,13 +667,21 @@ Hooks are not "notification push" — they are the **IDE runtime interception la
 
 Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own hook implementation, but the **governance logic is unified** — the architecture is consistent, only the adapter layer differs.
 
-| IDE | Governance Doc | Events Covered | Hook Config |
+**Three-layer architecture — capabilities stay controllable, alignable, convergent**:
+
+- **Governance contract layer**: the adjudication logic of the 16 governance checkpoints (14 common + 2 Claude-specific) converges into a single contract implementation (lifecycle arbitration / local governance isolation / precise command judgment / template guarding / audit chain), shared by all six ends — behavior consistency guaranteed by contract
+- **Independent hook implementations**: each IDE's event mechanism differences (event mapping / output form / env injection) are isolated in the adapter layer — IDE capability evolution only touches adapters, governance semantics zero-drift, capabilities alignable and controllable at any time
+- **Control plane management**: rules / thresholds / prompt texts are declaratively managed by the caijuehub rule center (hook-*.toml source of truth → generated constants → inlined artifacts) — edit rules, not code; governance maintenance goes through the control plane; five-end consistency continuously verified by the consistency matrix
+
+| IDE | Governance Doc | Registered Events | Hook Config (node direct) |
 |---|---|---|---|
-| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
-| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
-| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
-| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
-| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
+| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 11/16 | `.claude/hooks/*.mjs` (settings.json command) |
+| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 11/16 | `.qoder/hooks/*.mjs` (settings.json command) |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/16 | `.vscode/hooks/*.mjs` (Agent Host dual-channel) |
+| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/16 | `hooks.json` → `.trae/hooks/*.mjs` |
+| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 5/16 | `.codex/hooks.json` → `.codex/hooks/*.mjs` |
+
+> **All 16 checkpoints pre-positioned across all six ends**: 86 hook entry artifacts fully distributed (14/16/14/14/14/14), sharing the governance contract layer (core base classes). "Registered Events" counts what each IDE's native event model can register — ends with fewer native events (Codex 5 / Trae 6) already have artifacts in place; zero-code activation once the IDE event model expands.
 
 ### ⑧ HITL Human-in-the-Loop: Approval as Infrastructure
 
@@ -701,6 +774,8 @@ npx add-coder init
 | `init` | Initialize ADD templates, supports `--adapter claude\|qoder\|vscode\|trae\|codex\|auto` |
 | `sync` | Incrementally sync missing files |
 | `status` | Check template integrity |
+| `stack` | Tech-stack constraint profile management (`list` registry / `set <name>` activate / `show` current) — profile file `{magicDir}/rules/profiles/{stack}-profile.md`, auto-injected into AI sessions |
+| `model:download` | Pre-download the DPS scoring embedding model (`--force` re-download; `init` auto-downloads, `sync` prompts on cache miss) |
 
 ### init Internal Flow
 
@@ -720,9 +795,31 @@ npx add-coder init
 |--------|-------------|
 | `--adapter <type>` | Target IDE: claude / qoder / vscode / trae / codex / auto (default) |
 | `--config <path>` | Specify config file |
-| `--yes` | Skip interactions, create new files only |
 | `--force` | Overwrite existing files |
 | `--dry-run` | Preview mode, no writes |
+| `--stack <name>` | Tech-stack constraint profile name (optional, e.g. machineserver) |
+| `--skip-model` | Skip embedding model pre-download |
+| `--print-mcp-config` | Codex: print config.toml snippet to stdout (no writes, no init) |
+| `--write-user-config` | Codex: write `~/.codex/config.toml` after explicit confirm (backup first) |
+
+### sync Options
+
+| Option | Description |
+|--------|-------------|
+| `--adapter <type>` | Target IDE: claude / qoder / vscode / trae / codex |
+| `--patch` | Overwrite existing template files (never touches plans/specs/reviews) |
+| `-i, --interactive` | Interactively select files to sync |
+| `--model` | Download embedding model when missing detected |
+| `--yes` | Confirm all, skip prompts |
+
+### stack Usage
+
+```
+npx add-coder stack list          # builtin registry + custom + current marker
+npx add-coder stack set <name>    # activate a tech-stack constraint profile
+npx add-coder stack show          # current stack + profile path
+npx add-coder stack --clear       # clear tech-stack setting (neutral)
+```
 
 ## Generated Content
 
@@ -737,19 +834,17 @@ npx add-coder init
 
 ## MCP Audit Toolchain
 
-`init` automatically deploys the MCP server (`mcp-server.ts`) into the project, loaded by the IDE via `mcp.json`. The following audit and governance tools are provided:
+`init` automatically deploys the MCP server (`mcp-server.ts`) into the project, loaded by the IDE via `mcp.json`. **33 tools** across 7 domains:
 
-| Tool | Purpose | Trigger Scenario |
-|------|---------|-----------------|
-| `record_dev_operation` | Record development operation audits (before/after/reason) | Every file change, config modification |
-| `query_audit_logs` | Query audit records by planKeyword / targetId | Cross-session context recovery, iteration evidence verification |
-| `get_project_context` | Get ADD workflow status snapshot | Fresh conversation start |
-| `get_db_schema` | Get Prisma schema info | Database-related operations |
-| `check_dps` | DPS gateway (Design/Implementation/Docs/Audit, each 25%) | End of Step 0 |
-| `check_rahs` | RAHS gateway (runtime architecture health) | Step 4/8 |
-| `check_add_route_status` | add-route file existence check | Before Step 3 |
-| `check_spec_sync` | Spec doc checkbox status vs. code consistency | After Spec execution |
-| `find_related_docs` | Search related architecture/spec documents | Context understanding |
+| Domain | Tools |
+|------|------|
+| Audit Loop | `record_dev_operation` `query_audit_logs` `generate_audit_logger` `get_audit_logger_pattern` `get_hook_events` |
+| HITL Approval | `create_hitl` `update_hitl` `status_hitl` `render_hitl_approval` |
+| Plan Tracking | `plan_track` `plan_status` `plan_sync` `plan_round_status` `plan_round_close` |
+| Review Tracking | `review_track` `review_status` `review_sync` |
+| Quality Gateways | `check_dps` `check_rahs` `check_add_route_status` `check_add_route_completeness` `check_spec_sync` `check_doc_similarity` `check_phase_symmetry` `check_failure_path` `check_add_compliance` |
+| Contract Tracking | `contract_track` `contract_status` |
+| Context Retrieval | `get_project_context` `get_db_schema` `get_spec_context` `get_add_template` `find_related_docs` |
 
 > Full tool list: [MCP Toolchain Specification](https://github.com/xiaomingming92/codein2027/blob/main/docs/大田精准耕播智能决策系统/knowledge/02-规范/%E3%80%8A%E5%BC%80%E5%8F%91%E6%93%8D%E4%BD%9C%E5%AE%A1%E8%AE%A1%E5%AD%98%E6%A1%A3%E8%A7%84%E8%8C%83%E3%80%8B.md).
 
@@ -773,25 +868,31 @@ npx add-coder init
        │  DevOperation / AuditLog Tables      │
        │  MCP Audit Toolchain                 │
        │  Handoff / DevLog Timeline Docs      │
-       └─────────────────────────────────────┘
-                           │
+       └──────────────────┬──────────────────┘
+                          │ Rule-driven
+                          ▼
+       ┌─────────────────────────────────────┐
+       │  Caijuehub — Centralized            │
+       │  Adjudication Layer                  │
+       │  Rule Supply Chain Factory           │
+       │  TOML raw → plant → QA → release →  │
+       │  distribution & consumption          │
+       └──────────────────┬──────────────────┘
+                          │ Generated constants → inlined artifacts
+                          ▼
+       ┌─────────────────────────────────────┐
+       │     Governance Contract Layer       │
+       │  (core base classes)                │
+       │  16 checkpoints, shared by 6 ends   │
+       └──────────────────┬──────────────────┘
+                          │ Controlled adaptation
     ┌──────────┬───────────┼───────────┬──────────┐
     ▼          ▼           ▼           ▼          ▼
 ┌──────┐ ┌──────┐ ┌──────────┐ ┌──────┐ ┌──────┐
 │Claude│ │Qoder │ │ VS Code  │ │ Trae │ │Codex │
-│Hooks │ │Hooks │ │  Config  │ │Hooks │ │Hooks │
-│14/17 │ │10/17 │ │  10/17   │ │ 6/17 │ │ 6/17 │
+│Hooks │ │Hooks │ │  Hooks   │ │Hooks │ │Hooks │
+│11/16 │ │11/16 │ │  10/16   │ │ 6/16 │ │ 5/16 │
 └──────┘ └──────┘ └──────────┘ └──────┘ └──────┘
-                           │
-              ┌────────────┘
-              ▼
-       ┌─────────────────────────────────────┐
-       │  Caijuehub — Centralized            │
-       │  Adjudication Layer                  │
-       │  TOML-Driven Policy System           │
-       │  Detect / Adapt / Prisma / Write —   │
-       │  Fully Configurable                  │
-       └─────────────────────────────────────┘
 ```
 
 ## Prerequisites

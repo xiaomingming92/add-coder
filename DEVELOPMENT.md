@@ -14,7 +14,7 @@
 - [四、sync 映射关系](#四sync-映射关系)
 - [五、数据流转](#五数据流转)
 - [六、init 流程剖析](#六init-流程剖析)
-- [七、多 adapter hooks 差异化](#七多-adapter-hooks-差异化)
+- [七、治理契约层与多 adapter hooks（node 化）](#七治理契约层与多-adapter-hooksnode-化)
 - [八、sync --patch 热更新原理](#八sync---patch-热更新原理)
 - [九、数据库同步机制（Atlas 版本化 + 统一端口分配器）](#九数据库同步机制atlas-版本化--统一端口分配器)
   - [9.1 两条链路的引擎分工](#91-两条链路的引擎分工)
@@ -175,24 +175,24 @@ add-coder 遵循 **单一真源（Single Source of Truth）** 原则：
 源（唯一真源）                          目标（运行时副本）
 ══════════════════════════════════    ══════════════════════════════════
 
-hooks 定向同步（5 对）
+hooks 定向同步（5 对，TS 源 → 烘焙 .mjs；2026-08-14 node 化实态）
 
 ① templates/adapters/claude/hooks/ → .claude/hooks/
-    16 文件 + lib/，含 adapter 特有文件:
-      permission-denied.sh           ← Claude 独有权限拒绝钩子
-      stop-failure.sh                ← Claude 独有停止失败钩子
+    16 入口 .ts（含 claude 特有事件 permission-gate / subagent-stop 等），
+    lib/ 源码经 bundle 内联（产物无 lib/*.mjs 分发）
 
 ② templates/adapters/qoder/hooks/  → .qoder/hooks/
-    14 文件 + lib/（state-detect / vocabulary / context-inject 等 8 个工具函数）
+    14 入口 .ts + 私有 lib（qoder-env / context-inject / review-checklist）
 
 ③ templates/adapters/vscode/hooks/ → .vscode/hooks/
-    14 文件 + lib/，与 core 同构（含 doc-format-guard）
+    14 入口 .ts，与 core 同构（含 doc-format-guard）
 
 ④ templates/core/hooks/            → .add/hooks/
-    .add 无自有 hooks，完全从 core 派生
+    .add 无自有 hooks，完全从 core 派生（14 入口）
 
-⑤ templates/core/hooks/            → templates/adapters/trae/hooks/
-    trae 无自有 hooks，从 core 派生（14 文件 + lib/）
+⑤ templates/adapters/trae/hooks/   → .trae/hooks/
+    trae 独立源（Task 1.6 切断镜像后，14 入口 .ts 自持）；
+    hook_source 适配模式见 adapter-rules.toml [hook_source]（self 默认 / claude-import 可选）
 
 通用类别批量同步（8 类 × 4 个 magic 目录）
 
@@ -203,19 +203,21 @@ hooks 定向同步（5 对）
 不进映射
 
     templates/adapters/codex/hooks/ → .codex/hooks/
-    Codex hooks（14 文件 + lib/）是完整 adapter 真源；不入 sync 映射，
-    core 不覆盖任何 Codex hook 文件（codex 生成态已 git 入库）
+    Codex hooks（14 入口 .ts）是完整 adapter 真源；不入 sync 映射，
+    core 不覆盖任何 Codex hook 文件（codex 生成态已 git 入库，hooks.json node 直调）
 ```
+
+> **bash 退役备份**：bash 时代 269 个 `.sh` 已按原路径结构收拢至 `.backup/20260814_bash-hooks-retire/`（含溯源 README：原位置→备份位置映射、退役背景、恢复方式），需要对照 bash 历史实现时按路径查找。
 
 ### 同步策略
 
 | 特性 | 实现 |
 |------|------|
-| **同步方式** | node fs 复制（cpSync 整目录 + 删除重建，替代旧 rsync）→ **烘焙（bake）**：将模板中的动态变量替换为确定性硬编码值 |
-| **烘焙内容** | 将 `MAGIC_DIR="$(basename ...)"` 动态检测替换为目标目录的确定值；Markdown 的 `{{magicDir}}` 同样按各自目标目录烘焙 |
-| **备份机制** | 同步前自动备份到 `.backup/YYYYMMDD_HHMMSS/` |
+| **同步方式** | node fs 复制（cpSync 整目录 + 删除重建，替代旧 rsync）→ **烘焙（bake）**：TS 入口 `tsx scripts/hook-bake.ts` esbuild bundle 为零依赖 .mjs（rules 常量由 hook-rules-gen 生成后内联） |
+| **烘焙内容** | 模板动态变量（`{{magicDir}}` 等）按目标目录替换；hook 产物零 node_modules 依赖 + 冒烟校验（exit ∈ {0,2}） |
+| **备份机制** | 同步前自动备份到 `.backup/YYYYMMDD_HHMMSS/`；bash 退役专项收拢 `.backup/20260814_bash-hooks-retire/`（269 .sh 按路径 + 溯源 README） |
 | **排除项** | `.gitkeep`、`.DS_Store`、`debug-dump/`、`*.log`（`sync-magic-rules.toml` `[exclude]`） |
-| **安全保护** | adapter 特有文件（如 claude 的 permission-denied.sh）不会丢失，因为它们存在于源中 |
+| **安全保护** | adapter 特有文件（如 claude 特有事件入口）不会丢失，因为它们存在于源中 |
 
 ---
 
@@ -361,42 +363,50 @@ templates/adapters/qoder/ →          .qoder/mcp.json
 
 ---
 
-## 七、多 adapter hooks 差异化
+## 七、治理契约层与多 adapter hooks（node 化）
+
+> **2026-08-14 node 化实态（bash 已退役）**：
+> - hook 全量 node 化：TS 源码（`templates/core/governance/*.ts` 治理契约层 + `templates/{core,adapters/*}/hooks/*.ts` 入口薄壳）→ esbuild 烘焙零依赖 `.mjs`（86 入口，六端 14/16/14/14/14/14）
+> - **治理契约层大规模使用**：17 治理卡位判定逻辑收敛 core 基类（PreToolUseGuard/StopRouter/PostToolRouter/PromptRouter/AuditBridge 等模板方法），adapter 子类仅 override 协议差异（输出形态/事件映射/环境注入）——「Adapter Hooks 必须继承 Core 基类」为硬规范
+> - **规则即数据**：拦截链/识别规则/象限文本/事件阈值/协议形态由 `src/caijuehub/hook-*.toml` ×5 声明（供应链工厂生成常量 → 产物内联），改规则不改代码
+> - **审计即闭环**：hook 拦截/文件写入事件 → jsonl → MCP 常驻消费 → DevOperation 落库（HOOK_INTERCEPT 幂等）
+> - **bash 退役**：269 个 `.sh` 已按路径收拢 `.backup/20260814_bash-hooks-retire/`（溯源说明见其 README）；行为基线由 `tests/fixtures/hook-golden/*.golden.json` 固化
+> - 下文 `.sh` 表格为 bash 时代历史记录，保留供溯源对照
 
 不同 IDE 的 hooks 能力不同，因此 hooks 集也不同（14 个通用 hook + claude 2 个特有）：
 
-| Hook 文件 | core | claude | qoder | vscode | codex | trae |
+| Hook 入口（.ts → .mjs） | core | claude | qoder | vscode | codex | trae |
 |-----------|:----:|:------:|:-----:|:------:|:-----:|:----:|
-| `doc-format-guard.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `pre-tool-use.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `prompt-submit.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `permission-gate.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `notification.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `post-tool-use.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `post-tool-failure.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `session-start.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `session-end.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `stop-check.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `subagent-guard.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `subagent-stop.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `pre-compact.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `review-checklist.sh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `permission-denied.sh` | — | ✅ | — | — | — | — |
-| `stop-failure.sh` | — | ✅ | — | — | — | — |
-| `lib/` 目录 | ✅ 8 文件 | ✅ 8 文件 | ✅ 8 文件 | ✅ 8 文件 | ✅ 8 文件 | ✅ 8 文件 |
+| `doc-format-guard` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `pre-tool-use` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `prompt-submit` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `permission-gate` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `notification` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `post-tool-use` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `post-tool-failure` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `session-start` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `session-end` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `stop-check` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `subagent-guard` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `subagent-stop` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `pre-compact` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `review-checklist` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `permission-denied` | — | ✅ | — | — | — | — |
+| `stop-failure` | — | ✅ | — | — | — | — |
+| 治理基类 | governance 23 文件（继承体系，产物内联） | 同左 | 同左 | 同左 | 同左 | 同左 |
 
-> **规则**：core 是跨 IDE 通用真源；claude/qoder/vscode 独立维护在 `templates/adapters/{name}/hooks/`（与 core 同构，含完整 lib/）；codex 是完整独立真源（不入 sync 映射）；trae 运行时从 core 派生。
+> **规则**：治理契约层（`templates/core/governance/*.ts`，23 文件）是跨 IDE 唯一真源——16 卡位（14 通用入口 + 2 claude 特有事件）判定逻辑收敛 core 基类，adapter 入口薄壳仅 override 协议差异（输出形态/事件映射/环境注入）；claude 特有事件入口（permission-denied / stop-failure）在 adapter 真源；trae 独立源（hook_source 适配）；codex 完整独立真源（不入 sync 映射）。
 
-### 7.1 Hook 协议层契约（v0.3.27 起）
+### 7.1 Hook 协议层契约（v0.3.27 起，node 化后落点更新 2026-08-14）
 
-2026-08-13 起，`templates/core/hooks/` 统一为**协议层四接口**，4 adapter（claude/trae/qoder/vscode）契约对齐，codex 同语义：
+2026-08-13 起，`templates/core/hooks/` 统一为**协议层四接口**，4 adapter（claude/trae/qoder/vscode）契约对齐，codex 同语义（bash 退役后落点为 governance 治理契约层）：
 
 | 接口 | 契约 | 落点 |
 |------|------|------|
-| **DB lifecycle 裁决** | `detect_active_add` 消费 `plan-status-bridge`（DB 为真相源）；DB 不可用返回 `__STATUS_UNAVAILABLE__` → **fail-closed**（stop-check Q0 阻断），禁止吞成无 Plan | `common.sh` / `stop-check.sh` |
-| **本地 scope** | 仅当前 magicDir（入口注入/物理位置推导），无 adapter 名称默认值；删除跨端扫描与 `.add` fallback | `state-detect.sh` / `vocabulary.sh` |
-| **sed 精确判定** | pre-tool-use 独立 option 判定（不再 `\bsed\b` 宽泛误判 session-init）；HITL 门禁限域当前 magicDir | `pre-tool-use.sh` |
-| **模板自包含** | preload-templates 本地物化（`${SCRIPT_DIR}/../../templates`，禁止源仓路径）+ 缺失 fail-fast（exit 1 + 明确错误） | `preload-templates.sh` |
+| **DB lifecycle 裁决** | `detectActiveAdd` 消费 `plan-status-bridge`（DB 为真相源）；DB 不可用返回 `__STATUS_UNAVAILABLE__` → **fail-closed**（stop-check Q0 阻断），禁止吞成无 Plan | `governance/common.ts` / `governance/stop-router.ts` |
+| **本地 scope** | 仅当前 magicDir（入口注入/物理位置推导），无 adapter 名称默认值；删除跨端扫描与 `.add` fallback | `governance/common.ts`（tryResolveMagicDir）/ `governance/vocabulary.ts` |
+| **sed 精确判定** | pre-tool-use 独立 option 判定（不再 `\bsed\b` 宽泛误判 session-init）；HITL 门禁限域当前 magicDir | `governance/pre-tool-guard.ts` + hook-guard-rules.toml |
+| **模板自包含** | preload-templates find-up 锚点查找（禁止源仓固定层级）+ 缺失 fail-fast（exit 1 + 明确错误） | `governance/preload-templates.ts` |
 
 配套渲染契约：`renderAdapterBase` 顺序 **core baseline 先渲染 → adapter 私有文件后置覆盖**；4 adapter 显式 `includeCoreHooksLib=false`（lib 完全自持）。
 
@@ -433,12 +443,18 @@ templates/                       .qoder/                    对比：
 
 | # | 用户 | 源模板 | 判定 | 行为 | caijuehub 驱动 |
 |:---:|------|------|------|------|------|
-| ① | 没改 | 没变 | same | 跳过 | `on_same: skip` |
-| ② | 没改 | 变了 | auto | 静默覆盖 | 版本边界 → baseline |
-| ③ | 改了 | 没变 | skip | 不碰 | `on_conflict: skip`（用户选[a]） |
-| ④ | 改了 | 变了 | conflict | 交互勾选 | `on_conflict: interactive` |
-| ⑤ | — | 不存在 | missing | 静默写入 | `on_missing: write` |
-| ⑥ | PATCH_GUARD | — | skip | 永不触碰 | caijuehub `[guard]` |
+| ① | 没改 | 没变 | same | 跳过 | `[patch] on_same: skip` |
+| ② | 没改 | 变了 | auto | 静默写基线 | `[version] on_first_patch/on_upgrade: baseline` |
+| ③ | 改了 | 没变 | skip | 不碰 | `[patch] on_conflict: skip`（用户选[a]） |
+| ④ | 改了 | 变了 | conflict | 交互勾选 | `[patch] on_conflict: interactive` |
+| ⑤ | — | 不存在 | missing | 静默写入 | `[patch] on_missing: write` |
+| ⑥ | PATCH_GUARD | — | skip | 永不触碰 | `[guard] patterns`（含 plans/specs/reviews/rules/profiles） |
+
+> caijuehub 真源 = `src/caijuehub/sync-rules.toml`（供应链工厂 15 产线之一）：
+> - `[patch]` 6 hash 矩阵 → 3 行为参数（on_same/on_conflict/on_missing）
+> - `[version]` **3 版本边界细化**（hash 矩阵之前判定）：`on_first_patch: baseline` / `on_upgrade: baseline` / `on_hash_lost: conflict`（hash 丢失 → 全部进交互保护）+ `sentinel_file = ".add-coder-version"`
+> - `[default]` 无 --patch 模式（on_missing: write / on_existing: skip）
+> - `[prisma]` schema 增量同步（on_missing_model/on_field_conflict/on_missing_field/on_extra_field + post_sync 动作指引）
 
 ### 8.4 版本边界保护
 
