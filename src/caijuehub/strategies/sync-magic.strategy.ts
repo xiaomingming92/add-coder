@@ -4,7 +4,7 @@
 // >>> CAIJUE GENERATED START >>>
 export const SYNC_MAGIC_CONFIG = {
     PROJECT_NAME: "add-coder",
-    MAGIC_DIRS: [".add", ".qoder", ".claude", ".vscode"],
+    MAGIC_DIRS: [".add", ".qoder", ".claude", ".vscode", ".trae", ".codex"],
     EXCLUDE_PATTERNS: [".gitkeep", ".DS_Store", "debug-dump"],
     LOG_EXTENSIONS: [".log"],
     HOOKS: [
@@ -12,7 +12,7 @@ export const SYNC_MAGIC_CONFIG = {
     { src: "templates/adapters/qoder/hooks", dest: ".qoder/hooks", name: "qoder hooks", magicDir: ".qoder" },
     { src: "templates/adapters/vscode/hooks", dest: ".vscode/hooks", name: "vscode hooks", magicDir: ".vscode" },
     { src: "templates/core/hooks", dest: ".add/hooks", name: ".add hooks", magicDir: ".add" },
-    { src: "templates/core/hooks", dest: "templates/adapters/trae/hooks", name: "trae hooks", magicDir: ".trae" }
+    { src: "templates/adapters/trae/hooks", dest: ".trae/hooks", name: "trae hooks", magicDir: ".trae" }
     ],
     CATEGORIES: [
     { name: "templates", icon: "📚", bake: false },
@@ -29,6 +29,7 @@ export const SYNC_MAGIC_CONFIG = {
     { src: "templates/adapters/qoder/hooks", dest: ".qoder/hooks", name: "qoder hooks" },
     { src: "templates/adapters/vscode/hooks", dest: ".vscode/hooks", name: "vscode hooks" },
     { src: "templates/core/hooks", dest: ".add/hooks", name: ".add hooks" },
+    { src: "templates/adapters/trae/hooks", dest: ".trae/hooks", name: "trae hooks" },
     { src: "templates/core/templates", dest: ".add/templates", name: ".add templates" }
     ],
 } as const;

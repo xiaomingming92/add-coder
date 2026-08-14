@@ -1,0 +1,46 @@
+{
+  "hook": "subagent-guard",
+  "scope": "core",
+  "source": ".add/hooks/subagent-guard.mjs",
+  "capturedAt": "2026-08-14T07:55:04.760Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".add",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".add",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SubagentStart\",\"additionalContext\":\"[ADD SubagentStart] Plan: __STATUS_UNAVAILABLE__, Step: magicDir 未注入且无法从物理位置推导, Round: database, handoff: none。遵循 ADD 规范，完成后检查 checklist。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

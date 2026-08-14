@@ -1,0 +1,46 @@
+{
+  "hook": "permission-denied",
+  "scope": "claude",
+  "source": ".claude/hooks/permission-denied.mjs",
+  "capturedAt": "2026-08-14T04:22:59.398Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".claude",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PermissionDenied] unknown 被拒绝: 权限被拒绝\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".claude",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PermissionDenied] unknown 被拒绝: 权限被拒绝\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PermissionDenied] unknown 被拒绝: 权限被拒绝\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

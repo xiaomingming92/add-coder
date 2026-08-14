@@ -1,0 +1,46 @@
+{
+  "hook": "lib-subagent-stop",
+  "scope": "core",
+  "source": ".add/hooks/lib/subagent-stop.mjs",
+  "capturedAt": "2026-08-14T03:50:30.068Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".add",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SubagentStop] ⚠️ 无活跃 ADD Plan，无法校验 unknown 的交付物边界\n[ADD SubagentStop] unknown 边界校验通过 — 2026-08-14T11:50:29+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".add",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SubagentStop] ⚠️ 无活跃 ADD Plan，无法校验 unknown 的交付物边界\n[ADD SubagentStop] unknown 边界校验通过 — 2026-08-14T11:50:30+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SubagentStop] unknown 已完成，交付物: \n[ADD SubagentStop] 关联 Plan: __STATUS_UNAVAILABLE__ | handoff: none\n[ADD SubagentStop] unknown 边界校验通过 — 2026-08-14T11:50:30+08:00\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

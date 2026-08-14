@@ -1,0 +1,46 @@
+{
+  "hook": "permission-gate",
+  "scope": "codex",
+  "source": ".codex/hooks/permission-gate.mjs",
+  "capturedAt": "2026-08-14T05:19:09.502Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

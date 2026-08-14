@@ -1,0 +1,46 @@
+{
+  "hook": "stop-check",
+  "scope": "codex",
+  "source": ".codex/hooks/stop-check.mjs",
+  "capturedAt": "2026-08-14T11:09:39.953Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"systemMessage\":\"[ADD Stop] Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1；approval: TONGYI；tasks: 67/67。本次无代码改动。\"}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"systemMessage\":\"[ADD Stop] Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1；approval: TONGYI；tasks: 67/67。本次无代码改动。\"}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"systemMessage\":\"[ADD Stop] Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1；approval: TONGYI；tasks: 67/67。本次无代码改动。\"}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

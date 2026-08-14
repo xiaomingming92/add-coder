@@ -1,0 +1,46 @@
+{
+  "hook": "post-tool-failure",
+  "scope": "core",
+  "source": ".add/hooks/post-tool-failure.mjs",
+  "capturedAt": "2026-08-14T03:50:30.316Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".add",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD PostToolFailure] 工具调用失败，请检查错误信息并修复。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".add",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD PostToolFailure] 工具调用失败，请检查错误信息并修复。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD PostToolFailure] 工具调用失败，请检查错误信息并修复。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

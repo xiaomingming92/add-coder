@@ -30,7 +30,7 @@ for (const [event, groups] of Object.entries(src.hooks ?? {})) {
     ...g,
     hooks: (g.hooks as Array<Record<string, unknown>>).map(h => ({
       ...h,
-      command: String(h.command).replace(`bash ${magicDirFor("qoder")}/`, `bash ${projectDir}/${magicDirFor("qoder")}/`),
+      command: String(h.command).replace(`node ${magicDirFor("qoder")}/`, `node ${projectDir}/${magicDirFor("qoder")}/`),
     })),
   }))
 }

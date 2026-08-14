@@ -1,0 +1,46 @@
+{
+  "hook": "session-start",
+  "scope": "codex",
+  "source": ".codex/hooks/session-start.mjs",
+  "capturedAt": "2026-08-14T09:05:21.329Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD SessionStart] 检测到活跃 ADD Plan:\n  Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1\n  轮次: TONGYI\n  当前 Step: 67/67\n  handoff: none\n  恢复命令: query_audit_logs({ planKeyword: 'add-coder-codex-native-adapter-runtime-closure-plan-v1' })\n## ADD 可用模板清单\n- TERMINOLOGY.md\n- add-route-template-heavyweight.md\n- add-route-template.md\n- checklist-template.md\n- collab-contract-template.md\n- fix-verification-template.md\n- handoff-multi-round-template.md\n- handoff-single-round-template.md\n- hitl-template.md\n- index.md\n- ports.example.md\n- prd-incremental-template.md\n- prd-standard-template.md\n- report-template.md\n- review-implementation-template.md\n- review-runtime-template.md\n- review-template.md\n- runtime-report-template.md\n- simple-plan-template.md\n- spec-template.md\n- standard-plan-template.md\n- tasks-template.md\n[代办] 检测到活跃 Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1。如有未加载的 IDE 代办清单，请从 tasks.md §IDE JSON 刷新 TodoWrite。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD SessionStart] 检测到活跃 ADD Plan:\n  Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1\n  轮次: TONGYI\n  当前 Step: 67/67\n  handoff: none\n  恢复命令: query_audit_logs({ planKeyword: 'add-coder-codex-native-adapter-runtime-closure-plan-v1' })\n## ADD 可用模板清单\n- TERMINOLOGY.md\n- add-route-template-heavyweight.md\n- add-route-template.md\n- checklist-template.md\n- collab-contract-template.md\n- fix-verification-template.md\n- handoff-multi-round-template.md\n- handoff-single-round-template.md\n- hitl-template.md\n- index.md\n- ports.example.md\n- prd-incremental-template.md\n- prd-standard-template.md\n- report-template.md\n- review-implementation-template.md\n- review-runtime-template.md\n- review-template.md\n- runtime-report-template.md\n- simple-plan-template.md\n- spec-template.md\n- standard-plan-template.md\n- tasks-template.md\n[代办] 检测到活跃 Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1。如有未加载的 IDE 代办清单，请从 tasks.md §IDE JSON 刷新 TodoWrite。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD SessionStart] 检测到活跃 ADD Plan:\n  Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1\n  轮次: TONGYI\n  当前 Step: 67/67\n  handoff: none\n  恢复命令: query_audit_logs({ planKeyword: 'add-coder-codex-native-adapter-runtime-closure-plan-v1' })\n## ADD 可用模板清单\n- TERMINOLOGY.md\n- add-route-template-heavyweight.md\n- add-route-template.md\n- checklist-template.md\n- collab-contract-template.md\n- fix-verification-template.md\n- handoff-multi-round-template.md\n- handoff-single-round-template.md\n- hitl-template.md\n- index.md\n- ports.example.md\n- prd-incremental-template.md\n- prd-standard-template.md\n- report-template.md\n- review-implementation-template.md\n- review-runtime-template.md\n- review-template.md\n- runtime-report-template.md\n- simple-plan-template.md\n- spec-template.md\n- standard-plan-template.md\n- tasks-template.md\n[代办] 检测到活跃 Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1。如有未加载的 IDE 代办清单，请从 tasks.md §IDE JSON 刷新 TodoWrite。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

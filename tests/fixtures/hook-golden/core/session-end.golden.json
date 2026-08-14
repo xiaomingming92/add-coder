@@ -1,0 +1,46 @@
+{
+  "hook": "session-end",
+  "scope": "core",
+  "source": ".add/hooks/session-end.mjs",
+  "capturedAt": "2026-08-14T03:50:32.907Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".add",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SessionEnd] 会话结束 — 2026-08-14T11:50:32+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".add",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SessionEnd] 会话结束 — 2026-08-14T11:50:32+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SessionEnd] 会话结束 — 2026-08-14T11:50:32+08:00\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

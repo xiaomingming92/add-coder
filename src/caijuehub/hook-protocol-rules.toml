@@ -1,0 +1,111 @@
+# ═══════════════════════════════════════════════════════════════
+# hook-protocol-rules.toml —— Hook 协议契约规则真源（exit/输出/形态）
+# 消费方式: hook-rules-gen.ts → 生成 templates/core/hooks/lib/rules.protocol.ts
+# 改动规则: 只改本文件，运行生成器（产物带 _generated 标记，勿手改）
+# 双源约定: hook 源码禁止硬编码本文件已声明规则（hook-rules.test.ts 负向断言）
+# ═══════════════════════════════════════════════════════════════
+
+# ── 退出码契约 ───────────────────────────────────────────────────
+
+[protocol.exit_codes]
+pass = 0   # 放行
+block = 2  # 阻断
+note = "冒烟校验: 产物退出码 ∈ {0,2}（其余为非预期，需修复）"
+
+# ── 输出契约 ─────────────────────────────────────────────────────
+
+[protocol.output]
+stdout_json_only = true        # stdout 仅合法 JSON（hookSpecificOutput 契约）
+stderr_human_text = true       # stderr 仅人类可读文本
+field_separator = "::"         # state 字段分隔符（detect_active_add 返回契约）
+magic_dir_resolution = "注入优先 → 物理位置推导 → failClosed（禁止猜测 adapter 名）"
+
+# ── 五端协议形态表（stdout 形态 / 事件通道）─────────────────────
+
+[protocol.adapters.claude]
+stdout_form = "plain-text"              # 纯文本提示 + additionalContext 链
+project_dir_env = "CLAUDE_PROJECT_DIR"  # ${CLAUDE_PROJECT_DIR:-$PWD}
+magic_dir = ".claude"
+# handlerTypes: Claude Code hook 官方 5 形态（command/http/mcp_tool/prompt/agent）
+handlerTypes = ["command", "mcp_tool"]
+
+[protocol.adapters.qoder]
+stdout_form = "json"                    # hookSpecificOutput JSON（主端协议）
+project_dir_env = "QODER_PROJECT_DIR"   # ${CLAUDE_PROJECT_DIR:-${QODER_PROJECT_DIR:-${QODERCN_PROJECT_DIR:-$PWD}}}
+magic_dir = ".qoder"
+handlerTypes = ["command", "http"]
+
+[protocol.adapters.codex]
+stdout_form = "systemMessage"           # {systemMessage} JSON（codex 私有协议）
+project_dir_env = "git-toplevel"        # git rev-parse --show-toplevel || pwd
+magic_dir = ".codex"
+handlerTypes = ["command"]
+
+[protocol.adapters.vscode]
+stdout_form = "plain-text"
+project_dir_env = "PWD"
+magic_dir = ".vscode"
+handlerTypes = ["command"]
+
+[protocol.adapters.trae]
+stdout_form = "plain-text"
+project_dir_env = "PWD"
+magic_dir = ".trae"
+handlerTypes = ["command"]              # trae 兼容 Claude Code hook 机制
+
+# ── 事件输出能力矩阵（caijuehub 演进配置，2026-08-14 官方文档实证）──────
+# 语义: 各端每个事件允许的 stdout 输出形态（"text"=纯文本 / "feedback"=hookSpecificOutput.feedback /
+#   "additionalContext"=hookSpecificOutput.additionalContext / "systemMessage"=顶层 systemMessage）
+# 演进规则: IDE 版本升级支持新形态后，只改本表不改代码（hook 产物由规则生成驱动）。
+# 实证来源: Qoder 官方 hooks 文档（PostToolUse 专属字段 feedback；SessionStart/UserPromptSubmit/
+#   PreToolUse/Stop 支持 additionalContext 或阻断语义）；Claude Code hooks 文档（stdout JSON 通用机制）。
+
+[protocol.event_outputs.qoder]
+SessionStart = "additionalContext"
+UserPromptSubmit = "additionalContext"
+PreToolUse = "permissionDecision"
+Stop = "additionalContext"
+PostToolUse = "feedback"
+SubagentStart = "additionalContext"
+SubagentStop = "additionalContext"
+PostToolUseFailure = "text"
+PermissionRequest = "text"
+SessionEnd = "text"
+PreCompact = "text"
+Notification = "text"
+
+[protocol.event_outputs.claude]
+SessionStart = "additionalContext"
+UserPromptSubmit = "additionalContext"
+PreToolUse = "permissionDecision"
+Stop = "text"
+PostToolUse = "feedback"
+SubagentStart = "text"
+SubagentStop = "text"
+PostToolUseFailure = "text"
+PermissionRequest = "text"
+SessionEnd = "text"
+PreCompact = "text"
+Notification = "text"
+
+[protocol.event_outputs.codex]
+Stop = "systemMessage"
+PostToolUse = "text"
+
+[protocol.event_outputs.vscode]
+PostToolUse = "text"
+
+[protocol.event_outputs.trae]
+PostToolUse = "text"
+
+[protocol.core]
+stdout_form = "json"
+magic_dir = ".add"
+note = "core 入口协议 = qoder 同构参考实现；adapter 仅保留本表声明的私有差异"
+
+# ── 协议默认值（治理层中立化——2026-08-14 Task 9.4 补充，checklist 后续项兑现）────
+# 语义: 代码禁止硬编码任何 adapter 的 magicDir；缺省值/探测列表统一声明于此，随端演进只改本表。
+
+[protocol.adapter_defaults]
+magic_dir_fallback = ".qoder"  # notify.ts 无 env 注入时的兜底（历史主端约定——声明化后可随端演进，不再锁死代码）
+probe_magic_dirs = [".claude", ".qoder", ".vscode", ".add", ".trae", ".codex"]  # notification 跨端探测（bash 顺序 + 新端补齐，新增端无需改代码）

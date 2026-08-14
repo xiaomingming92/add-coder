@@ -18,6 +18,7 @@ import {
 import { join, resolve, dirname, basename, relative } from "node:path"
 import { homedir } from "node:os"
 import { execSync } from "node:child_process"
+import { parse } from "smol-toml"
 import { SYNC_MAGIC_CONFIG } from "../src/caijuehub/strategies/sync-magic.strategy.js"
 
 // ── 常量和配置（由 caijuehub 驱动）──
@@ -26,6 +27,24 @@ const SCRIPT_DIR = dirname(new URL(import.meta.url).pathname)
 const PROJECT_DIR = projectRoot() ?? resolve(SCRIPT_DIR, "..")
 
 const { PROJECT_NAME, MAGIC_DIRS, EXCLUDE_PATTERNS, LOG_EXTENSIONS, HOOKS, CATEGORIES, VERIFY } = SYNC_MAGIC_CONFIG
+
+/**
+ * Hook 来源模式（adapter-rules.toml [hook_source]，2026-08-14 Web 实证）:
+ *   self: 独立分发本端 hooks（默认）
+ *   claude-import: 跳过 hooks 分发——用户用 Trae 设置「导入 Claude hooks 配置」复用 .claude 产物
+ * 注: 仅 tsx 直跑读取（非烘焙产物），无零依赖约束。
+ */
+function hookSourceMode(): Record<string, string> {
+  try {
+    const raw = readFileSync(join(PROJECT_DIR, "src", "caijuehub", "adapter-rules.toml"), "utf-8")
+    const parsed = parse(raw) as { hook_source?: Record<string, string> }
+    return parsed.hook_source ?? {}
+  } catch {
+    return {}
+  }
+}
+
+const HOOK_SOURCE = hookSourceMode()
 
 const EXCLUDES = new Set<string>(EXCLUDE_PATTERNS)
 
@@ -46,8 +65,8 @@ function timestamp(): string {
   ].join("")
 }
 
-/** 递归复制目录，支持排除列表 */
-function copyDir(src: string, dest: string): void {
+/** 递归复制目录，支持排除列表与扩展名排除 */
+function copyDir(src: string, dest: string, excludeExt?: string[]): void {
   if (existsSync(dest)) {
     rmSync(dest, { recursive: true, force: true })
   }
@@ -59,6 +78,7 @@ function copyDir(src: string, dest: string): void {
       const base = basename(srcPath)
       if (EXCLUDES.has(base)) return false
       if (LOG_EXTENSIONS.some(ext => base.endsWith(ext))) return false
+      if (excludeExt?.some(ext => base.endsWith(ext))) return false
       return true
     },
   })
@@ -143,9 +163,11 @@ interface SyncOptions {
   name: string
   /** magic 目录名（传入后会烘焙 hooks），如 ".add" */
   magicDir?: string
+  /** 分发时排除的扩展名（hook 分发排除 .ts 源，生成态仅 .sh + .mjs 产物） */
+  excludeExt?: string[]
 }
 
-function syncDir({ src, dest, name, magicDir }: SyncOptions): void {
+function syncDir({ src, dest, name, magicDir, excludeExt }: SyncOptions): void {
   if (!existsSync(src)) {
     console.log(`⚠️  源目录不存在: ${src}`)
     return
@@ -155,7 +177,7 @@ function syncDir({ src, dest, name, magicDir }: SyncOptions): void {
   mkdirSync(dest, { recursive: true })
 
   // 复制
-  copyDir(src, dest)
+  copyDir(src, dest, excludeExt)
 
   // 烘焙
   if (magicDir) {
@@ -262,6 +284,8 @@ function compareDirs(src: string, dest: string): string[] {
     // 跳过排除项
     if (EXCLUDES.has(name)) continue
     if (LOG_EXTENSIONS.some(ext => name.endsWith(ext))) continue
+    // 双形态设计内差异: .ts 仅源有（分发排除）、.mjs 仅 dest 有（烘焙产物）
+    if (name.endsWith(".ts") || name.endsWith(".mjs")) continue
 
     const srcPath = join(src, name)
     const destPath = join(dest, name)
@@ -321,15 +345,33 @@ function main(): void {
 
   console.log("\n📁 执行源→目标映射同步...")
 
-  // Hook 同步（由 caijuehub HOOKS 驱动）
+  // Hook 同步（由 caijuehub HOOKS 驱动；excludeExt=.ts：生成态仅 .sh + 烘焙产物 .mjs）
+  // hook_source=claude-import 的端跳过——用户用 IDE 设置导入 Claude hooks 配置复用 .claude 产物
   for (const hook of HOOKS) {
+    const adapterName = hook.magicDir.replace(/^\./, "")
+    if (HOOK_SOURCE[adapterName] === "claude-import") {
+      console.log(`⏭️  跳过 ${hook.name} 分发（hook_source=claude-import，复用 claude 端产物）`)
+      continue
+    }
     backupIfNeeded(join(PROJECT_DIR, hook.dest), backupDirPath)
     syncDir({
       src: join(PROJECT_DIR, hook.src),
       dest: join(PROJECT_DIR, hook.dest),
       name: hook.name,
       magicDir: hook.magicDir,
+      excludeExt: [".ts"],
     })
+  }
+
+  // Hook 烘焙：分发后 TS 源码 → mjs 产物（Plan §3.3 sync 分发时烘焙）
+  // 双形态共存：.sh（旧 bash）与 .mjs（新 node）同目录共存至轮次 8
+  try {
+    execSync(`tsx "${join(SCRIPT_DIR, "hook-bake.ts")}"`, {
+      stdio: "pipe",
+      timeout: 60_000,
+    })
+  } catch {
+    console.log("⚠️  hook-bake 烘焙失败，请检查 tsx 环境与 hook-bake.ts")
   }
 
   // Qoder CN 配置（在 qoder hooks 同步之后）

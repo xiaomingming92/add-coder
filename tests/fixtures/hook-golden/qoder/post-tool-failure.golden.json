@@ -1,0 +1,46 @@
+{
+  "hook": "post-tool-failure",
+  "scope": "qoder",
+  "source": ".qoder/hooks/post-tool-failure.sh",
+  "capturedAt": "2026-08-14T04:43:44.653Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PostToolUseFailure] 工具  失败: 。检查是否需要回退到上一 ADD Step 重新执行。\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PostToolUseFailure] 工具 unknown 失败: unknown。检查是否需要回退到上一 ADD Step 重新执行。\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PostToolUseFailure] 工具 unknown 失败: unknown。检查是否需要回退到上一 ADD Step 重新执行。\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

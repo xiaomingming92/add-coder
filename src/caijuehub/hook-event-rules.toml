@@ -1,0 +1,27 @@
+# ═══════════════════════════════════════════════════════════════
+# hook-event-rules.toml —— Hook 事件 jsonl 写入规则真源
+# 消费方式: hook-rules-gen.ts → 生成 templates/core/hooks/lib/rules.event.ts
+# 改动规则: 只改本文件，运行生成器（产物带 _generated 标记，勿手改）
+# 双源约定: hook 源码禁止硬编码本文件已声明规则（hook-rules.test.ts 负向断言）
+# 消费方: MCP 常驻侧 fs.watch 消费 jsonl → devOperation 批量落库（幂等 dedupKey）
+# ═══════════════════════════════════════════════════════════════
+
+# ── 文件与轮转 ───────────────────────────────────────────────────
+
+[event.file]
+path = "{magicDir}/reports/hook-events.jsonl"
+rotate_bytes = 262144      # 单文件 ≤256KB，超限轮转为 .old（覆盖，不累积多份）
+total_bytes = 524288       # 总量 ≤512KB（当前 + 一个 .old）
+note = "MCP Server 宕机不丢事件，重启后从文件恢复消费"
+
+# ── 事件 schema（7 字段）──────────────────────────────────────────
+
+[event.schema]
+fields = ["ts", "hook", "decision", "cmd", "reason", "planKeyword", "planStatus"]
+ts_format = "date -u +%Y-%m-%dT%H:%M:%SZ" # UTC 秒级（对齐 bash）
+extra_fields = ["anchor_hit", "struct_score", "override"] # doc-format-guard 回流附加字段
+
+# ── Hook 治理日报阈值（prompt-submit 注入 AI 上下文）─────────────
+
+[event.daily]
+warn_threshold = 10 # 当日无 Plan 提示数 ≥10 → 输出 [Hook ⚠️] 建议创建 Plan 或检查误报

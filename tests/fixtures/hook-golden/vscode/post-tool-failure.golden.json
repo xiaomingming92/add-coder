@@ -1,0 +1,46 @@
+{
+  "hook": "post-tool-failure",
+  "scope": "vscode",
+  "source": ".vscode/hooks/post-tool-failure.sh",
+  "capturedAt": "2026-08-14T05:08:39.858Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".vscode",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PostToolFailure] 工具调用失败: 未知错误。请检查并修复。\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".vscode",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PostToolFailure] 工具调用失败: 未知错误。请检查并修复。\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PostToolFailure] 工具调用失败: 未知错误。请检查并修复。\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

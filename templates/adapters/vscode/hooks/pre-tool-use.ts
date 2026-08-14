@@ -1,0 +1,78 @@
+// pre-tool-use.ts — PreToolUse 入口（VS Code Copilot 版，Task 5.1 继承体系）
+// 继承 core PreToolUseGuard（模板方法固化治理流程）；仅 override 协议差异（bash 原文逐字对照）:
+//   ① 检测链: 构造传 adapterName="vscode" → 加载 [guard.adapter_detectors] vscode 独立链
+//      （与 claude/qoder 同构四段链，2026-08-14 实态核验）
+//   ② onBlock: 纯 stderr（无 askJson / logBlock）+ 事件 + exit 2
+//   ③ onNoPlanAllow: allow JSON + exit 2（bash 原文缺陷照搬: allow decision + exit 2）
+//   ④ onSensitiveDeny: 纯 stderr（无 denyJson）+ 事件 + exit 2
+//   ⑤ onSectionAPass: Bash 放行 markDevAction
+//   ⑥ onOtherTool: ③ Read matcher 模板提示（同 claude）
+
+import { jsonGet, markDevAction, readHookInput, tryResolveMagicDir } from "../../../core/governance/common.js"
+import { writeHookEvent } from "../../../core/governance/notify.js"
+import { PreToolUseGuard } from "../../../core/governance/pre-tool-guard.js"
+
+const PROJECT_DIR = process.env.PROJECT_DIR || process.cwd()
+const inferred = tryResolveMagicDir()
+if (inferred && !process.env.MAGIC_DIR) process.env.MAGIC_DIR = inferred
+const MAGIC_DIR = process.env.MAGIC_DIR || ""
+
+class VscodePreToolUseGuard extends PreToolUseGuard {
+  constructor(projectDir: string, magicDir: string) {
+    super(projectDir, magicDir, "vscode")
+  }
+
+  /** ② §A 阻断: 纯 stderr（{{cmd}} 模板替换）+ 事件 + exit 2（无 askJson / logBlock） */
+  protected override onBlock(blocked: { reason: string; stderr: string }, command: string): number {
+    process.stderr.write(blocked.stderr.replaceAll("{{cmd}}", command))
+    writeHookEvent("pre-tool-use", "deny", command, blocked.reason, this.planKeyword, this.planStatus)
+    return 2
+  }
+
+  /** ③ §B 无 Plan 放行: 提示 + allow JSON + 事件 + exit 2（bash 原文缺陷照搬） */
+  protected override onNoPlanAllow(toolName: string, filePath: string): number {
+    process.stderr.write("[ADD 提示] 正在写入 Plan/Spec/Review 文档但无活跃 ADD Plan——首次创建场景放行，建议先执行 add-paradigm 生成 Plan+add-route\n")
+    process.stdout.write('{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"无活跃 ADD Plan 但为 Plan/Spec/Review 写入（首次创建场景），提示而非拦截"}}\n')
+    writeHookEvent("pre-tool-use", "info", filePath, "无活跃 ADD Plan 下写入 Plan/Spec/Review（首次创建放行）", this.planKeyword, this.planStatus)
+    return 2
+  }
+
+  /** ④ §B 敏感文件: 纯 stderr（无 denyJson）+ 事件 + exit 2 */
+  protected override onSensitiveDeny(filePath: string): number {
+    process.stderr.write(`⛔ 敏感文件受保护，禁止写入: ${filePath}\n`)
+    writeHookEvent("pre-tool-use", "deny", filePath, "敏感文件受保护", this.planKeyword, this.planStatus)
+    return 2
+  }
+
+  /** ⑤ §A 放行后处理: bash 原文 mark_dev_action */
+  protected override onSectionAPass(_command: string): void {
+    markDevAction()
+  }
+
+  /** ⑥ ③ Read matcher: 模板路径兜底提示 */
+  protected override onOtherTool(input: string, toolName: string): number {
+    if (toolName === "Read") {
+      const filePath = jsonGet(input, "file_path")
+      if (/templates\//.test(filePath)) {
+        process.stderr.write("[ADD PreToolUse] 提示: 模板文件已通过 hook 预读到上下文，可跳过重复读取\n")
+      }
+    }
+    return 0
+  }
+}
+
+const input = readHookInput()
+let toolName = jsonGet(input, "tool_name")
+if (toolName === "") {
+  toolName = input.match(/"tool_name"\s*:\s*"([^"]*)"/)?.[1] ?? ""
+}
+
+const guard = new VscodePreToolUseGuard(PROJECT_DIR, MAGIC_DIR)
+
+if (toolName === "Bash") {
+  process.exit(guard.runSectionA(input))
+} else if (toolName === "Write" || toolName === "Edit" || toolName === "SearchReplace") {
+  process.exit(guard.runSectionB(input, toolName))
+} else {
+  process.exit(guard.runSectionC(input, toolName))
+}

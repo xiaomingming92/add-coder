@@ -1,0 +1,46 @@
+{
+  "hook": "pre-compact",
+  "scope": "qoder",
+  "source": ".qoder/hooks/pre-compact.mjs",
+  "capturedAt": "2026-08-14T04:44:04.463Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PreCompact] ADD 状态已保存: Plan=add-coder-hook-node-migration-plan-v1, Step=15/32\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PreCompact] ADD 状态已保存: Plan=add-coder-hook-node-migration-plan-v1, Step=15/32\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PreCompact] ADD 状态已保存: Plan=__STATUS_UNAVAILABLE__, Step=magicDir 未注入且无法从物理位置推导\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

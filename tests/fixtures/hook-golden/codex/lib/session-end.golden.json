@@ -1,0 +1,46 @@
+{
+  "hook": "lib-session-end",
+  "scope": "codex",
+  "source": ".codex/hooks/lib/session-end.sh",
+  "capturedAt": "2026-08-14T05:17:25.757Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SessionEnd] 会话结束 — 2026-08-14T13:17:25+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SessionEnd] 会话结束 — 2026-08-14T13:17:25+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SessionEnd] 会话结束 — 2026-08-14T13:17:25+08:00\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

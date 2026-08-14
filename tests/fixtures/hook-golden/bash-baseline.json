@@ -1,0 +1,1345 @@
+{
+  "capturedAt": "2026-08-14T03:53:50.730Z",
+  "entries": [
+    {
+      "hook": "doc-format-guard.sh",
+      "scope": "core",
+      "coldMs": 29,
+      "samples": [
+        29,
+        29,
+        29.2
+      ]
+    },
+    {
+      "hook": "lib/common.sh",
+      "scope": "core",
+      "coldMs": 5.5,
+      "samples": [
+        5.2,
+        5.5,
+        5.9
+      ]
+    },
+    {
+      "hook": "lib/context-inject.sh",
+      "scope": "core",
+      "coldMs": 1.8,
+      "samples": [
+        1.8,
+        1.8,
+        2.2
+      ]
+    },
+    {
+      "hook": "lib/notify.sh",
+      "scope": "core",
+      "coldMs": 1.7,
+      "samples": [
+        1.7,
+        1.7,
+        1.8
+      ]
+    },
+    {
+      "hook": "lib/preload-templates.sh",
+      "scope": "core",
+      "coldMs": 7,
+      "samples": [
+        6.8,
+        7,
+        7.2
+      ]
+    },
+    {
+      "hook": "lib/session-end.sh",
+      "scope": "core",
+      "coldMs": 15,
+      "samples": [
+        14.8,
+        15,
+        16
+      ]
+    },
+    {
+      "hook": "lib/state-detect.sh",
+      "scope": "core",
+      "coldMs": 7.5,
+      "samples": [
+        7.2,
+        7.5,
+        7.9
+      ]
+    },
+    {
+      "hook": "lib/subagent-stop.sh",
+      "scope": "core",
+      "coldMs": 584,
+      "samples": [
+        553.3,
+        584,
+        588.8
+      ]
+    },
+    {
+      "hook": "lib/vocabulary.sh",
+      "scope": "core",
+      "coldMs": 2.4,
+      "samples": [
+        1.9,
+        2.4,
+        2.9
+      ]
+    },
+    {
+      "hook": "notification.sh",
+      "scope": "core",
+      "coldMs": 6.2,
+      "samples": [
+        5.4,
+        6.2,
+        6.5
+      ]
+    },
+    {
+      "hook": "permission-gate.sh",
+      "scope": "core",
+      "coldMs": 5,
+      "samples": [
+        4.4,
+        5,
+        5.2
+      ]
+    },
+    {
+      "hook": "post-tool-failure.sh",
+      "scope": "core",
+      "coldMs": 4.6,
+      "samples": [
+        3.9,
+        4.6,
+        5
+      ]
+    },
+    {
+      "hook": "post-tool-use.sh",
+      "scope": "core",
+      "coldMs": 11.7,
+      "samples": [
+        10.5,
+        11.7,
+        11.8
+      ]
+    },
+    {
+      "hook": "pre-compact.sh",
+      "scope": "core",
+      "coldMs": 560,
+      "samples": [
+        556.4,
+        560,
+        565.9
+      ]
+    },
+    {
+      "hook": "pre-tool-use.sh",
+      "scope": "core",
+      "coldMs": 13.4,
+      "samples": [
+        13.2,
+        13.4,
+        14.4
+      ]
+    },
+    {
+      "hook": "prompt-submit.sh",
+      "scope": "core",
+      "coldMs": 6.5,
+      "samples": [
+        5.7,
+        6.5,
+        6.7
+      ]
+    },
+    {
+      "hook": "review-checklist.sh",
+      "scope": "core",
+      "coldMs": 4.8,
+      "samples": [
+        4,
+        4.8,
+        4.9
+      ]
+    },
+    {
+      "hook": "session-end.sh",
+      "scope": "core",
+      "coldMs": 13.8,
+      "samples": [
+        13.8,
+        13.8,
+        14.2
+      ]
+    },
+    {
+      "hook": "session-start.sh",
+      "scope": "core",
+      "coldMs": 582.3,
+      "samples": [
+        565.7,
+        582.3,
+        599
+      ]
+    },
+    {
+      "hook": "stop-check.sh",
+      "scope": "core",
+      "coldMs": 575.5,
+      "samples": [
+        560,
+        575.5,
+        587.3
+      ]
+    },
+    {
+      "hook": "subagent-guard.sh",
+      "scope": "core",
+      "coldMs": 4.6,
+      "samples": [
+        4.4,
+        4.6,
+        5.2
+      ]
+    },
+    {
+      "hook": "subagent-stop.sh",
+      "scope": "core",
+      "coldMs": 563.3,
+      "samples": [
+        554.3,
+        563.3,
+        584.6
+      ]
+    },
+    {
+      "hook": "doc-format-guard.sh",
+      "scope": "claude",
+      "coldMs": 29.6,
+      "samples": [
+        29.2,
+        29.6,
+        30.2
+      ]
+    },
+    {
+      "hook": "lib/common.sh",
+      "scope": "claude",
+      "coldMs": 5.2,
+      "samples": [
+        4.7,
+        5.2,
+        5.7
+      ]
+    },
+    {
+      "hook": "lib/context-inject.sh",
+      "scope": "claude",
+      "coldMs": 2,
+      "samples": [
+        1.8,
+        2,
+        2.2
+      ]
+    },
+    {
+      "hook": "lib/notify.sh",
+      "scope": "claude",
+      "coldMs": 1.7,
+      "samples": [
+        1.7,
+        1.7,
+        1.8
+      ]
+    },
+    {
+      "hook": "lib/preload-templates.sh",
+      "scope": "claude",
+      "coldMs": 7.2,
+      "samples": [
+        6.7,
+        7.2,
+        7.3
+      ]
+    },
+    {
+      "hook": "lib/session-end.sh",
+      "scope": "claude",
+      "coldMs": 16.2,
+      "samples": [
+        14.5,
+        16.2,
+        16.9
+      ]
+    },
+    {
+      "hook": "lib/state-detect.sh",
+      "scope": "claude",
+      "coldMs": 6.8,
+      "samples": [
+        6.5,
+        6.8,
+        8.1
+      ]
+    },
+    {
+      "hook": "lib/subagent-stop.sh",
+      "scope": "claude",
+      "coldMs": 572.8,
+      "samples": [
+        554.8,
+        572.8,
+        590.4
+      ]
+    },
+    {
+      "hook": "lib/vocabulary.sh",
+      "scope": "claude",
+      "coldMs": 2.8,
+      "samples": [
+        2.5,
+        2.8,
+        3.4
+      ]
+    },
+    {
+      "hook": "notification.sh",
+      "scope": "claude",
+      "coldMs": 6.4,
+      "samples": [
+        5.7,
+        6.4,
+        6.7
+      ]
+    },
+    {
+      "hook": "permission-denied.sh",
+      "scope": "claude",
+      "coldMs": 12,
+      "samples": [
+        10.6,
+        12,
+        12.1
+      ]
+    },
+    {
+      "hook": "permission-gate.sh",
+      "scope": "claude",
+      "coldMs": 4.7,
+      "samples": [
+        4.4,
+        4.7,
+        5.4
+      ]
+    },
+    {
+      "hook": "post-tool-failure.sh",
+      "scope": "claude",
+      "coldMs": 4.5,
+      "samples": [
+        3.8,
+        4.5,
+        4.8
+      ]
+    },
+    {
+      "hook": "post-tool-use.sh",
+      "scope": "claude",
+      "coldMs": 11.8,
+      "samples": [
+        10.8,
+        11.8,
+        11.9
+      ]
+    },
+    {
+      "hook": "pre-compact.sh",
+      "scope": "claude",
+      "coldMs": 573.2,
+      "samples": [
+        573,
+        573.2,
+        601.6
+      ]
+    },
+    {
+      "hook": "pre-tool-use.sh",
+      "scope": "claude",
+      "coldMs": 572.4,
+      "samples": [
+        558.1,
+        572.4,
+        580.4
+      ]
+    },
+    {
+      "hook": "prompt-submit.sh",
+      "scope": "claude",
+      "coldMs": 14.5,
+      "samples": [
+        14.5,
+        14.5,
+        14.7
+      ]
+    },
+    {
+      "hook": "review-checklist.sh",
+      "scope": "claude",
+      "coldMs": 4.4,
+      "samples": [
+        3.9,
+        4.4,
+        4.8
+      ]
+    },
+    {
+      "hook": "session-end.sh",
+      "scope": "claude",
+      "coldMs": 7,
+      "samples": [
+        6.5,
+        7,
+        8.2
+      ]
+    },
+    {
+      "hook": "session-start.sh",
+      "scope": "claude",
+      "coldMs": 570.9,
+      "samples": [
+        568,
+        570.9,
+        610.2
+      ]
+    },
+    {
+      "hook": "stop-check.sh",
+      "scope": "claude",
+      "coldMs": 574.6,
+      "samples": [
+        571.3,
+        574.6,
+        589
+      ]
+    },
+    {
+      "hook": "stop-failure.sh",
+      "scope": "claude",
+      "coldMs": 577.8,
+      "samples": [
+        564,
+        577.8,
+        580.4
+      ]
+    },
+    {
+      "hook": "subagent-guard.sh",
+      "scope": "claude",
+      "coldMs": 578.4,
+      "samples": [
+        554.1,
+        578.4,
+        586.7
+      ]
+    },
+    {
+      "hook": "subagent-stop.sh",
+      "scope": "claude",
+      "coldMs": 6.9,
+      "samples": [
+        6.8,
+        6.9,
+        7.3
+      ]
+    },
+    {
+      "hook": "doc-format-guard.sh",
+      "scope": "qoder",
+      "coldMs": 28.8,
+      "samples": [
+        28.4,
+        28.8,
+        29.1
+      ]
+    },
+    {
+      "hook": "lib/common.sh",
+      "scope": "qoder",
+      "coldMs": 5.3,
+      "samples": [
+        4.9,
+        5.3,
+        5.9
+      ]
+    },
+    {
+      "hook": "lib/context-inject.sh",
+      "scope": "qoder",
+      "coldMs": 1.7,
+      "samples": [
+        1.7,
+        1.7,
+        2.1
+      ]
+    },
+    {
+      "hook": "lib/notify.sh",
+      "scope": "qoder",
+      "coldMs": 2.1,
+      "samples": [
+        2.1,
+        2.1,
+        3
+      ]
+    },
+    {
+      "hook": "lib/preload-templates.sh",
+      "scope": "qoder",
+      "coldMs": 8.1,
+      "samples": [
+        6.8,
+        8.1,
+        8.3
+      ]
+    },
+    {
+      "hook": "lib/session-end.sh",
+      "scope": "qoder",
+      "coldMs": 16.3,
+      "samples": [
+        15.9,
+        16.3,
+        16.5
+      ]
+    },
+    {
+      "hook": "lib/state-detect.sh",
+      "scope": "qoder",
+      "coldMs": 7.3,
+      "samples": [
+        6.6,
+        7.3,
+        7.4
+      ]
+    },
+    {
+      "hook": "lib/subagent-stop.sh",
+      "scope": "qoder",
+      "coldMs": 577,
+      "samples": [
+        571.3,
+        577,
+        597
+      ]
+    },
+    {
+      "hook": "lib/vocabulary.sh",
+      "scope": "qoder",
+      "coldMs": 2.2,
+      "samples": [
+        2,
+        2.2,
+        2.6
+      ]
+    },
+    {
+      "hook": "notification.sh",
+      "scope": "qoder",
+      "coldMs": 6.1,
+      "samples": [
+        5.8,
+        6.1,
+        6.6
+      ]
+    },
+    {
+      "hook": "permission-gate.sh",
+      "scope": "qoder",
+      "coldMs": 6.2,
+      "samples": [
+        5.4,
+        6.2,
+        6.9
+      ]
+    },
+    {
+      "hook": "post-tool-failure.sh",
+      "scope": "qoder",
+      "coldMs": 7.9,
+      "samples": [
+        7.7,
+        7.9,
+        8.4
+      ]
+    },
+    {
+      "hook": "post-tool-use.sh",
+      "scope": "qoder",
+      "coldMs": 14.8,
+      "samples": [
+        14.8,
+        14.8,
+        15.4
+      ]
+    },
+    {
+      "hook": "pre-compact.sh",
+      "scope": "qoder",
+      "coldMs": 581.8,
+      "samples": [
+        580.7,
+        581.8,
+        584.4
+      ]
+    },
+    {
+      "hook": "pre-tool-use.sh",
+      "scope": "qoder",
+      "coldMs": 590.2,
+      "samples": [
+        589.8,
+        590.2,
+        643.2
+      ]
+    },
+    {
+      "hook": "prompt-submit.sh",
+      "scope": "qoder",
+      "coldMs": 6.6,
+      "samples": [
+        5.9,
+        6.6,
+        6.6
+      ]
+    },
+    {
+      "hook": "review-checklist.sh",
+      "scope": "qoder",
+      "coldMs": 2,
+      "samples": [
+        1.9,
+        2,
+        2.9
+      ]
+    },
+    {
+      "hook": "session-end.sh",
+      "scope": "qoder",
+      "coldMs": 17.1,
+      "samples": [
+        17,
+        17.1,
+        17.6
+      ]
+    },
+    {
+      "hook": "session-start.sh",
+      "scope": "qoder",
+      "coldMs": 615.6,
+      "samples": [
+        585.2,
+        615.6,
+        622.2
+      ]
+    },
+    {
+      "hook": "stop-check.sh",
+      "scope": "qoder",
+      "coldMs": 582.5,
+      "samples": [
+        578.4,
+        582.5,
+        591.8
+      ]
+    },
+    {
+      "hook": "subagent-guard.sh",
+      "scope": "qoder",
+      "coldMs": 575.8,
+      "samples": [
+        568.6,
+        575.8,
+        596.1
+      ]
+    },
+    {
+      "hook": "subagent-stop.sh",
+      "scope": "qoder",
+      "coldMs": 573,
+      "samples": [
+        572.7,
+        573,
+        576.3
+      ]
+    },
+    {
+      "hook": "doc-format-guard.sh",
+      "scope": "vscode",
+      "coldMs": 28.7,
+      "samples": [
+        28.2,
+        28.7,
+        29.6
+      ]
+    },
+    {
+      "hook": "lib/common.sh",
+      "scope": "vscode",
+      "coldMs": 5.1,
+      "samples": [
+        4.6,
+        5.1,
+        6.8
+      ]
+    },
+    {
+      "hook": "lib/context-inject.sh",
+      "scope": "vscode",
+      "coldMs": 2.4,
+      "samples": [
+        2.2,
+        2.4,
+        2.7
+      ]
+    },
+    {
+      "hook": "lib/notify.sh",
+      "scope": "vscode",
+      "coldMs": 1.8,
+      "samples": [
+        1.6,
+        1.8,
+        1.9
+      ]
+    },
+    {
+      "hook": "lib/preload-templates.sh",
+      "scope": "vscode",
+      "coldMs": 7.5,
+      "samples": [
+        7.1,
+        7.5,
+        8.4
+      ]
+    },
+    {
+      "hook": "lib/session-end.sh",
+      "scope": "vscode",
+      "coldMs": 17.6,
+      "samples": [
+        16.5,
+        17.6,
+        18.5
+      ]
+    },
+    {
+      "hook": "lib/state-detect.sh",
+      "scope": "vscode",
+      "coldMs": 7.7,
+      "samples": [
+        7.6,
+        7.7,
+        8.9
+      ]
+    },
+    {
+      "hook": "lib/subagent-stop.sh",
+      "scope": "vscode",
+      "coldMs": 570.7,
+      "samples": [
+        563.5,
+        570.7,
+        580.6
+      ]
+    },
+    {
+      "hook": "lib/vocabulary.sh",
+      "scope": "vscode",
+      "coldMs": 2,
+      "samples": [
+        1.7,
+        2,
+        2.3
+      ]
+    },
+    {
+      "hook": "notification.sh",
+      "scope": "vscode",
+      "coldMs": 6.2,
+      "samples": [
+        5.9,
+        6.2,
+        6.5
+      ]
+    },
+    {
+      "hook": "permission-gate.sh",
+      "scope": "vscode",
+      "coldMs": 4.4,
+      "samples": [
+        4.1,
+        4.4,
+        5.3
+      ]
+    },
+    {
+      "hook": "post-tool-failure.sh",
+      "scope": "vscode",
+      "coldMs": 11.4,
+      "samples": [
+        10.6,
+        11.4,
+        11.5
+      ]
+    },
+    {
+      "hook": "post-tool-use.sh",
+      "scope": "vscode",
+      "coldMs": 11.4,
+      "samples": [
+        10.6,
+        11.4,
+        11.9
+      ]
+    },
+    {
+      "hook": "pre-compact.sh",
+      "scope": "vscode",
+      "coldMs": 571.8,
+      "samples": [
+        569.1,
+        571.8,
+        603.7
+      ]
+    },
+    {
+      "hook": "pre-tool-use.sh",
+      "scope": "vscode",
+      "coldMs": 566.5,
+      "samples": [
+        564.4,
+        566.5,
+        585.9
+      ]
+    },
+    {
+      "hook": "prompt-submit.sh",
+      "scope": "vscode",
+      "coldMs": 14,
+      "samples": [
+        13.8,
+        14,
+        14.4
+      ]
+    },
+    {
+      "hook": "review-checklist.sh",
+      "scope": "vscode",
+      "coldMs": 4,
+      "samples": [
+        3.7,
+        4,
+        4.6
+      ]
+    },
+    {
+      "hook": "session-end.sh",
+      "scope": "vscode",
+      "coldMs": 6.8,
+      "samples": [
+        6.4,
+        6.8,
+        7.3
+      ]
+    },
+    {
+      "hook": "session-start.sh",
+      "scope": "vscode",
+      "coldMs": 573.1,
+      "samples": [
+        565,
+        573.1,
+        598.5
+      ]
+    },
+    {
+      "hook": "stop-check.sh",
+      "scope": "vscode",
+      "coldMs": 568.7,
+      "samples": [
+        560.6,
+        568.7,
+        608.1
+      ]
+    },
+    {
+      "hook": "subagent-guard.sh",
+      "scope": "vscode",
+      "coldMs": 560.4,
+      "samples": [
+        555.7,
+        560.4,
+        575.9
+      ]
+    },
+    {
+      "hook": "subagent-stop.sh",
+      "scope": "vscode",
+      "coldMs": 7,
+      "samples": [
+        6.1,
+        7,
+        7.4
+      ]
+    },
+    {
+      "hook": "doc-format-guard.sh",
+      "scope": "trae",
+      "coldMs": 28.5,
+      "samples": [
+        26.5,
+        28.5,
+        29.2
+      ]
+    },
+    {
+      "hook": "lib/common.sh",
+      "scope": "trae",
+      "coldMs": 5.1,
+      "samples": [
+        4.5,
+        5.1,
+        5.2
+      ]
+    },
+    {
+      "hook": "lib/context-inject.sh",
+      "scope": "trae",
+      "coldMs": 1.7,
+      "samples": [
+        1.7,
+        1.7,
+        2.2
+      ]
+    },
+    {
+      "hook": "lib/notify.sh",
+      "scope": "trae",
+      "coldMs": 1.7,
+      "samples": [
+        1.6,
+        1.7,
+        1.8
+      ]
+    },
+    {
+      "hook": "lib/preload-templates.sh",
+      "scope": "trae",
+      "coldMs": 7.7,
+      "samples": [
+        6.4,
+        7.7,
+        7.7
+      ]
+    },
+    {
+      "hook": "lib/session-end.sh",
+      "scope": "trae",
+      "coldMs": 15.8,
+      "samples": [
+        15.5,
+        15.8,
+        15.9
+      ]
+    },
+    {
+      "hook": "lib/state-detect.sh",
+      "scope": "trae",
+      "coldMs": 7.5,
+      "samples": [
+        6.6,
+        7.5,
+        8.2
+      ]
+    },
+    {
+      "hook": "lib/subagent-stop.sh",
+      "scope": "trae",
+      "coldMs": 18.3,
+      "samples": [
+        18,
+        18.3,
+        18.3
+      ]
+    },
+    {
+      "hook": "lib/vocabulary.sh",
+      "scope": "trae",
+      "coldMs": 2.2,
+      "samples": [
+        1.7,
+        2.2,
+        2.8
+      ]
+    },
+    {
+      "hook": "notification.sh",
+      "scope": "trae",
+      "coldMs": 6.2,
+      "samples": [
+        5.7,
+        6.2,
+        6.4
+      ]
+    },
+    {
+      "hook": "permission-gate.sh",
+      "scope": "trae",
+      "coldMs": 4.5,
+      "samples": [
+        4.1,
+        4.5,
+        5.1
+      ]
+    },
+    {
+      "hook": "post-tool-failure.sh",
+      "scope": "trae",
+      "coldMs": 4.2,
+      "samples": [
+        4,
+        4.2,
+        4.8
+      ]
+    },
+    {
+      "hook": "post-tool-use.sh",
+      "scope": "trae",
+      "coldMs": 10.9,
+      "samples": [
+        10.8,
+        10.9,
+        11.6
+      ]
+    },
+    {
+      "hook": "pre-compact.sh",
+      "scope": "trae",
+      "coldMs": 21.8,
+      "samples": [
+        20.3,
+        21.8,
+        23
+      ]
+    },
+    {
+      "hook": "pre-tool-use.sh",
+      "scope": "trae",
+      "coldMs": 13,
+      "samples": [
+        12.9,
+        13,
+        13
+      ]
+    },
+    {
+      "hook": "prompt-submit.sh",
+      "scope": "trae",
+      "coldMs": 6.6,
+      "samples": [
+        5.7,
+        6.6,
+        6.6
+      ]
+    },
+    {
+      "hook": "review-checklist.sh",
+      "scope": "trae",
+      "coldMs": 4.7,
+      "samples": [
+        4,
+        4.7,
+        5.4
+      ]
+    },
+    {
+      "hook": "session-end.sh",
+      "scope": "trae",
+      "coldMs": 13.7,
+      "samples": [
+        13.4,
+        13.7,
+        13.7
+      ]
+    },
+    {
+      "hook": "session-start.sh",
+      "scope": "trae",
+      "coldMs": 21.3,
+      "samples": [
+        20.7,
+        21.3,
+        21.6
+      ]
+    },
+    {
+      "hook": "stop-check.sh",
+      "scope": "trae",
+      "coldMs": 18.5,
+      "samples": [
+        17.9,
+        18.5,
+        18.6
+      ]
+    },
+    {
+      "hook": "subagent-guard.sh",
+      "scope": "trae",
+      "coldMs": 4.9,
+      "samples": [
+        4.6,
+        4.9,
+        5
+      ]
+    },
+    {
+      "hook": "subagent-stop.sh",
+      "scope": "trae",
+      "coldMs": 19.1,
+      "samples": [
+        18.9,
+        19.1,
+        19.2
+      ]
+    },
+    {
+      "hook": "doc-format-guard.sh",
+      "scope": "codex",
+      "coldMs": 30,
+      "samples": [
+        29,
+        30,
+        30.3
+      ]
+    },
+    {
+      "hook": "lib/common.sh",
+      "scope": "codex",
+      "coldMs": 5.9,
+      "samples": [
+        5.8,
+        5.9,
+        6.1
+      ]
+    },
+    {
+      "hook": "lib/context-inject.sh",
+      "scope": "codex",
+      "coldMs": 2,
+      "samples": [
+        1.8,
+        2,
+        2.5
+      ]
+    },
+    {
+      "hook": "lib/notify.sh",
+      "scope": "codex",
+      "coldMs": 1.7,
+      "samples": [
+        1.6,
+        1.7,
+        2.9
+      ]
+    },
+    {
+      "hook": "lib/preload-templates.sh",
+      "scope": "codex",
+      "coldMs": 8.1,
+      "samples": [
+        7.6,
+        8.1,
+        9.9
+      ]
+    },
+    {
+      "hook": "lib/session-end.sh",
+      "scope": "codex",
+      "coldMs": 17.2,
+      "samples": [
+        16.3,
+        17.2,
+        17.3
+      ]
+    },
+    {
+      "hook": "lib/state-detect.sh",
+      "scope": "codex",
+      "coldMs": 7.4,
+      "samples": [
+        7.4,
+        7.4,
+        7.8
+      ]
+    },
+    {
+      "hook": "lib/subagent-stop.sh",
+      "scope": "codex",
+      "coldMs": 580.3,
+      "samples": [
+        568.9,
+        580.3,
+        583.8
+      ]
+    },
+    {
+      "hook": "lib/vocabulary.sh",
+      "scope": "codex",
+      "coldMs": 2.2,
+      "samples": [
+        1.9,
+        2.2,
+        2.4
+      ]
+    },
+    {
+      "hook": "notification.sh",
+      "scope": "codex",
+      "coldMs": 6.5,
+      "samples": [
+        5.6,
+        6.5,
+        6.8
+      ]
+    },
+    {
+      "hook": "permission-gate.sh",
+      "scope": "codex",
+      "coldMs": 4.9,
+      "samples": [
+        4.3,
+        4.9,
+        5
+      ]
+    },
+    {
+      "hook": "post-tool-failure.sh",
+      "scope": "codex",
+      "coldMs": 4.1,
+      "samples": [
+        3.8,
+        4.1,
+        4.7
+      ]
+    },
+    {
+      "hook": "post-tool-use.sh",
+      "scope": "codex",
+      "coldMs": 12.6,
+      "samples": [
+        12,
+        12.6,
+        12.8
+      ]
+    },
+    {
+      "hook": "pre-compact.sh",
+      "scope": "codex",
+      "coldMs": 604.8,
+      "samples": [
+        574.4,
+        604.8,
+        611.3
+      ]
+    },
+    {
+      "hook": "pre-tool-use.sh",
+      "scope": "codex",
+      "coldMs": 590,
+      "samples": [
+        565.4,
+        590,
+        590.6
+      ]
+    },
+    {
+      "hook": "prompt-submit.sh",
+      "scope": "codex",
+      "coldMs": 6.5,
+      "samples": [
+        5.8,
+        6.5,
+        6.6
+      ]
+    },
+    {
+      "hook": "review-checklist.sh",
+      "scope": "codex",
+      "coldMs": 4.5,
+      "samples": [
+        4.1,
+        4.5,
+        4.7
+      ]
+    },
+    {
+      "hook": "session-end.sh",
+      "scope": "codex",
+      "coldMs": 13.5,
+      "samples": [
+        13.3,
+        13.5,
+        13.5
+      ]
+    },
+    {
+      "hook": "session-start.sh",
+      "scope": "codex",
+      "coldMs": 627.1,
+      "samples": [
+        615.1,
+        627.1,
+        632.9
+      ]
+    },
+    {
+      "hook": "stop-check.sh",
+      "scope": "codex",
+      "coldMs": 575.3,
+      "samples": [
+        568,
+        575.3,
+        616.2
+      ]
+    },
+    {
+      "hook": "subagent-guard.sh",
+      "scope": "codex",
+      "coldMs": 4.7,
+      "samples": [
+        4.4,
+        4.7,
+        5.1
+      ]
+    },
+    {
+      "hook": "subagent-stop.sh",
+      "scope": "codex",
+      "coldMs": 577,
+      "samples": [
+        569.4,
+        577,
+        581.6
+      ]
+    }
+  ]
+}

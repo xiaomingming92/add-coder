@@ -1,0 +1,46 @@
+{
+  "hook": "doc-format-guard",
+  "scope": "codex",
+  "source": ".codex/hooks/doc-format-guard.mjs",
+  "capturedAt": "2026-08-14T05:19:25.407Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "jq: error (at <stdin>:1): null (null) has no keys\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "jq: error (at <stdin>:1): null (null) has no keys\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

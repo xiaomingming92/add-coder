@@ -1,0 +1,46 @@
+{
+  "hook": "subagent-guard",
+  "scope": "claude",
+  "source": ".claude/hooks/subagent-guard.mjs",
+  "capturedAt": "2026-08-14T04:23:10.140Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".claude",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".claude",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD SubagentStart] 子代理上下文注入:\n  Plan: __STATUS_UNAVAILABLE__\n  Step: magicDir 未注入且无法从物理位置推导\n  轮次: database\n  handoff: none\n  遵循 ADD 规范，完成后请检查 checklist 对应项\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "hook": "stop-failure",
+  "scope": "claude",
+  "source": ".claude/hooks/stop-failure.mjs",
+  "capturedAt": "2026-08-14T04:23:08.815Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".claude",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD StopFailure] ⚠️ Agent 异常退出 — 2026-08-14T12:23:07+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".claude",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD StopFailure] ⚠️ Agent 异常退出 — 2026-08-14T12:23:08+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD StopFailure] ⚠️ Agent 异常退出 — 2026-08-14T12:23:08+08:00\n[ADD StopFailure] 异常退出时 ADD 状态:\n  Plan: __STATUS_UNAVAILABLE__\n  Step: magicDir 未注入且无法从物理位置推导\n  轮次: database\n  handoff: none\n  add-route: none\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

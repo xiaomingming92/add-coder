@@ -5,6 +5,25 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.28] - 2026-08-14
+
+### 创新（Hook 治理协议层 v2——0.3.27 承诺的可证明兑现）
+
+- **一致即可证**：五端一致性矩阵落地（`tests/hook-consistency.test.ts`）——危险命令拦截 / 敏感文件锚定 / 审计事件面 / 协议形态标注 / 治理 0 复制逐项断言，**0.3.27「五端 IDE 全部接入，治理行为完全一致」从宣称变可证明**（六端双形态对比 42/48/42/42/42/42 全绿 + 矩阵 6/6）
+- **审计即闭环**：post-tool-use 文件写入事件面扩展（AuditBridge）——写入即落库（jsonl → MCP 常驻消费 → ADD-7 自动化，幂等去重），prompt-submit 显式不接入防范围扩散
+- **规则即数据收官**：危险命令检测链（`rm -rf /` / `DROP TABLE` / `git push --force` 等）上提 core 基线链，六端同拦截（此前 core/trae/codex 有盲区）；敏感文件正则锚定化——`config.env` 等普通文件不再误拦
+- **治理能力上提**：HITL 双哨兵（MCP 双命名哨兵对齐）/ Implementation Review 也走 HITL（豁免仅 `-runtime`）/ Q4 双维度组合（DB 任务进度前置 + checklist 质量，互补非替代）
+
+### 修复
+
+- qoder Stop 提示 `{{info}}` 不插值（bash `<<'EOF'` 缺陷照搬）→ 回归插值语义
+- claude 无 Plan 写入放行 exit 2 → 对齐 core exit 0
+- 敏感文件拦截 exit 码丢失（guardFilePath 返回 void 丢弃 onSensitiveDeny 的 exit 2——拦截形同虚设）→ 阻断码透传
+- codex apply_patch 被误当 Bash 工具（jsonGet 全局匹配误取 tool_input.command）→ 按 tool_name 分流
+- golden 反写工具状态污染（refresh-fixed 未清理 dev 标记导致抓取状态不可控）→ 与抓取语义对齐
+- windows-stability 过期版本断言（0.3.26 → 0.3.27）
+
+---
 ## [0.3.27] - 2026-08-13
 
 ### 创新

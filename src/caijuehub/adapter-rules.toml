@@ -9,3 +9,15 @@ codex = ".codex"
 
 [auto]
 deploy = ["claude", "qoder", "vscode"]
+
+# ── Hook 来源模式（用户可选，2026-08-14 Web 实证）──────────────────
+# Trae 官方支持「导入 CLAUDE 中的 Hooks 配置」开关（docs.trae.cn）——
+# 与 Claude Code hooks.json 四层结构/事件/stdin·stdout·exit 通信完全兼容。
+# 用户可按环境选择:
+#   self:          独立分发本端 hooks（默认——全量可控，阻断型事件协议差异安全）
+#   claude-import: 跳过本端 hooks 分发——用户用 IDE 设置导入 Claude hooks 配置，
+#                  复用 .claude 端产物（零额外分发；前置条件: 同项目已部署 claude 端）
+# 兼容性限制: 阻断型事件（PreToolUse/Stop）协议若与 claude 端不同（如 JSON ask vs
+#   纯 stderr），导入模式不兼容——需保持 self；注入型事件（SessionStart/UserPromptSubmit）可复用。
+[hook_source]
+trae = "self"   # 当前独立分发；装 claude 的存量用户可改 "claude-import" 免分发

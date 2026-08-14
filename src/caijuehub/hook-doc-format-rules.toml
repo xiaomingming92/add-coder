@@ -1,0 +1,192 @@
+# ═══════════════════════════════════════════════════════════════
+# hook-doc-format-rules.toml —— doc-format-guard 文档识别规则真源
+# 消费方式: hook-rules-gen.ts → 生成 templates/core/hooks/lib/rules.docformat.ts
+# 改动规则: 只改本文件，运行生成器（产物带 _generated 标记，勿手改）
+# 双源约定: hook 源码禁止硬编码本文件已声明规则（hook-rules.test.ts 负向断言）
+# 识别序: token 表（特异性优先）→ 内容探测链 → 增量修订豁免 → 拒绝
+# ═══════════════════════════════════════════════════════════════
+
+# ── 文件名 token 匹配表（有序，特异性优先；base = 文件名剥 -vN 后缀）──
+
+[[doc.token_rules]]
+template = "add-route-template-heavyweight.md"
+tokens = ["add-route", "heavy"]
+
+[[doc.token_rules]]
+template = "add-route-template.md"
+tokens = ["add-route"]
+
+[[doc.token_rules]]
+template = "hitl-template.md"
+tokens = ["hitl"]
+
+[[doc.token_rules]]
+template = "" # handoff: 交内容探测链（不在此识别）
+tokens = ["handoff"]
+
+[[doc.token_rules]]
+template = "checklist-template.md"
+tokens = ["checklist"]
+
+[[doc.token_rules]]
+template = "fix-verification-template.md"
+tokens = ["fix-verif"]
+
+[[doc.token_rules]]
+template = "runtime-report-template.md"
+tokens = ["report", "runtime"]
+
+[[doc.token_rules]]
+template = "report-template.md"
+tokens = ["report"]
+
+[[doc.token_rules]]
+template = "tasks-template.md"
+tokens = ["tasks"]
+
+[[doc.token_rules]]
+template = "spec-template.md"
+tokens = ["spec"]
+
+[[doc.token_rules]]
+template = "standard-plan-template.md"
+tokens = ["plan"]
+
+# ── 内容特征探测链（有序，命中即返回；缺省 = core 基线）────────────────
+
+[[doc.content_rules]]
+marker = "## PLAN 元信息"
+template = "standard-plan-template.md"
+
+[[doc.content_rules]]
+marker = "## 一、Plan 概述"
+template = "simple-plan-template.md"
+
+[[doc.content_rules]]
+marker = "## 四、Handoff"
+template = "simple-plan-template.md"
+
+[[doc.content_rules]]
+marker = "## Review 元信息"
+template = "review-template.md"
+sub_markers = [
+  { marker = "运行时验证", template = "review-runtime-template.md" },
+  { marker = "跨仓库格式契约", template = "review-implementation-template.md" },
+]
+
+[[doc.content_rules]]
+marker = "## Why"
+template = "spec-template.md"
+
+[[doc.content_rules]]
+marker = "## Preconditions"
+template = "tasks-template.md"
+
+[[doc.content_rules]]
+marker = "审计链（证据→devlog→checklist）"
+template = "checklist-template.md"
+
+# claude adapter 内容探测链（bash 原文 L87-104 逐字对照）:
+#   差异点仅两个：①「## 四、Handoff」分支前置（在 PLAN 元信息之前）
+#   ②「## 四、Handoff」→ simple-standard-plan-template.md（core 映射 simple-plan）
+[[doc.adapter_content_rules]]
+adapter = "claude"
+marker = "## 四、Handoff"
+template = "simple-standard-plan-template.md"
+
+[[doc.adapter_content_rules]]
+adapter = "claude"
+marker = "## PLAN 元信息"
+template = "standard-plan-template.md"
+
+[[doc.adapter_content_rules]]
+adapter = "claude"
+marker = "## 一、Plan 概述"
+template = "simple-plan-template.md"
+
+[[doc.adapter_content_rules]]
+adapter = "claude"
+marker = "## Review 元信息"
+template = "review-template.md"
+sub_markers = [
+  { marker = "运行时验证", template = "review-runtime-template.md" },
+  { marker = "跨仓库格式契约", template = "review-implementation-template.md" },
+]
+
+[[doc.adapter_content_rules]]
+adapter = "claude"
+marker = "## Why"
+template = "spec-template.md"
+
+[[doc.adapter_content_rules]]
+adapter = "claude"
+marker = "## Preconditions"
+template = "tasks-template.md"
+
+[[doc.adapter_content_rules]]
+adapter = "claude"
+marker = "审计链（证据→devlog→checklist）"
+template = "checklist-template.md"
+
+# ── handoff 内容识别（token 规则放空后由内容探测承接）────────────
+
+[doc.handoff]
+marker_multi = "## 全局元信息"     # → handoff-multi-round-template.md
+marker_single = "## 1. 交接前状态" # → handoff-single-round-template.md
+
+# ── 文件名 fallback 探测链（内容探测后兜底）──────────────────────
+# 注意: 顺序与 token 表不同（bash 版 fallback 中 plan 优先于 tasks/spec/checklist）——
+# 行为等价红线，不可擅自对齐 token 表序。
+
+[[doc.fallback_rules]]
+template = "add-route-template-heavyweight.md"
+tokens = ["add-route", "heavy"]
+
+[[doc.fallback_rules]]
+template = "add-route-template.md"
+tokens = ["add-route"]
+
+[[doc.fallback_rules]]
+template = "standard-plan-template.md"
+tokens = ["plan"]
+
+[[doc.fallback_rules]]
+template = "tasks-template.md"
+tokens = ["tasks"]
+
+[[doc.fallback_rules]]
+template = "spec-template.md"
+tokens = ["spec"]
+
+[[doc.fallback_rules]]
+template = "checklist-template.md"
+tokens = ["checklist"]
+
+[[doc.fallback_rules]]
+template = "runtime-report-template.md"
+tokens = ["report", "runtime"]
+
+[[doc.fallback_rules]]
+template = "report-template.md"
+tokens = ["report"]
+
+[[doc.fallback_rules]]
+template = "fix-verification-template.md"
+tokens = ["fix-verif"]
+
+[[doc.fallback_rules]]
+template = "hitl-template.md"
+tokens = ["hitl"]
+
+# ── 增量修订豁免（命中 → 跳过完整章节校验）───────────────────────
+
+[doc.incremental]
+regex = '~~.+~~|→|\[\d{4}-\d{2}-\d{2}\s+修订'
+
+# ── 算法化规则：精简版反作弊 ─────────────────────────────────────
+
+[doc.anti_cheat]
+max_file_count = 3                                       # 精简版文件清单上限
+fuzzy_file_regex = '等\s*\d*\s*个文件|等\s*若干'          # 模糊文件清单
+fuzzy_decision_regex = '等\s*若干\s*(决策|方案|设计)'      # 模糊决策清单
+forbidden_heading = "## 三、架构设计"                     # 精简版禁含架构章节

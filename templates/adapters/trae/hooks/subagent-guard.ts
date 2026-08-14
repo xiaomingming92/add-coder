@@ -1,0 +1,22 @@
+// subagent-guard.ts — SubagentStart 入口（Trae 版，Task 3.1 继承体系）
+// 继承 core SubagentGuardRouter（状态注入模板方法——能力对齐）:
+//   能力对齐注: 原 trae 为弱版（事件提示空话），已对齐强版（状态注入）
+//   ① 输出形态: 纯文本状态块（core/qoder 是 hookSpecificOutput JSON）
+
+import { SubagentGuardRouter } from "../../../core/governance/subagent-guard-router.js"
+
+class TraeSubagentGuardRouter extends SubagentGuardRouter {
+  /** ① 纯文本状态块（trae 协议，与 claude 同构） */
+  protected override emit(state: string): void {
+    const [plan, step, rounds, handoff] = state.split("::")
+    process.stdout.write(`[ADD SubagentStart] 子代理上下文注入:
+  Plan: ${plan}
+  Step: ${step}
+  轮次: ${rounds}
+  handoff: ${handoff}
+  遵循 ADD 规范，完成后请检查 checklist 对应项
+`)
+  }
+}
+
+process.exit(new TraeSubagentGuardRouter().run())

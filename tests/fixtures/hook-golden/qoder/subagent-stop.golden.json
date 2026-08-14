@@ -1,0 +1,46 @@
+{
+  "hook": "subagent-stop",
+  "scope": "qoder",
+  "source": ".qoder/hooks/subagent-stop.sh",
+  "capturedAt": "2026-08-14T04:43:53.849Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SubagentStop\",\"additionalContext\":\"[ADD SubagentStop]  子代理结束。Plan: add-coder-hook-node-migration-plan-v1, handoff: none。边界校验通过，审计已聚合。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SubagentStop\",\"additionalContext\":\"[ADD SubagentStop] unknown 子代理结束。Plan: add-coder-hook-node-migration-plan-v1, handoff: none。边界校验通过，审计已聚合。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SubagentStop\",\"additionalContext\":\"[ADD SubagentStop] unknown 子代理结束。Plan: __STATUS_UNAVAILABLE__, handoff: none。边界校验通过，审计已聚合。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

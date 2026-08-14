@@ -1,0 +1,46 @@
+{
+  "hook": "lib-preload-templates",
+  "scope": "trae",
+  "source": ".trae/hooks/lib/preload-templates.sh",
+  "capturedAt": "2026-08-14T04:56:08.457Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".trae",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD preload] 模板目录不存在: /home/xmm/ai/add-coder/.trae/hooks/lib/../../templates（生成态物化缺失，请执行 add-coder sync 后重试）\n",
+        "exitCode": 1
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".trae",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD preload] 模板目录不存在: /home/xmm/ai/add-coder/.trae/hooks/lib/../../templates（生成态物化缺失，请执行 add-coder sync 后重试）\n",
+        "exitCode": 1
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD preload] 模板目录不存在: /home/xmm/ai/add-coder/.trae/hooks/lib/../../templates（生成态物化缺失，请执行 add-coder sync 后重试）\n",
+        "exitCode": 1
+      }
+    }
+  ]
+}

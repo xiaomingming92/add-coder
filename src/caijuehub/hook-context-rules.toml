@@ -1,0 +1,141 @@
+# ═══════════════════════════════════════════════════════════════
+# hook-context-rules.toml —— 上下文注入/Stop 象限/模板清单规则真源
+# 消费方式: hook-rules-gen.ts → 生成 templates/core/hooks/lib/rules.context.ts
+# 改动规则: 只改本文件，运行生成器（产物带 _generated 标记，勿手改）
+# 双源约定: hook 源码禁止硬编码本文件已声明规则（hook-rules.test.ts 负向断言）
+# consumed 语义: true = 有入口消费（stop-check 分流），false = 死代码象限
+#               （2026-08-14 实态核验: 全端仅消费 2 象限，其余 5 个待清理）
+# ═══════════════════════════════════════════════════════════════
+
+# ── Stop 七象限分流（id 为 buildStopContext 入参契约）────────────
+
+[[context.quadrants]]
+id = "no_add_no_dev"
+consumed = false
+text = "[ADD Stop] 无活跃 Plan，无代码改动。正常结束。"
+
+[[context.quadrants]]
+id = "no_add_has_dev"
+consumed = true
+text = '''[ADD Stop] ⚠️ 检测到代码修改但无活跃 ADD Plan。
+
+Plan 不是"文档开销"——它是代码治理的基础设施。跳过 Plan 的后果:
+  · 没有 add-route → 每次改动无法追溯到具体 Task
+  · 没有 tasks.md → 后续 AI Session 不知道改了哪些文件
+  · 没有 handoff → 交接时上下文全丢，只能靠 git log 猜
+
+你必须立即补救，二选一:
+
+方案 A — 补 ADD 流程（招安）:
+  Step 0: 读 .qoder/templates/plan-template.md → 生成 Plan → .qoder/plans/{today}/{keyword}-plan-v1.md
+          生成 add-route → check_dps ≥ {{dpsPass}}
+  Step 1: 扩展 AgentAuditPhase（如需要）
+  Step 2: 确认 agentAudit() 通道
+  Step 3: 将已写代码关联到 tasks.md
+  完成后可正常停止。
+
+方案 B — 补不上则回滚:
+  如果改动太复杂无法追溯生成 Plan，则:
+  ① git diff 确认改动范围
+  ② 仅对已确认属于本轮的文件生成反向 apply_patch
+  ③ 无法安全确认改动所有权时停止，并请求用户决定
+
+无论选 A 还是 B，完成后告诉用户下次执行 session-init 恢复上下文。
+'''
+
+[[context.quadrants]]
+id = "has_add_no_dev"
+consumed = false
+text = "[ADD Stop] ADD 流程进行中 ({{info}})，本次无代码改动。下次继续时执行 session-init 恢复上下文。"
+
+[[context.quadrants]]
+id = "has_add_dev_step02"
+consumed = false
+text = "[ADD Stop] ADD Step 0-2: 文档先行/审计准备阶段。无需验收闭环。下一步: 进入 Step 3 代码实现。"
+
+[[context.quadrants]]
+id = "has_add_dev_step3"
+consumed = false
+text = "[ADD Stop] ADD Step 3: 代码实现进行中 ({{info}})。完成后进入 Step 3.5 实现审查。"
+
+[[context.quadrants]]
+id = "has_add_dev_unclosed"
+consumed = true
+text = '''[ADD Stop] ⚠️ 代码已完成但验收未闭环:
+{{info}}
+
+请依次执行（不要等下次会话）:
+  ① Write devlog → handoff 同目录 devlog-{plan}-v{n}.md
+     格式: # Devlog: {plan}\n 日期 / Plan / 轮次 / 本轮改了什么 / 验收结果 / 遗留项 / 架构回看
+  ② Edit handoff → 更新 §验证标准 全部 [x] + 补充审计 ID
+     ★ 同步: checklist 有新 cuid → handoff ADD-7 表必须对应新增行
+     ★ Step 0 准入: handoff + add-route + Specs 三元组缺一不可，缺则回退 Step 0.5
+  ③ Read docs/ → 回看架构文档确认一致性
+  ④ Edit add-route → 勾选对应 Step [x]
+
+以上全部完成后 Agent 才能停止。
+
+下次恢复: 读 handoff → 查同目录 devlog-*.md → query_audit_logs
+'''
+# 注: 单引号 heredoc 缺陷（qoder bash 版 {{info}} 不插值）——TS 版 has_add_dev_unclosed 用 replace 插值（正确语义）
+
+[[context.quadrants]]
+id = "has_add_dev_closed"
+consumed = false
+text = "[ADD Stop] ✅ 验收闭环: add-route全部[x], devlog已记录, handoff已更新。验收幂等——重复触发不覆盖已有结论。"
+
+# ── qoder adapter 象限差异（缺省回退 core 基线）──────────────────
+# 差异仅 has_add_dev_unclosed（qoder 版含「（不要等下次会话）」+ ${info} 字面量缺陷不插值）
+[[context.adapter_quadrants]]
+adapter = "qoder"
+id = "has_add_dev_unclosed"
+text = '''[ADD Stop] ⚠️ 代码已完成但验收未闭环:
+{{info}}
+
+请依次执行（不要等下次会话）:
+  ① Write devlog → handoff 同目录 devlog-{plan}-v{n}.md
+     格式: # Devlog: {plan}\n 日期 / Plan / 轮次 / 本轮改了什么 / 验收结果 / 遗留项 / 架构回看
+  ② Edit handoff → 更新 §验证标准 全部 [x] + 补充审计 ID
+     ★ 同步: checklist 有新 cuid → handoff ADD-7 表必须对应新增行
+     ★ Step 0 准入: handoff + add-route + Specs 三元组缺一不可，缺则回退 Step 0.5
+  ③ Read docs/ → 回看架构文档确认一致性
+  ④ Edit add-route → 勾选对应 Step [x]
+
+以上全部完成后 Agent 才能停止。
+
+下次恢复: 读 handoff → 查同目录 devlog-*.md → query_audit_logs
+'''
+# 注: qoder bash 版用 <<'EOF' 单引号 heredoc——{{info}} 为字面量不插值（缺陷照搬，消费方不做 replace）
+
+# ── 模板预载清单（文件名 → 用途描述，优先级序即数组序）──────────
+
+[context.templates]
+priority_order = [
+  "simple-plan-template.md",
+  "spec-template.md",
+  "tasks-template.md",
+  "checklist-template.md",
+  "review-template.md",
+  "standard-plan-template.md",
+  "add-route-template-heavyweight.md",
+  "add-route-template.md",
+  "handoff-single-round-template.md",
+  "handoff-multi-round-template.md",
+]
+
+[context.templates.descriptions]
+"simple-plan-template.md" = "需求方案（简单版）：六节结构，元信息+背景+方案+架构+实施+验收"
+"spec-template.md" = "功能规格：Why/What Changes/Impact/WHEN-THEN Requirements"
+"tasks-template.md" = "任务拆分：Phase→Task→SubTask层级"
+"checklist-template.md" = "验收清单：[T]编译期+[R]运行时+ADD规则合规"
+"review-template.md" = "方案审查（ADD-9）：问题复现+方案对比+决策结论+影响评估"
+"standard-plan-template.md" = "需求方案（标准版）：PLAN元信息+背景+方案+架构+实施Task+验收+关联文档"
+"add-route-template-heavyweight.md" = "ADD执行路线图（重型）：每Step验证并更新状态+spec_sync交叉校验"
+"add-route-template.md" = "ADD执行路线图（轻量）：标准Step产出检查"
+"handoff-single-round-template.md" = "单轮交接：9章节（含恢复上下文审计查询）"
+"handoff-multi-round-template.md" = "多轮交接：全局拓扑+每轮13子章节+收敛规则+启动模板"
+
+# ── 写操作前置守卫上下文 ─────────────────────────────────────────
+
+[context.pretool]
+text = "[ADD PreToolUse] 当前 Plan: {{plan}}，轮次: {{round}}。\n本次写入应属于 ADD Step 3 代码实现阶段。\n完成后执行 record_dev_operation 记录审计。"

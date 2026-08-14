@@ -1,0 +1,46 @@
+{
+  "hook": "subagent-stop",
+  "scope": "trae",
+  "source": ".trae/hooks/subagent-stop.mjs",
+  "capturedAt": "2026-08-14T10:01:19.463Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".trae",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SubagentStop] ⚠️  已完成，但无活跃 ADD Plan 无法校验边界\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".trae",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SubagentStop] ⚠️ unknown 已完成，但无活跃 ADD Plan 无法校验边界\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SubagentStop] unknown 已完成 — 关联 Plan: __STATUS_UNAVAILABLE__\n[ADD SubagentStop] unknown 边界校验通过 — 2026-08-14T18:01:19+08:00\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

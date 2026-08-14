@@ -1,0 +1,46 @@
+{
+  "hook": "session-start",
+  "scope": "qoder",
+  "source": ".qoder/hooks/session-start.mjs",
+  "capturedAt": "2026-08-14T09:50:37.891Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"ADD: add-coder-hook-node-refactor-plan-v1 Step9/64 RoundTONGYI\\n[代办] 如有未加载的 IDE 代办清单，请从 tasks.md §IDE JSON 刷新 TodoWrite\"}}\n{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"22 ADD templates available. Use preload-templates.sh --index for list.\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"ADD: add-coder-hook-node-refactor-plan-v1 Step9/64 RoundTONGYI\\n[代办] 如有未加载的 IDE 代办清单，请从 tasks.md §IDE JSON 刷新 TodoWrite\"}}\n{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"22 ADD templates available. Use preload-templates.sh --index for list.\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"ADD: add-coder-hook-node-refactor-plan-v1 Step9/64 RoundTONGYI\\n[代办] 如有未加载的 IDE 代办清单，请从 tasks.md §IDE JSON 刷新 TodoWrite\"}}\n{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"22 ADD templates available. Use preload-templates.sh --index for list.\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "hook": "review-checklist",
+  "scope": "vscode",
+  "source": ".vscode/hooks/review-checklist.sh",
+  "capturedAt": "2026-08-14T05:08:43.377Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".vscode",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD ReviewChecklist] 请在提交前确认 checklist.md 全部项已勾选。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".vscode",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD ReviewChecklist] 请在提交前确认 checklist.md 全部项已勾选。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD ReviewChecklist] 请在提交前确认 checklist.md 全部项已勾选。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

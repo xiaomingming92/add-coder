@@ -31,7 +31,7 @@ const hash8 = (c: string) => createHash("sha256").update(c).digest("hex").slice(
 describe("仓库自举 template version", () => {
     it("node_modules/add-coder 缺失时回退当前包 templates 真源", () => {
         const projectRoot = resolve(import.meta.dirname, "..");
-        expect(loadTemplateVersion(projectRoot)).toBe("0.3.26");
+        expect(loadTemplateVersion(projectRoot)).toBe("0.3.27");
     });
 });
 

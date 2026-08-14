@@ -1,0 +1,46 @@
+{
+  "hook": "subagent-stop",
+  "scope": "codex",
+  "source": ".codex/hooks/subagent-stop.mjs",
+  "capturedAt": "2026-08-14T05:19:13.331Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SubagentStop]  已完成 — 关联 Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1\n[ADD SubagentStop]  边界校验通过 — 2026-08-14T13:19:12+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SubagentStop] unknown 已完成 — 关联 Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1\n[ADD SubagentStop] unknown 边界校验通过 — 2026-08-14T13:19:12+08:00\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD SubagentStop] unknown 已完成 — 关联 Plan: add-coder-codex-native-adapter-runtime-closure-plan-v1\n[ADD SubagentStop] unknown 边界校验通过 — 2026-08-14T13:19:13+08:00\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}

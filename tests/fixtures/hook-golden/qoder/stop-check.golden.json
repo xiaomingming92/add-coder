@@ -1,0 +1,46 @@
+{
+  "hook": "stop-check",
+  "scope": "qoder",
+  "source": ".qoder/hooks/stop-check.mjs",
+  "capturedAt": "2026-08-14T11:09:35.066Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"[ADD Stop] Plan: add-coder-hook-node-refactor-plan-v1, 轮次: TONGYI, Step: 11/64。本次无代码改动，下次继续时执行 session-init 恢复上下文。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"[ADD Stop] Plan: add-coder-hook-node-refactor-plan-v1, 轮次: TONGYI, Step: 11/64。本次无代码改动，下次继续时执行 session-init 恢复上下文。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"[ADD Stop] Plan: add-coder-hook-node-refactor-plan-v1, 轮次: TONGYI, Step: 11/64。本次无代码改动，下次继续时执行 session-init 恢复上下文。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

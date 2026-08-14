@@ -4,7 +4,7 @@
 # 项目名称（烘焙到 .md 占位符 {{projectName}}）
 project_name = "add-coder"
 # 所有目标 magic 目录
-magic_dirs = [".add", ".qoder", ".claude", ".vscode"]
+magic_dirs = [".add", ".qoder", ".claude", ".vscode", ".trae", ".codex"]
 
 [exclude]
 # 同步 + 验证时跳过的文件/目录
@@ -36,10 +36,10 @@ dest = ".add/hooks"
 name = ".add hooks"
 magic_dir = ".add"
 
-# ── Hook 同步：core 派生 ──
+# ── Hook 同步：trae 独立源（Task 1.6 切断镜像）──
 [[hooks]]
-src = "templates/core/hooks"
-dest = "templates/adapters/trae/hooks"
+src = "templates/adapters/trae/hooks"
+dest = ".trae/hooks"
 name = "trae hooks"
 magic_dir = ".trae"
 
@@ -97,6 +97,11 @@ name = "vscode hooks"
 src = "templates/core/hooks"
 dest = ".add/hooks"
 name = ".add hooks"
+
+[[verify]]
+src = "templates/adapters/trae/hooks"
+dest = ".trae/hooks"
+name = "trae hooks"
 
 [[verify]]
 src = "templates/core/templates"

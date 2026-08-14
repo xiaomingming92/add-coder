@@ -1,0 +1,46 @@
+{
+  "hook": "session-end",
+  "scope": "qoder",
+  "source": ".qoder/hooks/session-end.sh",
+  "capturedAt": "2026-08-14T04:43:48.347Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionEnd\",\"additionalContext\":\"[ADD SessionEnd] 会话结束 — 2026-08-14T12:43:48+08:00。标记已清理。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".qoder",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionEnd\",\"additionalContext\":\"[ADD SessionEnd] 会话结束 — 2026-08-14T12:43:48+08:00。标记已清理。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionEnd\",\"additionalContext\":\"[ADD SessionEnd] 会话结束 — 2026-08-14T12:43:48+08:00。标记已清理。\"}}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "hook": "review-checklist",
+  "scope": "trae",
+  "source": ".trae/hooks/review-checklist.mjs",
+  "capturedAt": "2026-08-14T04:57:13.809Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".trae",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD ReviewChecklist] 请在提交前确认 checklist.md 全部项已勾选。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".trae",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD ReviewChecklist] 请在提交前确认 checklist.md 全部项已勾选。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD ReviewChecklist] 请在提交前确认 checklist.md 全部项已勾选。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

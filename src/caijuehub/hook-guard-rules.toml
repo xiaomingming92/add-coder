@@ -1,0 +1,320 @@
+# ═══════════════════════════════════════════════════════════════
+# hook-guard-rules.toml —— PreToolUse 拦截/守卫规则真源（§A/§B/§C）
+# 消费方式: hook-rules-gen.ts → 生成 templates/core/hooks/lib/rules.guard.ts
+# 改动规则: 只改本文件，运行生成器（产物带 _generated 标记，勿手改）
+# 双源约定: hook 源码禁止硬编码本文件已声明规则（hook-rules.test.ts 负向断言）
+# 适配器差异: adapters 表声明各端检测链差异（claude 无 sed 单列 / trae 无 touch）
+# ═══════════════════════════════════════════════════════════════
+
+# ── §A Bash 裸写保护检测链（core 基线，顺序即优先级）────────────
+
+[[guard.detectors]]
+id = "dangerous-command"
+regex = 'rm\s+-rf\s+/|DROP\s+TABLE|git\s+push\s+--force|mkfs\.|dd\s+if='
+flags = "i"
+reason = "危险命令已被阻止"
+stderr = "⛔ 危险命令已被阻止: {{cmd}}\n"
+# 2026-08-14 Task 9.4.2 上提 core 基线链（回流: I2 能力盘点）——此前仅 claude/qoder/vscode
+# 独立链声明（core/trae/codex 有拦截盲区: rm -rf / 直跑不拦）——上提后六端一致。
+
+[[guard.detectors]]
+id = "script-interpreter"
+regex = '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'
+reason = "禁止通过脚本解释器直接修改文件。请使用 Write 或 SearchReplace 工具操作文件。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过脚本解释器直接修改文件。
+
+  python/node/ruby/perl/php 可在脚本中写入任意文件，绕过:
+    · Plan 关联检查（哪个文件属于哪个 ADD Plan？）
+    · doc-format-guard（章节/占位符/禁止词校验）
+    · 审计追踪（agentAudit 无法感知 Bash 内部的文件变更）
+
+  → 请改用 Write 或 SearchReplace 工具操作文件。
+  → 如需运行构建/测试脚本，使用 npx/pnpm/npm 命令。
+'''
+
+[[guard.detectors]]
+id = "sed-in-place"
+regex = '(^|[;&|][ \t]*)sed[ \t]+([^;&|]*[ \t])?(-[A-Za-z]*i[^ \t;&|]*|--in-place(=[^ \t;&|]*)?)([ \t;&|]|$)'
+reason = "禁止通过 sed -i 直接编辑文件。请使用 SearchReplace 工具。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过 sed -i 原地编辑文件。
+
+  sed -i 直接写入文件，绕过 IDE 工具层的所有校验。
+  → 请改用 SearchReplace 工具。
+'''
+
+[[guard.detectors]]
+id = "redirect"
+regex = '[>]{1,2}\s+\S'
+reason = "禁止通过重定向写入文件。请使用 Write 工具。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过重定向(>/>>)写入文件。
+
+  重定向写入绕过 IDE 工具层，变更无法追踪。
+  → 请改用 Write 工具。
+'''
+
+[[guard.detectors]]
+id = "tee-dd"
+regex = '\btee\b|\bdd\b.*of='
+reason = "禁止通过 tee/dd 写入文件。请使用 Write 或 SearchReplace 工具。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过 tee/dd 写入文件。
+
+  → 请改用 Write 或 SearchReplace 工具。
+'''
+
+[[guard.detectors]]
+id = "cp-mv-touch"
+regex = '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'
+reason = "禁止通过 cp/mv/touch 操作文件。请使用 Write 或 SearchReplace 工具。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过 cp/mv/touch 操作文件。
+
+  → 请改用 Write 或 SearchReplace 工具。
+'''
+
+# ── 适配器检测链差异（缺省 = core 基线链）─────────────────────
+
+[guard.adapters]
+trae = ["script-interpreter", "sed-in-place", "redirect", "tee-dd", "cp-mv-touch"] # trae 与 core 同链
+
+# trae 独立链（bash 原文 L50-140 逐字对照）: 与 core 同正则同序，但 stderr 为 trae 长文本版
+# （多行说明——2026-08-14 Task 6.1 实态核验），reason 亦为 trae 原文。
+[[guard.adapter_detectors]]
+adapter = "trae"
+id = "dangerous-command"
+regex = 'rm\s+-rf\s+/|DROP\s+TABLE|git\s+push\s+--force|mkfs\.|dd\s+if='
+flags = "i"
+reason = "危险命令已被阻止"
+stderr = "⛔ 危险命令已被阻止: {{cmd}}\n"
+# 2026-08-14 Task 9.4.2: 对齐 core 基线链（上提后六端一致）
+
+[[guard.adapter_detectors]]
+adapter = "trae"
+id = "script-interpreter"
+regex = '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'
+reason = "禁止通过脚本解释器直接修改文件。请使用 Write 或 SearchReplace 工具操作文件。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过脚本解释器直接修改文件。
+
+  python/node/ruby/perl/php 可在脚本中写入任意文件，绕过:
+    · Plan 关联检查（哪个文件属于哪个 ADD Plan？）
+    · doc-format-guard（章节/占位符/禁止词校验）
+    · 审计追踪（agentAudit 无法感知 Bash 内部的文件变更）
+
+  → 请改用 Write 或 SearchReplace 工具操作文件。
+  → 如需运行构建/测试脚本，使用 npx/pnpm/npm 命令。
+'''
+
+[[guard.adapter_detectors]]
+adapter = "trae"
+id = "sed-in-place"
+regex = '(^|[;&|]\s*)sed\s+([^;&|]*\s)?(-[a-zA-Z]*i[^;&|]*|--in-place(=[^;&|]*)?)([\s;&|]|$)'
+reason = "禁止通过 sed -i 直接编辑文件。请使用 SearchReplace 工具。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过 sed -i 原地编辑文件。
+
+  sed -i 直接写入文件，绕过 IDE 工具层的所有校验。
+  → 请改用 SearchReplace 工具。
+'''
+
+[[guard.adapter_detectors]]
+adapter = "trae"
+id = "redirect"
+regex = '[>]{1,2}\s+\S'
+reason = "禁止通过重定向写入文件。请使用 Write 工具。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过重定向(>/>>)写入文件。
+
+  重定向写入绕过 IDE 工具层，变更无法追踪。
+  → 请改用 Write 工具。
+'''
+
+[[guard.adapter_detectors]]
+adapter = "trae"
+id = "tee-dd"
+regex = '\btee\b|\bdd\b.*of='
+reason = "禁止通过 tee/dd 写入文件。请使用 Write 或 SearchReplace 工具。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过 tee/dd 写入文件。
+
+  → 请改用 Write 或 SearchReplace 工具。
+'''
+
+[[guard.adapter_detectors]]
+adapter = "trae"
+id = "cp-mv-touch"
+regex = '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'
+reason = "禁止通过 cp/mv/touch 操作文件。请使用 Write 或 SearchReplace 工具。"
+stderr = '''⛔ [ADD PreToolUse §A] 阻断: 禁止通过 cp/mv/touch 操作文件。
+
+  → 请改用 Write 或 SearchReplace 工具。
+'''
+
+# claude 独立链（bash 原文 L32-55 逐字对照）:
+#   实态差异只有两类：① dangerous-command 段（core 无此拦截，能力差异）
+#   ② 输出形态纯 stderr（core 是 askJson）——其余三段与 core 同构。
+#   flags 语义: dangerous-command 段 bash 用 grep -qiE（忽略大小写），其余三段 grep -qE（大小写敏感）。
+[[guard.adapter_detectors]]
+adapter = "claude"
+id = "dangerous-command"
+regex = 'rm\s+-rf\s+/|DROP\s+TABLE|git\s+push\s+--force|mkfs\.|dd\s+if='
+flags = "i"
+reason = "危险命令已被阻止"
+stderr = "⛔ 危险命令已被阻止: {{cmd}}\n"
+
+[[guard.adapter_detectors]]
+adapter = "claude"
+id = "terminal-write"
+regex = '(cat|echo|tee|sed\s+-i|awk|printf|cp|mv|dd|touch)\s*.*([>]{1,2}|[|]\s*tee|<<)'
+flags = ""
+reason = "禁止通过终端直接写文件"
+stderr = "⛔ 禁止通过终端命令直接写文件: {{cmd}}。请使用 Write/Edit/SearchReplace 工具。\n"
+
+[[guard.adapter_detectors]]
+adapter = "claude"
+id = "cp-mv-touch"
+regex = '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'
+flags = ""
+reason = "禁止通过 cp/mv/touch 操作文件"
+stderr = "⛔ 禁止通过 cp/mv/touch 操作文件: {{cmd}}。请使用 Write 或 SearchReplace 工具。\n"
+
+[[guard.adapter_detectors]]
+adapter = "claude"
+id = "script-interpreter"
+regex = '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'
+flags = ""
+reason = "禁止通过脚本解释器直接修改文件"
+stderr = "⛔ 禁止通过脚本解释器直接写文件: {{cmd}}。请使用 Write 或 SearchReplace 工具。\n"
+
+# qoder 独立链（bash 原文 L70-99 逐字对照）: 与 claude 同构四段链（dangerous-command 带 i 标志）
+[[guard.adapter_detectors]]
+adapter = "qoder"
+id = "dangerous-command"
+regex = 'rm\s+-rf\s+/|DROP\s+TABLE|git\s+push\s+--force|mkfs\.|dd\s+if='
+flags = "i"
+reason = "危险命令已被阻止"
+stderr = "⛔ 危险命令已被阻止: {{cmd}}\n"
+
+[[guard.adapter_detectors]]
+adapter = "qoder"
+id = "terminal-write"
+regex = '(cat|echo|tee|sed\s+-i|awk|printf|cp|mv|dd|touch)\s*.*([>]{1,2}|[|]\s*tee|<<)'
+flags = ""
+reason = "禁止通过终端直接写文件"
+stderr = "⛔ 禁止通过终端命令直接写文件: {{cmd}}。请使用 Write/Edit/SearchReplace 工具。\n"
+
+[[guard.adapter_detectors]]
+adapter = "qoder"
+id = "cp-mv-touch"
+regex = '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'
+flags = ""
+reason = "禁止通过 cp/mv/touch 操作文件"
+stderr = "⛔ 禁止通过 cp/mv/touch 操作文件: {{cmd}}。请使用 Write 或 SearchReplace 工具。\n"
+
+[[guard.adapter_detectors]]
+adapter = "qoder"
+id = "script-interpreter"
+regex = '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'
+flags = ""
+reason = "禁止通过脚本解释器直接修改文件"
+stderr = "⛔ 禁止通过脚本解释器直接写文件: {{cmd}}。请使用 Write 或 SearchReplace 工具。\n"
+
+# codex 独立链（bash 原文 L126-142 逐字对照）: 与 core 同正则同序，reason 为 codex 版
+# （「请使用 apply_patch」——codex 私有工具语义）；输出形态 JSON deny（core 是 ask）由子类 override。
+[[guard.adapter_detectors]]
+adapter = "codex"
+id = "dangerous-command"
+regex = 'rm\s+-rf\s+/|DROP\s+TABLE|git\s+push\s+--force|mkfs\.|dd\s+if='
+flags = "i"
+reason = "危险命令已被阻止；请使用 apply_patch。"
+# 2026-08-14 Task 9.4.2: 对齐 core 基线链（上提后六端一致）
+
+[[guard.adapter_detectors]]
+adapter = "codex"
+id = "script-interpreter"
+regex = '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'
+reason = "禁止通过脚本解释器直接修改文件；请使用 apply_patch。"
+
+[[guard.adapter_detectors]]
+adapter = "codex"
+id = "sed-in-place"
+regex = '(^|[;&|]\s*)sed\s+([^;&|]*\s)?(-[a-zA-Z]*i[^;&|]*|--in-place(=[^;&|]*)?)([\s;&|]|$)'
+reason = "禁止通过 sed -i 直接编辑文件；请使用 apply_patch。"
+
+[[guard.adapter_detectors]]
+adapter = "codex"
+id = "redirect"
+regex = '[>]{1,2}\s+\S'
+reason = "禁止通过重定向写入文件；请使用 apply_patch。"
+
+[[guard.adapter_detectors]]
+adapter = "codex"
+id = "tee-dd"
+regex = '\btee\b|\bdd\b.*of='
+reason = "禁止通过 tee/dd 写入文件；请使用 apply_patch。"
+
+[[guard.adapter_detectors]]
+adapter = "codex"
+id = "cp-mv-touch"
+regex = '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'
+reason = "禁止通过 cp/mv/touch 改变文件；请使用 apply_patch。"
+
+# vscode 独立链（bash 原文逐字对照）: 与 claude/qoder 同构四段链
+[[guard.adapter_detectors]]
+adapter = "vscode"
+id = "dangerous-command"
+regex = 'rm\s+-rf\s+/|DROP\s+TABLE|git\s+push\s+--force|mkfs\.|dd\s+if='
+flags = "i"
+reason = "危险命令已被阻止"
+stderr = "⛔ 危险命令已被阻止: {{cmd}}\n"
+
+[[guard.adapter_detectors]]
+adapter = "vscode"
+id = "terminal-write"
+regex = '(cat|echo|tee|sed\s+-i|awk|printf|cp|mv|dd|touch)\s*.*([>]{1,2}|[|]\s*tee|<<)'
+flags = ""
+reason = "禁止通过终端直接写文件"
+stderr = "⛔ 禁止通过终端命令直接写文件: {{cmd}}。请使用 Write/Edit/SearchReplace 工具。\n"
+
+[[guard.adapter_detectors]]
+adapter = "vscode"
+id = "cp-mv-touch"
+regex = '(^|;|\|\||&&|\|)\s*(cp|mv|touch)\b'
+flags = ""
+reason = "禁止通过 cp/mv/touch 操作文件"
+stderr = "⛔ 禁止通过 cp/mv/touch 操作文件: {{cmd}}。请使用 Write 或 SearchReplace 工具。\n"
+
+[[guard.adapter_detectors]]
+adapter = "vscode"
+id = "script-interpreter"
+regex = '(^|;|\|\||&&|\|)\s*(python3?|node|ruby|perl|php)(\s|$)'
+flags = ""
+reason = "禁止通过脚本解释器直接修改文件"
+stderr = "⛔ 禁止通过脚本解释器直接写文件: {{cmd}}。请使用 Write 或 SearchReplace 工具。\n"
+
+# ── §B 敏感文件保护 ──────────────────────────────────────────────
+
+[guard.sensitive_files]
+regex = '(^|\/)\.env$|(^|\/)\.env\.production$|(^|\/)\.env\.local$|credentials|secrets'
+deny_reason = "敏感文件受保护"
+# 2026-08-14 Task 9.4.4① 锚定版（回流: I2 能力盘点）——原宽松后缀匹配误伤 config.env 等普通文件；
+# 锚定 (^|\/) 仅匹配路径段首/独立文件名。
+
+# ── §C 模板类型前置注入提示 ──────────────────────────────────────
+
+[[guard.template_hints]]
+pattern = 'plan-v\d'
+message = "💡 [ADD PreToolUse] 写入 Plan → 模板: standard-plan-template.md（标准）或 simple-plan-template.md（≤3文件）"
+
+[[guard.template_hints]]
+pattern = 'add-route'
+message = "💡 [ADD PreToolUse] 写入 ADD Route → 模板: add-route-template.md"
+
+[[guard.template_hints]]
+pattern = 'handoff'
+message = "💡 [ADD PreToolUse] 写入 Handoff → 模板: handoff-single-round-template.md（单轮）或 handoff-multi-round-template.md（多轮）"
+
+# ── §C 阈值 ──────────────────────────────────────────────────────
+
+[guard.thresholds]
+large_file_bytes = 2000 # Write 全量覆盖提示阈值（超过建议 SearchReplace 分块）
+
+# ── §C HITL 豁免表（文件名后缀豁免，不触发 HITL 门禁）───────────
+# 2026-08-14 Task 9.4.4③: 移除 -implementation（Implementation Review 也走 HITL，回流: I2）
+
+[guard.hitl_exemptions]
+suffixes = ["-handoff", "-runtime"]

@@ -1,0 +1,46 @@
+{
+  "hook": "review-checklist",
+  "scope": "codex",
+  "source": ".codex/hooks/review-checklist.mjs",
+  "capturedAt": "2026-08-14T05:19:10.342Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD ReviewChecklist] 请在提交前确认 checklist.md 全部项已勾选。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD ReviewChecklist] 请在提交前确认 checklist.md 全部项已勾选。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "[ADD ReviewChecklist] 请在提交前确认 checklist.md 全部项已勾选。\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

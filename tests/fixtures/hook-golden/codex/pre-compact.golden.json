@@ -1,0 +1,46 @@
+{
+  "hook": "pre-compact",
+  "scope": "codex",
+  "source": ".codex/hooks/pre-compact.mjs",
+  "capturedAt": "2026-08-14T05:19:15.470Z",
+  "cases": [
+    {
+      "name": "empty-stdin",
+      "stdin": "",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PreCompact] ADD 状态已保存: Plan=add-coder-codex-native-adapter-runtime-closure-plan-v1, Step=67/67\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "json-object",
+      "stdin": "{}",
+      "env": {
+        "MAGIC_DIR": ".codex",
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PreCompact] ADD 状态已保存: Plan=add-coder-codex-native-adapter-runtime-closure-plan-v1, Step=67/67\n",
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "no-magicdir-failclosed",
+      "stdin": "{}",
+      "env": {
+        "PROJECT_DIR": "/home/xmm/ai/add-coder"
+      },
+      "expect": {
+        "stdout": "",
+        "stderr": "[ADD PreCompact] ADD 状态已保存: Plan=add-coder-codex-native-adapter-runtime-closure-plan-v1, Step=67/67\n",
+        "exitCode": 0
+      }
+    }
+  ]
+}
