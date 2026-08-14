@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.27",
+  "_version": "0.3.28",
   "adapters/claude/hooks/doc-format-guard.ts": "2abf8013",
   "adapters/claude/hooks/lib/claude-env.ts": "170b40ca",
   "adapters/claude/hooks/notification.ts": "f14ca7b6",
