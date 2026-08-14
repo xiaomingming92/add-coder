@@ -366,8 +366,9 @@ templates/adapters/qoder/ →          .qoder/mcp.json
 ## 七、治理契约层与多 adapter hooks（node 化）
 
 > **2026-08-14 node 化实态（bash 已退役）**：
+> - **为什么必须 node**：① 治理契约层 OOP 继承体系（基类模板方法 + 子类 override 协议差异）——bash 无类继承只能复制粘贴；② caijuehub 控制面需要 build-time 代码生成 + bundle（规则真源 → 生成常量 → 产物内联）——bash 无构建管线只能硬编码；③ 后续拆包 OOP 思想（治理层独立 npm 包 monorepo）依赖 TS/ESM 模块边界。bash 仅作双形态行为等价验证基线（golden 固化后退役）
 > - hook 全量 node 化：TS 源码（`templates/core/governance/*.ts` 治理契约层 + `templates/{core,adapters/*}/hooks/*.ts` 入口薄壳）→ esbuild 烘焙零依赖 `.mjs`（86 入口，六端 14/16/14/14/14/14）
-> - **治理契约层大规模使用**：17 治理卡位判定逻辑收敛 core 基类（PreToolUseGuard/StopRouter/PostToolRouter/PromptRouter/AuditBridge 等模板方法），adapter 子类仅 override 协议差异（输出形态/事件映射/环境注入）——「Adapter Hooks 必须继承 Core 基类」为硬规范
+> - **治理契约层大规模使用**：16 治理卡位（14 通用 + 2 Claude 特有）判定逻辑收敛 core 基类（PreToolUseGuard/StopRouter/PostToolRouter/PromptRouter/AuditBridge 等模板方法），adapter 子类仅 override 协议差异（输出形态/事件映射/环境注入）——「Adapter Hooks 必须继承 Core 基类」为硬规范
 > - **规则即数据**：拦截链/识别规则/象限文本/事件阈值/协议形态由 `src/caijuehub/hook-*.toml` ×5 声明（供应链工厂生成常量 → 产物内联），改规则不改代码
 > - **审计即闭环**：hook 拦截/文件写入事件 → jsonl → MCP 常驻消费 → DevOperation 落库（HOOK_INTERCEPT 幂等）
 > - **bash 退役**：269 个 `.sh` 已按路径收拢 `.backup/20260814_bash-hooks-retire/`（溯源说明见其 README）；行为基线由 `tests/fixtures/hook-golden/*.golden.json` 固化
