@@ -29,9 +29,6 @@ importers:
       dotenv:
         specifier: '*'
         version: 17.4.2
-      find-up:
-        specifier: ^8.0.0
-        version: 8.0.0
       prisma:
         specifier: ^7.0.0
         version: 7.9.1(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
@@ -63,6 +60,9 @@ importers:
       eslint:
         specifier: ^9.39.4
         version: 9.39.5(jiti@2.7.0)
+      find-up:
+        specifier: ^8.0.0
+        version: 8.0.0
       pg:
         specifier: ^8.22.0
         version: 8.22.0
