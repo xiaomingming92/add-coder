@@ -4,7 +4,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-MAGIC_DIR="$(dirname "$SCRIPT_DIR")"
+MAGIC_DIR=".codex"
 
 if [ ! -d "$MAGIC_DIR/plans" ]; then
   echo "❌ 当前 adapter 不存在 plans/: $MAGIC_DIR" >&2

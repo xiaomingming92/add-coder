@@ -8,7 +8,10 @@ docker-compose.add.yml
 .env.development
 .env
 .prisma
-.backup
+.backup/*
+# 例外：bash hooks 退役收拢是溯源资产（历史实现 + 溯源 README），随仓库保存
+!.backup/20260814_bash-hooks-retire/
+
 # IDE runtime configs with credentials
 .claude/mcp.json
 .qoder/mcp.json

@@ -68,14 +68,7 @@ describe("core target render isolation", () => {
         expect(config.magicDir).toBe(".codex");
         expect([...files.keys()].every((path) => path.startsWith(".codex/"))).toBe(true);
     });
-
-    it("Codex adapter 只消费自己的 hooks 真源，core lib 不覆盖", () => {
-        const files = renderCodexAdapter(config, config.projectRoot, false, ".codex");
-        const common = files.get(".codex/hooks/lib/common.sh");
-
-        expect(common).toBeDefined();
-        expect(common).toContain(".codex");
-        expect(common).toContain("templates/adapters/codex/hooks/lib/common.sh");
-        expect(common).not.toContain("templates/core/hooks/lib/common.sh");
-    });
+    // 2026-08-14 bash 退役：原「Codex adapter 只消费自己的 hooks 真源」断言读
+    // .codex/hooks/lib/common.sh（bash lib）——TS 版 lib 由产物内联（无 lib/*.mjs），
+    // 断言随退役移除；等价契约由 hook-consistency「治理 0 复制」覆盖
 });
