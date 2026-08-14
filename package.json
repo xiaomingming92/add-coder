@@ -61,7 +61,6 @@
     "@huggingface/transformers": "^3.8.1",
     "@modelcontextprotocol/server": "2.0.0",
     "commander": "^13.1.0",
-    "find-up": "^8.0.0",
     "smol-toml": "^1.7.0",
     "vector-cosine-similarity": "^1.8.0",
     "zod": "^4.4.3"
@@ -71,6 +70,7 @@
     "@prisma/adapter-pg": "^7.0.0",
     "@prisma/client": "^7.0.0",
     "dotenv": "*",
+    "find-up": "^8.0.0",
     "prisma": "^7.0.0",
     "pg": "^8.16.0",
     "tsx": ">=4",
@@ -84,6 +84,9 @@
       "optional": false
     },
     "dotenv": {
+      "optional": false
+    },
+    "find-up": {
       "optional": false
     },
     "tsx": {
@@ -105,6 +108,7 @@
     "@types/pg": "^8.20.4",
     "esbuild": "0.27.7",
     "eslint": "^9.39.4",
+    "find-up": "^8.0.0",
     "pg": "^8.22.0",
     "tsup": "^8.4.0",
     "typescript": "^6.0.3",
