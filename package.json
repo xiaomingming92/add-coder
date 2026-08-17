@@ -28,8 +28,9 @@
   "scripts": {
     "build": "tsup",
     "prepare": "tsup && tsx scripts/hook-bake.ts --publish && tsx scripts/gen-src-hash.ts",
-    "predev": "npm run db:ensure",
+    "predev": "npm run db:ensure && tsx scripts/hook-bake.ts --publish",
     "dev": "tsup --watch",
+    "prebuild": "tsx scripts/hook-bake.ts --publish",
     "db:ensure": "bash scripts/db-ensure.sh",
     "sync": "tsx scripts/sync-magic.ts",
     "sync:bash": "bash scripts/benchmark/sync-magic.sh",

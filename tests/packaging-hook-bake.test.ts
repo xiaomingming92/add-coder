@@ -32,11 +32,13 @@ describe("packaging: hook-bake --publish 产物随模板分发", () => {
     expect(generated).toBe(source);
   });
 
-  it("prepare 脚本已接入 hook-bake --publish（发布前自动烘焙）", () => {
+  it("prepare/predev/prebuild 均已接入 hook-bake --publish（发布/开发/构建前自动烘焙）", () => {
     const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
       scripts: Record<string, string>;
     };
     expect(pkg.scripts.prepare).toContain("hook-bake.ts --publish");
+    expect(pkg.scripts.predev).toContain("hook-bake.ts --publish");
+    expect(pkg.scripts.prebuild).toContain("hook-bake.ts --publish");
   });
 
   it("src-hash 清单包含 codex 发布产物条目（hash parity）", () => {
