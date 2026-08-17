@@ -5,6 +5,8 @@
 // 使用: tsx scripts/hook-bake.ts            # 全量烘焙 + 校验
 //       tsx scripts/hook-bake.ts --check    # 仅校验现有产物
 //       tsx scripts/hook-bake.ts --dry-run  # 只列出计划不落盘
+//       tsx scripts/hook-bake.ts --publish  # 发布预烘焙: 产物写入模板源目录（随 npm 分发）
+//                                            用户 init/sync 零编译（修复 0.3.27+ 打包产物缺失）
 
 import { projectRoot } from "../src/shared/paths.js"
 import { genHookRules } from "./hook-rules-gen.js"
@@ -39,6 +41,9 @@ const BAKE_TARGETS: BakeTarget[] = [
   { src: "templates/adapters/trae/hooks", dest: ".trae/hooks", name: "trae hooks" },
   { src: "templates/adapters/codex/hooks", dest: ".codex/hooks", name: "codex hooks" },
 ]
+
+/** 发布预烘焙目标：仅 adapter 源目录（core hooks 为 dogfood 源，无分发 hooks.json 消费方） */
+const PUBLISH_TARGETS = BAKE_TARGETS.filter((t) => !t.src.startsWith("templates/core/"))
 
 /** 递归列出目录下所有 .ts 文件（相对 src 路径）；lib/ 子目录跳过——
  * lib 仅作为源码被入口 bundle 内联（产物自包含），lib.mjs 无消费者且纯库化后无行为 */
@@ -135,8 +140,9 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2)
   const checkOnly = args.includes("--check")
   const dryRun = args.includes("--dry-run")
+  const publish = args.includes("--publish")
 
-  console.log(`🍞 hook-bake ${checkOnly ? "(check)" : dryRun ? "(dry-run)" : ""} — target=${TARGET}`)
+  console.log(`🍞 hook-bake ${checkOnly ? "(check)" : dryRun ? "(dry-run)" : publish ? "(publish)" : ""} — target=${TARGET}`)
 
   // 规则控制面注入（Task 1.3）: 烘焙前重生成 rules.ts（真源 = caijuehub hook-*.toml ×5），
   // 入口源码 import "./lib/rules.js" 时由 bundle 内联（产物零依赖）
@@ -145,6 +151,32 @@ async function main(): Promise<void> {
     if (rulesExit !== 0) {
       console.error("⚠️ 规则真源部分缺失（已用 fail-safe 默认常量），继续烘焙")
     }
+  }
+
+  // ── 发布预烘焙：产物写入模板源目录（src == dest），随 npm 包分发 ──
+  // 修复 0.3.27+ 打包缺陷：hooks.json 引用 .mjs 但 templates 只有 .ts，CLI init/sync 无编译步骤
+  if (publish) {
+    let totalBaked = 0
+    const allFailures: string[] = []
+    for (const t of PUBLISH_TARGETS) {
+      if (dryRun) {
+        const tsFiles = listTsFiles(join(PROJECT_DIR, t.src))
+        console.log(`  📋 ${t.name}: ${tsFiles.length} 个 .ts → ${t.src}`)
+        continue
+      }
+      const r = await bakeTarget({ src: t.src, dest: t.src, name: `${t.name} (publish)` })
+      totalBaked += r.baked.length
+      allFailures.push(...r.failures)
+      console.log(`  ✅ ${t.name}: 发布产物 ${r.baked.length} 个` + (r.failures.length ? `（${r.failures.length} 失败）` : ""))
+    }
+    if (allFailures.length > 0) {
+      console.error("\n❌ 发布烘焙校验失败（不静默降级）:")
+      for (const f of allFailures) console.error(`   - ${f}`)
+      process.exitCode = 2
+      return
+    }
+    console.log(`\n🎯 hook-bake --publish 完成，发布产物 ${totalBaked} 个（已写入模板源目录）`)
+    return
   }
 
   let totalBaked = 0

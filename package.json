@@ -27,7 +27,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "prepare": "tsup && tsx scripts/gen-src-hash.ts",
+    "prepare": "tsup && tsx scripts/hook-bake.ts --publish && tsx scripts/gen-src-hash.ts",
     "predev": "npm run db:ensure",
     "dev": "tsup --watch",
     "db:ensure": "bash scripts/db-ensure.sh",
