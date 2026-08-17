@@ -5,6 +5,15 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.32] - 2026-08-17
+
+### 修复
+
+- **打包/sync 缺陷：Codex hooks `.mjs` 产物缺失**——发布包 `templates/adapters/codex/hooks/` 只有 `.ts` 源、`hooks.json` 引用 `.mjs`，而 CLI `init`/`sync` 无编译步骤，全新用户 Codex hooks 全部失效。`hook-bake --publish` 发布预烘焙（产物随 npm 分发），`prepare`/`predev`/`prebuild` 自动烘焙，新增打包冒烟测试（hooks.json 引用产物存在性 + hash parity）
+- **生成态收敛**：`.codex/hooks.json` 过期 `.sh` 引用修正为 `.mjs`，与源模板一致（ADD-12 双源漂移防护）
+- **trae 同类缺陷一并覆盖**（`hooks.json` 同样引用 `.mjs`）
+
+---
 ## [0.3.28] - 2026-08-14
 
 ### 创新（Hook 治理协议层 v2——0.3.27 承诺的可证明兑现）
