@@ -14,6 +14,35 @@
 - **trae 同类缺陷一并覆盖**（`hooks.json` 同样引用 `.mjs`）
 
 ---
+## [0.3.31] - 2026-08-17
+
+### 变更
+
+- **历史重写收尾（决策过程文档私有化）**：`filter-repo` 重写全部历史——plans/specs/reviews/hitl/reports 从所有提交中剔除，新 clone 无法再拼出架构演进；README/文档体系引用的公开附件（benchmark 原始报告、模板关联工作流规范、README 链接的 Plan）恢复随库分发；hash 清单与私有边界对齐
+
+---
+## [0.3.30] - 2026-08-14
+
+### 修复
+
+- **脚本模板强制 ESM 运行**：模板脚本统一 ESM 执行，规避 CommonJS 兼容坑
+- **锚点查找收敛（anchor.ts）**：锚点解析从宽泛匹配收敛为确定性查找
+- **find-up 升 peerDependencies**：运行时依赖边界修正
+
+### 变更
+
+- add-coder 自用 magicDir 同步（dogfood 生成态与真源对齐）
+
+---
+## [0.3.29] - 2026-08-14
+
+### 文档
+
+- README 首部话术凝练（0.75→1 哲思 + 治理愿景）
+- README 社区号召话术优化（markdown 链接化 + 凝练）
+- README 英文版同步 slogan + 里程碑 + 社区号召；英文 slogan 修正为 humanity's Level-1 civilization
+
+---
 ## [0.3.28] - 2026-08-14
 
 ### 创新（Hook 治理协议层 v2——0.3.27 承诺的可证明兑现）
