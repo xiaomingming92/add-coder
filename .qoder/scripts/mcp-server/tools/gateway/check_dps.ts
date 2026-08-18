@@ -29,6 +29,7 @@ import {
   getEmbeddings,
 } from "./helpers.js";
 import { getRuntimeContext } from "../../shared/env.js";
+import { extractSpecRef } from "../../shared/dps-spec-ref.js";
 
 export function registerCheckDps(server: ToolRegistrar) {
   const runtimeContext = getRuntimeContext();
@@ -79,10 +80,8 @@ export function registerCheckDps(server: ToolRegistrar) {
         let sn = basename(pm).replace(/-plan-v\d+\.md$/, ""),
           sc = "";
         if (pc) {
-          const sr = pc.match(
-            /Spec[:|\s`]+\.?(qoder|claude|add|vscode)\/specs\/([^/`\s]+)/,
-          );
-          if (sr) sn = sr[2];
+          const specRef = extractSpecRef(pc);
+          if (specRef) sn = specRef.specDir;
         }
         const sp = join(specsDir, sn, "spec.md");
         sc = (await readFileSafe(sp)) || "";
