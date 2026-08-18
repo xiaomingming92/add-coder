@@ -20,13 +20,14 @@ import { homedir } from "node:os"
 import { execSync } from "node:child_process"
 import { parse } from "smol-toml"
 import { SYNC_MAGIC_CONFIG } from "../src/caijuehub/strategies/sync-magic.strategy.js"
+import { defaults } from "../src/config/defaults.js"
 
 // ── 常量和配置（由 caijuehub 驱动）──
 
 const SCRIPT_DIR = dirname(new URL(import.meta.url).pathname)
 const PROJECT_DIR = projectRoot() ?? resolve(SCRIPT_DIR, "..")
 
-const { PROJECT_NAME, MAGIC_DIRS, EXCLUDE_PATTERNS, LOG_EXTENSIONS, HOOKS, CATEGORIES, VERIFY } = SYNC_MAGIC_CONFIG
+const { PROJECT_NAME, MAGIC_DIRS, EXCLUDE_PATTERNS, LOG_EXTENSIONS, HOOKS, CONFIGS, CONFIG_CHECK, CATEGORIES, VERIFY } = SYNC_MAGIC_CONFIG
 
 /**
  * Hook 来源模式（adapter-rules.toml [hook_source]，2026-08-14 Web 实证）:
@@ -107,7 +108,7 @@ function backupIfNeeded(dir: string, backupRoot: string): void {
 /** 烘焙 .sh 文件中的动态 MAGIC_DIR 为硬编码值 */
 function bakeMagicRefs(targetDir: string, magicDir: string): void {
   _walkFiles(targetDir, ".sh", (filePath) => {
-    let content = readFileSync(filePath, "utf-8")
+    const content = readFileSync(filePath, "utf-8")
     // 替换 MAGIC_DIR="$(basename ...)" 为 MAGIC_DIR=".xxx"
     const replaced = content.replace(
       /^MAGIC_DIR=".*/m,
@@ -206,7 +207,96 @@ function syncDir({ src, dest, name, magicDir, excludeExt }: SyncOptions): void {
   console.log(`   ✅ ${name} 同步完成`)
 }
 
-/** 批量同步到所有 magic 目录（由 caijuehub CATEGORIES 驱动） */
+/** hooks 引用路径提取：由 caijuehub CONFIG_CHECK 控制面声明（2026-08-18 收拢，脚本零正则硬编码） */
+const HOOK_PATH_RE = new RegExp(CONFIG_CHECK.hookPathRe, "g")
+const LEGACY_SH_RE = new RegExp(CONFIG_CHECK.legacyShRe, "g")
+
+/** 纯函数：从项目根 package.json 解析项目名（零兜底——缺失即报错） */
+function resolveProjectName(projectDir: string): string {
+  const pkgPath = join(projectDir, "package.json")
+  if (!existsSync(pkgPath)) throw new Error(`package.json 不存在，无法解析 projectName: ${pkgPath}`)
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { name?: string }
+  if (!pkg.name) throw new Error(`package.json 缺少 name 字段，无法解析 projectName: ${pkgPath}`)
+  return pkg.name
+}
+
+/** 纯函数：按替换表渲染占位符 {{key}} → value；$PROJECT_DIR/$PROJECT_NAME/$MCP_SERVER_COMMAND 特殊值动态解析 */
+function renderConfigTemplate(
+  content: string,
+  replacements: Record<string, string>,
+  projectDir: string,
+  projectName: string,
+  mcpServerCommand: string,
+): string {
+  const special: Record<string, string> = {
+    $PROJECT_DIR: projectDir,
+    $PROJECT_NAME: projectName,
+    $MCP_SERVER_COMMAND: mcpServerCommand,
+  }
+  let out = content
+  for (const [key, rawValue] of Object.entries(replacements)) {
+    const value = special[rawValue] ?? rawValue
+    out = out.split(`{{${key}}}`).join(value)
+  }
+  return out
+}
+
+/** 纯函数：检测未替换占位符残留 {{...}} */
+function detectUnresolvedPlaceholders(content: string): string[] {
+  return [...content.matchAll(/\{\{[^}]+\}\}/g)].map((m) => m[0])
+}
+
+/** 纯函数：检测 .sh 旧版引用 */
+function detectLegacyShRefs(content: string): string[] {
+  return [...content.matchAll(LEGACY_SH_RE)].map((m) => m[0])
+}
+
+/** 纯函数：提取 command 引用的 hooks 相对路径 */
+function extractCommandPaths(content: string): string[] {
+  return [...content.matchAll(HOOK_PATH_RE)].map((m) => m[1])
+}
+
+/** 纯函数：断言路径全部存在，返回缺失清单 */
+function assertFilesExist(paths: string[], projectDir: string): string[] {
+  return paths.filter((p) => !existsSync(join(projectDir, p)))
+}
+
+/** 配置入口同步（CONFIGS 驱动）：none 原样复制 / replace 渲染后覆盖 + 分发后校验（projectName 从 package.json 实时解析，零兑底） */
+function syncConfigs(
+  configs: ReadonlyArray<{ src: string; dest: string; name: string; magicDir: string; placeholderPolicy?: string; replacements?: Record<string, string> }>,
+  projectDir: string,
+): string[] {
+  const violations: string[] = []
+  const projectName = resolveProjectName(projectDir)
+  for (const c of configs) {
+    const srcAbs = join(projectDir, c.src)
+    const destAbs = join(projectDir, c.dest)
+    if (!existsSync(srcAbs)) {
+      violations.push(`${c.name}: 真源缺失 ${c.src}`)
+      continue
+    }
+    mkdirSync(dirname(destAbs), { recursive: true })
+    if (c.placeholderPolicy === "replace") {
+      const rendered = renderConfigTemplate(readFileSync(srcAbs, "utf-8"), c.replacements ?? {}, projectDir, projectName, defaults.mcpServerCommand)
+      const unresolved = detectUnresolvedPlaceholders(rendered)
+      if (unresolved.length > 0) {
+        violations.push(`${c.name}: 替换后仍有占位符残留 ${unresolved.join(", ")}`)
+        continue
+      }
+      writeFileSync(destAbs, rendered, "utf-8")
+    } else {
+      cpSync(srcAbs, destAbs, { force: true })
+    }
+    // 分发后校验：.sh 残留 + 占位符残留 + command 指向存在
+    const text = readFileSync(destAbs, "utf-8")
+    const shRefs = detectLegacyShRefs(text)
+    if (shRefs.length > 0) violations.push(`${c.name}: .sh 残留引用 ${shRefs.length} 处`)
+    const missing = assertFilesExist(extractCommandPaths(text), projectDir)
+    for (const m of missing) violations.push(`${c.name}: command 指向文件不存在 ${m}`)
+    console.log(`   📄 ${c.name}: 已分发 → ${c.dest}`)
+  }
+  return violations
+}
 function syncToAllMagicDirs(
   category: string,
   icon: string,
@@ -377,6 +467,17 @@ function main(): void {
   // Qoder CN 配置（在 qoder hooks 同步之后）
   syncQoderCNHooks()
 
+  // ── 配置入口同步（R4 架构修正 2026-08-18：配置入口分发归 sync-magic；none=原样复制 / replace=占位符渲染后覆盖）──
+  console.log("\n📄 同步配置入口...")
+  const configViolations = syncConfigs(CONFIGS, PROJECT_DIR)
+  for (const v of configViolations) console.error(`   ❌ ${v}`)
+  if (configViolations.length > 0) {
+    console.error("\n❌ 配置入口校验失败（不静默降级）:")
+    for (const v of configViolations) console.error(`   - ${v}`)
+    process.exitCode = 2
+    return
+  }
+
   // 通用类别同步（由 caijuehub CATEGORIES 驱动）
   for (const cat of CATEGORIES) {
     syncToAllMagicDirs(cat.name, cat.icon, cat.bake)
@@ -390,6 +491,8 @@ function main(): void {
 
   console.log("\n🎯 同步完成!")
   console.log("💡 提示: 重启 IDE 以使新的 hook 配置生效")
+  // 配置入口链路边界声明（runtime review #2，2026-08-18；R4 后配置入口归 sync-magic 分发）
+  console.log("📄 配置入口已由本次 sync 分发（CONFIGS 段，含 settings.json/hooks.json）")
   console.log(`📝 备份保存在: ${backupDirPath}`)
 }
 

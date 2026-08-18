@@ -5,7 +5,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/session-start.sh"
+                        "command": "node .claude/hooks/session-start.mjs"
                     }
                 ]
             }
@@ -15,7 +15,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/prompt-submit.sh"
+                        "command": "node .claude/hooks/prompt-submit.mjs"
                     }
                 ]
             }
@@ -26,11 +26,11 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/pre-tool-use.sh"
+                        "command": "node .claude/hooks/pre-tool-use.mjs"
                     },
                     {
                         "type": "command",
-                        "command": ".claude/hooks/doc-format-guard.sh"
+                        "command": "node .claude/hooks/doc-format-guard.mjs"
                     }
                 ]
             }
@@ -41,11 +41,11 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/post-tool-use.sh"
+                        "command": "node .claude/hooks/post-tool-use.mjs"
                     },
                     {
                         "type": "command",
-                        "command": ".claude/hooks/doc-format-guard.sh"
+                        "command": "node .claude/hooks/doc-format-guard.mjs"
                     }
                 ]
             }
@@ -55,7 +55,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/post-tool-failure.sh"
+                        "command": "node .claude/hooks/post-tool-failure.mjs"
                     }
                 ]
             }
@@ -65,7 +65,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/stop-check.sh"
+                        "command": "node .claude/hooks/stop-check.mjs"
                     }
                 ]
             }
@@ -75,7 +75,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/subagent-guard.sh"
+                        "command": "node .claude/hooks/subagent-guard.mjs"
                     }
                 ]
             }
@@ -85,7 +85,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/subagent-guard.sh"
+                        "command": "node .claude/hooks/subagent-guard.mjs"
                     }
                 ]
             }
@@ -95,7 +95,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/pre-compact.sh"
+                        "command": "node .claude/hooks/pre-compact.mjs"
                     }
                 ]
             }
@@ -106,7 +106,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/notification.sh"
+                        "command": "node .claude/hooks/notification.mjs"
                     }
                 ]
             }
@@ -116,7 +116,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/permission-gate.sh"
+                        "command": "node .claude/hooks/permission-gate.mjs"
                     }
                 ]
             }

@@ -15,13 +15,11 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
-  writeFileSync,
 } from "node:fs"
-import { join, relative, dirname, basename } from "node:path"
+import { join, relative, dirname } from "node:path"
 import { spawnSync } from "node:child_process"
 import { build } from "esbuild"
 
-const SCRIPT_DIR = dirname(new URL(import.meta.url).pathname)
 const PROJECT_DIR = projectRoot() ?? process.cwd()
 const TARGET = "node24" // [回流: Review P1 #5 target 对齐 node24]
 
@@ -136,6 +134,9 @@ async function bakeTarget(target: BakeTarget): Promise<BakeResult> {
   return { baked, failures }
 }
 
+// 配置入口分发已迁至 sync-magic（R4 架构修正 2026-08-18）：settings.json/hooks.json 由
+// npm run sync（CONFIGS 段：none 复制 / replace 占位符渲染）分发，hook-bake 回归烘焙器单一职责
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
   const checkOnly = args.includes("--check")
@@ -214,4 +215,4 @@ async function main(): Promise<void> {
   console.log(`\n🎯 hook-bake 完成${checkOnly ? "（校验通过）" : ""}，产物 ${totalBaked || "现有"} 个`)
 }
 
-main()
+void main()

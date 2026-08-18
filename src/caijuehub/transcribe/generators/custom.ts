@@ -168,9 +168,19 @@ function genPrismaSyncRules(rules: TomlData): string {
 interface SyncMagicRules {
     core?: { project_name?: string; magic_dirs?: string[] };
     exclude?: { patterns?: string[]; log_extensions?: string[] };
+    config_check?: { hook_path_re?: string; legacy_sh_re?: string };
     hooks?: Array<{ src: string; dest: string; name: string; magic_dir: string }>;
     categories?: Array<{ name: string; icon: string; bake?: boolean }>;
     verify?: Array<{ src: string; dest: string; name: string }>;
+    // R4（2026-08-18）：配置入口同步（文件级复制 + 占位符渲染）
+    configs?: Array<{
+        src: string;
+        dest: string;
+        name: string;
+        magic_dir: string;
+        placeholder_policy?: string;
+        replacements?: Record<string, string>;
+    }>;
 }
 
 function genCollabContractRules(rules: TomlData): string {
@@ -209,6 +219,7 @@ function genSyncMagicRules(rules: TomlData): string {
     const hooks = d.hooks ?? [];
     const categories = d.categories ?? [];
     const verify = d.verify ?? [];
+    const configs = d.configs ?? [];
 
     const projectName = core.project_name ?? "add-coder";
     const magicDirs = (core.magic_dirs ?? [".add", ".qoder", ".claude", ".vscode"])
@@ -217,6 +228,11 @@ function genSyncMagicRules(rules: TomlData): string {
         .map((s: string) => `"${s}"`).join(", ");
     const logExts = (exclude.log_extensions ?? [".log"])
         .map((s: string) => `"${s}"`).join(", ");
+
+    // 配置入口校验正则（收拢到控制面，2026-08-18：脚本零正则硬编码）
+    const configCheck = d.config_check ?? {};
+    const checkEntries = `    hookPathRe: ${JSON.stringify(configCheck.hook_path_re ?? "")},
+    legacyShRe: ${JSON.stringify(configCheck.legacy_sh_re ?? "")},`;
 
     const hookEntries = hooks.map(h =>
         `    { src: "${h.src}", dest: "${h.dest}", name: "${h.name}", magicDir: "${h.magic_dir}" }`
@@ -230,13 +246,27 @@ function genSyncMagicRules(rules: TomlData): string {
         `    { src: "${v.src}", dest: "${v.dest}", name: "${v.name}" }`
     ).join(",\n");
 
+    // R4（2026-08-18）：配置入口同步（文件级复制 + 占位符渲染；replacements 为替换表）
+    const configEntries = configs.map(c => {
+        const repl = c.replacements
+            ? `, replacements: { ${Object.entries(c.replacements).map(([k, v]) => `${k}: "${v}"`).join(", ")} }`
+            : "";
+        return `    { src: "${c.src}", dest: "${c.dest}", name: "${c.name}", magicDir: "${c.magic_dir}", placeholderPolicy: "${c.placeholder_policy ?? "none"}"${repl} }`;
+    }).join(",\n");
+
     return `export const SYNC_MAGIC_CONFIG = {
     PROJECT_NAME: "${projectName}",
     MAGIC_DIRS: [${magicDirs}],
     EXCLUDE_PATTERNS: [${excludePatterns}],
     LOG_EXTENSIONS: [${logExts}],
+    CONFIG_CHECK: {
+${checkEntries}
+    },
     HOOKS: [
 ${hookEntries}
+    ],
+    CONFIGS: [
+${configEntries}
     ],
     CATEGORIES: [
 ${catEntries}
@@ -247,6 +277,7 @@ ${verifyEntries}
 } as const;
 
 export type SyncMagicHook = (typeof SYNC_MAGIC_CONFIG)["HOOKS"][number];
+export type SyncMagicConfig = (typeof SYNC_MAGIC_CONFIG)["CONFIGS"][number];
 export type SyncMagicCategory = (typeof SYNC_MAGIC_CONFIG)["CATEGORIES"][number];
 export type SyncMagicVerify = (typeof SYNC_MAGIC_CONFIG)["VERIFY"][number];`;
 }

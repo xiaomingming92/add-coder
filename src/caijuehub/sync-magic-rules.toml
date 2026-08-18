@@ -11,6 +11,11 @@ magic_dirs = [".add", ".qoder", ".claude", ".vscode", ".trae", ".codex"]
 patterns = [".gitkeep", ".DS_Store", "debug-dump"]
 log_extensions = [".log"]
 
+# ── 配置入口校验正则（收拢到控制面，2026-08-18：脚本零正则硬编码）──
+[config_check]
+hook_path_re = "((?:\\.qoder|\\.claude|\\.trae|\\.codex|\\.vscode|\\.add)/hooks/[^\\s\"']+\\.mjs)"
+legacy_sh_re = "\\.sh(?=[\"'\\s)])"
+
 # ── Hook 同步：adapter 专属 hooks ──
 [[hooks]]
 src = "templates/adapters/claude/hooks"
@@ -42,6 +47,55 @@ src = "templates/adapters/trae/hooks"
 dest = ".trae/hooks"
 name = "trae hooks"
 magic_dir = ".trae"
+
+# ── Hook 同步：codex（与 hook-bake BAKE_TARGETS 对齐，2026-08-18 runtime review #1 修复）──
+[[hooks]]
+src = "templates/adapters/codex/hooks"
+dest = ".codex/hooks"
+name = "codex hooks"
+magic_dir = ".codex"
+
+# ── 配置入口同步（R4 架构修正 2026-08-18：配置入口分发归 sync-magic，hook-bake 回归烘焙器）──
+# placeholder_policy: none=原样复制 / replace=占位符渲染后覆盖（替换表见 replacements）
+[[configs]]
+src = "templates/adapters/qoder/settings.json"
+dest = ".qoder/settings.json"
+name = "qoder settings"
+magic_dir = ".qoder"
+placeholder_policy = "none"
+
+[[configs]]
+src = "templates/adapters/claude/settings.json"
+dest = ".claude/settings.json"
+name = "claude settings"
+magic_dir = ".claude"
+placeholder_policy = "none"
+
+[[configs]]
+src = "templates/adapters/trae/hooks.json"
+dest = ".trae/hooks.json"
+name = "trae hooks.json"
+magic_dir = ".trae"
+placeholder_policy = "none"
+
+[[configs]]
+src = "templates/adapters/codex/hooks.json"
+dest = ".codex/hooks.json"
+name = "codex hooks.json"
+magic_dir = ".codex"
+placeholder_policy = "none"
+
+[[configs]]
+src = "templates/adapters/vscode/settings.json"
+dest = ".vscode/settings.json"
+name = "vscode settings (Agent Host MCP)"
+magic_dir = ".vscode"
+placeholder_policy = "replace"
+
+[configs.replacements]
+projectName = "$PROJECT_NAME"
+mcpServerCommand = "$MCP_SERVER_COMMAND"
+projectRoot = "$PROJECT_DIR"
 
 # ── 通用类别：批量同步到所有 magic 目录 ──
 [[categories]]
