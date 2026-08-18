@@ -76,8 +76,8 @@ export function registerCheckSpecSync(server: ToolRegistrar) {
         } else {
           lines.push(`add-route: ${arFile}`);
           const arContent = (await readFileSafe(join(plansDir, arFile))) || "";
-          // 提取 add-route 附录文件清单
-          const appendixFiles = (arContent.match(/`[^`]+\.(ts|js|sh|md|tsx|json|yml|yaml)`/g) || [])
+          // 提取 add-route 附录文件清单（toml 纳入：sync-magic-rules.toml 等控制面文件，2026-08-18 修复）
+          const appendixFiles = (arContent.match(/`[^`]+\.(ts|js|sh|md|tsx|json|yml|yaml|toml)`/g) || [])
             .map((f: string) => f.replace(/`/g, ""));
           lines.push(`附录文件: ${appendixFiles.length} 个`);
 
