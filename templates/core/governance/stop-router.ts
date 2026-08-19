@@ -12,6 +12,11 @@ import {
   hasDevAction,
 } from "./common.js"
 import { buildStopContext } from "./context-inject.js"
+import { protocol } from "./rules.js"
+import { createHash } from "node:crypto"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 /**
  * Stop 四象限分流路由（Q0-Q4，与 bash stop-check.sh 同语义）:
@@ -65,14 +70,20 @@ export class StopRouter {
   // ─────────────────────────── 扩展点 ───────────────────────────
 
   /**
-   * Q4 验收决策（双维度组合——2026-08-14 Task 9.4.4④ 上提，回流: I2）:
-   *   维度 1（前置）: DB 任务进度（step = done/total，数值且 done<total → 未完成阻断提示）
-   *   维度 2: checklist 质量（checkAddCompleteness 未闭环 → 阻断）
-   *   互补非替代——codex 原 DB 进度分流语义上提 core，core checklist 质量语义保留。
-   */
-  protected q4Check(plan: string, rounds: string, step: string, handoff: string, addRoute: string): number {
-    void plan
+ * Q4 验收决策（双维度组合——2026-08-14 Task 9.4.4④ 上提，回流: I2）:
+ *   维度 0（新增，临时方案）: 弹框频控——同项目同 Plan 窗口内达上限 → 降级放行
+ *   维度 1（前置）: DB 任务进度（step = done/total，数值且 done<total → 未完成阻断提示）
+ *   维度 2: checklist 质量（checkAddCompleteness 未闭环 → 阻断）
+ *   互补非替代——codex 原 DB 进度分流语义上提 core，core checklist 质量语义保留。
+ */
+protected q4Check(plan: string, rounds: string, step: string, handoff: string, addRoute: string): number {
     void rounds
+    // 维度 0: 弹框频控（达上限 → 放行，防 Stop 阻断刷屏死循环）
+    const limited = this.stopPromptLimited(plan)
+    if (limited) {
+        process.stderr.write(`[ADD Stop] 已达本 Plan 弹框上限(${this.stopPromptMax()})，本次放行。请在后续实施中完成验收闭环（devlog + handoff）后停止。\n`)
+        return 0
+    }
     // 维度 1: DB 任务进度（step 格式 done/total，如 11/64）
     const [donePart, totalPart] = step.split("/")
     if (
@@ -95,6 +106,89 @@ export class StopRouter {
 
     clearDevAction()
     return this.emitQ4Pass()
+  }
+
+  // ── 弹框频控（临时方案，规则真源: hook-protocol-rules.toml [protocol.stop]）──
+  // 计数隔离: 文件级 = PROJECT_DIR md5（跨项目不互扰）；key 级 = planName（同项目跨 Plan 不互扰）
+  // 故障降级: 哨兵读/写异常 → fail-open 放行（不阻塞主流程）
+
+  /** 哨兵记录：同一项目同一 Plan 的弹框计数 */
+  protected stopPromptMax(): number {
+    const cfg = protocol.stop as { max_prompt_per_context?: number } | undefined
+    return cfg?.max_prompt_per_context ?? 3
+  }
+
+  /** 哨兵窗口（毫秒） */
+  protected stopPromptWindowMs(): number {
+    const cfg = protocol.stop as { window_minutes?: number } | undefined
+    return (cfg?.window_minutes ?? 30) * 60_000
+  }
+
+  /** 哨兵文件路径（项目隔离：PROJECT_DIR md5） */
+  protected stopSentinelPath(): string {
+    const projectDir =
+      process.env.PROJECT_DIR ||
+      process.env.QODER_PROJECT_DIR ||
+      process.env.QODERCN_PROJECT_DIR ||
+      process.env.CLAUDE_PROJECT_DIR ||
+      process.cwd()
+    const md5 = createHash("md5").update(projectDir).digest("hex").slice(0, 8)
+    return join(tmpdir(), `add_stop_${md5}.json`)
+  }
+
+  /** 写哨兵（失败静默，fail-open） */
+  protected writeStopPromptSentinel(data: Record<string, { count: number; lastPromptAt: number }>): void {
+    try {
+      writeFileSync(this.stopSentinelPath(), JSON.stringify(data), "utf-8")
+    } catch {
+      // 静默：哨兵写失败不影响主流程
+    }
+  }
+
+  /**
+   * 频控判定：返回 true = 已达上限应放行（不弹框）
+   * 生成态缺失 protocol.stop（TOML 未同步）→ 跳过频控保持既有行为（生成链幂等校验兜底）
+   */
+  protected stopPromptLimited(plan: string): boolean {
+    try {
+      const stopCfg = protocol.stop as
+        | { max_prompt_per_context?: number; window_minutes?: number }
+        | undefined
+      if (!stopCfg) return false // 生成态缺失 → 跳过频控
+      const max = this.stopPromptMax()
+      const windowMs = this.stopPromptWindowMs()
+      const path = this.stopSentinelPath()
+      let data: Record<string, { count: number; lastPromptAt: number }> = {}
+      if (existsSync(path)) {
+        try {
+          data = JSON.parse(readFileSync(path, "utf-8")) ?? {}
+        } catch {
+          return true // 哨兵损坏 → fail-open 放行
+        }
+      }
+      const now = Date.now()
+      const entry = data[plan]
+      if (!entry) {
+        // 首次触发：计数 1，正常弹框
+        data[plan] = { count: 1, lastPromptAt: now }
+        this.writeStopPromptSentinel(data)
+        return false
+      }
+      if (now - entry.lastPromptAt > windowMs) {
+        // 窗口过期：重置计数 1，正常弹框（新窗口）
+        data[plan] = { count: 1, lastPromptAt: now }
+        this.writeStopPromptSentinel(data)
+        return false
+      }
+      if (entry.count >= max) {
+        return true // 窗口内已达上限 → 放行（不写回，保持计数）
+      }
+      data[plan] = { count: entry.count + 1, lastPromptAt: now }
+      this.writeStopPromptSentinel(data)
+      return false
+    } catch {
+      return true // 自身故障 → fail-open 放行
+    }
   }
 
   /** Q0: DB 不可用（core: stderr + 2） */

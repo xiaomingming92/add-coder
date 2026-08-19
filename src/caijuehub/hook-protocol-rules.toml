@@ -109,3 +109,12 @@ note = "core 入口协议 = qoder 同构参考实现；adapter 仅保留本表�
 [protocol.adapter_defaults]
 magic_dir_fallback = ".qoder"  # notify.ts 无 env 注入时的兜底（历史主端约定——声明化后可随端演进，不再锁死代码）
 probe_magic_dirs = [".claude", ".qoder", ".vscode", ".add", ".trae", ".codex"]  # notification 跨端探测（bash 顺序 + 新端补齐，新增端无需改代码）
+
+# ── Stop 弹框频率限制（临时方案——agent-memory 上线后迁移全局状态管控）──
+# 消费方: templates/core/governance/stop-router.ts（StopRouter.q4Check 前置频控判定）
+# 语义: 同一项目（PROJECT_DIR md5）同一 Plan（planName key）在窗口内最多弹框 max 次，
+#       达上限后降级放行（exit 0 + stderr 提示），防 Stop 阻断刷屏死循环。
+
+[protocol.stop]
+max_prompt_per_context = 3    # 同一项目同一 Plan 在窗口内最多弹框次数
+window_minutes = 30           # 窗口：lastPromptAt 超窗后重置计数
