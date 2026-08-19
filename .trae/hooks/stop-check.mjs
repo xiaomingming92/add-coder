@@ -192,6 +192,10 @@ var protocol = {
       ".trae",
       ".codex"
     ]
+  },
+  "stop": {
+    "max_prompt_per_context": 3,
+    "window_minutes": 30
   }
 };
 
@@ -402,6 +406,10 @@ function buildStopContext(quadrant, info) {
 }
 
 // templates/core/governance/stop-router.ts
+import { createHash as createHash2 } from "node:crypto";
+import { existsSync as existsSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { tmpdir } from "node:os";
+import { join as join2 } from "node:path";
 var StopRouter = class {
   /** 主路由：返回 exit code（0 放行 / 2 阻断） */
   run() {
@@ -430,14 +438,20 @@ var StopRouter = class {
   }
   // ─────────────────────────── 扩展点 ───────────────────────────
   /**
-   * Q4 验收决策（双维度组合——2026-08-14 Task 9.4.4④ 上提，回流: I2）:
-   *   维度 1（前置）: DB 任务进度（step = done/total，数值且 done<total → 未完成阻断提示）
-   *   维度 2: checklist 质量（checkAddCompleteness 未闭环 → 阻断）
-   *   互补非替代——codex 原 DB 进度分流语义上提 core，core checklist 质量语义保留。
-   */
+  * Q4 验收决策（双维度组合——2026-08-14 Task 9.4.4④ 上提，回流: I2）:
+  *   维度 0（新增，临时方案）: 弹框频控——同项目同 Plan 窗口内达上限 → 降级放行
+  *   维度 1（前置）: DB 任务进度（step = done/total，数值且 done<total → 未完成阻断提示）
+  *   维度 2: checklist 质量（checkAddCompleteness 未闭环 → 阻断）
+  *   互补非替代——codex 原 DB 进度分流语义上提 core，core checklist 质量语义保留。
+  */
   q4Check(plan, rounds, step, handoff, addRoute) {
-    void plan;
     void rounds;
+    const limited = this.stopPromptLimited(plan);
+    if (limited) {
+      process.stderr.write(`[ADD Stop] \u5DF2\u8FBE\u672C Plan \u5F39\u6846\u4E0A\u9650(${this.stopPromptMax()})\uFF0C\u672C\u6B21\u653E\u884C\u3002\u8BF7\u5728\u540E\u7EED\u5B9E\u65BD\u4E2D\u5B8C\u6210\u9A8C\u6536\u95ED\u73AF\uFF08devlog + handoff\uFF09\u540E\u505C\u6B62\u3002
+`);
+      return 0;
+    }
     const [donePart, totalPart] = step.split("/");
     if (/^\d+$/.test(donePart) && /^\d+$/.test(totalPart) && Number(donePart) < Number(totalPart)) {
       return this.emitQ4Unclosed(
@@ -453,6 +467,73 @@ var StopRouter = class {
     }
     clearDevAction();
     return this.emitQ4Pass();
+  }
+  // ── 弹框频控（临时方案，规则真源: hook-protocol-rules.toml [protocol.stop]）──
+  // 计数隔离: 文件级 = PROJECT_DIR md5（跨项目不互扰）；key 级 = planName（同项目跨 Plan 不互扰）
+  // 故障降级: 哨兵读/写异常 → fail-open 放行（不阻塞主流程）
+  /** 哨兵记录：同一项目同一 Plan 的弹框计数 */
+  stopPromptMax() {
+    const cfg = protocol.stop;
+    return cfg?.max_prompt_per_context ?? 3;
+  }
+  /** 哨兵窗口（毫秒） */
+  stopPromptWindowMs() {
+    const cfg = protocol.stop;
+    return (cfg?.window_minutes ?? 30) * 6e4;
+  }
+  /** 哨兵文件路径（项目隔离：PROJECT_DIR md5） */
+  stopSentinelPath() {
+    const projectDir = process.env.PROJECT_DIR || process.env.QODER_PROJECT_DIR || process.env.QODERCN_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const md5 = createHash2("md5").update(projectDir).digest("hex").slice(0, 8);
+    return join2(tmpdir(), `add_stop_${md5}.json`);
+  }
+  /** 写哨兵（失败静默，fail-open） */
+  writeStopPromptSentinel(data) {
+    try {
+      writeFileSync2(this.stopSentinelPath(), JSON.stringify(data), "utf-8");
+    } catch {
+    }
+  }
+  /**
+   * 频控判定：返回 true = 已达上限应放行（不弹框）
+   * 生成态缺失 protocol.stop（TOML 未同步）→ 跳过频控保持既有行为（生成链幂等校验兜底）
+   */
+  stopPromptLimited(plan) {
+    try {
+      const stopCfg = protocol.stop;
+      if (!stopCfg) return false;
+      const max = this.stopPromptMax();
+      const windowMs = this.stopPromptWindowMs();
+      const path3 = this.stopSentinelPath();
+      let data = {};
+      if (existsSync2(path3)) {
+        try {
+          data = JSON.parse(readFileSync2(path3, "utf-8")) ?? {};
+        } catch {
+          return true;
+        }
+      }
+      const now = Date.now();
+      const entry = data[plan];
+      if (!entry) {
+        data[plan] = { count: 1, lastPromptAt: now };
+        this.writeStopPromptSentinel(data);
+        return false;
+      }
+      if (now - entry.lastPromptAt > windowMs) {
+        data[plan] = { count: 1, lastPromptAt: now };
+        this.writeStopPromptSentinel(data);
+        return false;
+      }
+      if (entry.count >= max) {
+        return true;
+      }
+      data[plan] = { count: entry.count + 1, lastPromptAt: now };
+      this.writeStopPromptSentinel(data);
+      return false;
+    } catch {
+      return true;
+    }
   }
   /** Q0: DB 不可用（core: stderr + 2） */
   emitQ0(reason) {

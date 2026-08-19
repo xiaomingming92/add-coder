@@ -148,6 +148,10 @@ var protocol = {
       ".trae",
       ".codex"
     ]
+  },
+  "stop": {
+    "max_prompt_per_context": 3,
+    "window_minutes": 30
   }
 };
 

@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.32",
+  "_version": "0.3.33",
   "adapters/claude/hooks/doc-format-guard.mjs": "02fb1ed6",
   "adapters/claude/hooks/doc-format-guard.ts": "2abf8013",
   "adapters/claude/hooks/lib/claude-env.ts": "170b40ca",
@@ -286,7 +286,7 @@
   "core/scripts/mcp-server/tools/gateway/check_doc_similarity.ts": "2cba51c5",
   "core/scripts/mcp-server/tools/gateway/check_dps.ts": "eb0fd12d",
   "core/scripts/mcp-server/tools/gateway/check_rahs.ts": "7091a262",
-  "core/scripts/mcp-server/tools/gateway/check_spec_sync.ts": "560a88ad",
+  "core/scripts/mcp-server/tools/gateway/check_spec_sync.ts": "75c0d1e3",
   "core/scripts/mcp-server/tools/gateway/helpers.ts": "f8794a92",
   "core/scripts/mcp-server/tools/gateway/index.ts": "cffe9783",
   "core/scripts/mcp-server/tools/gateway.backup": "65eae393",
