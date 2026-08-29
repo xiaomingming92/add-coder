@@ -3,10 +3,12 @@
 //
 // 设计范式: OOP 守卫类（状态恢复/模板索引/代办/HITL 四职责聚合）。
 
-import { existsSync, readdirSync, statSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { detectActiveAdd, tryResolveMagicDir } from "./common.js"
 import { PreloadTemplates } from "./preload-templates.js"
+import { L1_SNAPSHOT_FILE, L1_SNAPSHOT_TTL_MS, MEMORY_DIR_NAME, memoryMaxTokens, recallMode } from "../scripts/mcp-server/shared/memory/switches.js"
+import { estimateTokens } from "../scripts/mcp-server/shared/memory/retrieval/context-builder.js"
 
 /**
  * SessionStart 守卫（① 状态恢复 → ② 模板索引 → ③ 代办 → ④ HITL 待审批检测）:
@@ -40,6 +42,9 @@ export class SessionStartGuard {
 
     // ── ④ §HITL 待审批检测（扩展点: adapter 可 override 关闭）──
     this.emitHitlPending()
+
+    // ── ⑤ Memory L1 快照注入（Spec §10；fail-open，读预计算快照，无 DB）──
+    this.emitMemoryL1()
 
     return 0
   }
@@ -94,6 +99,48 @@ export class SessionStartGuard {
       if (hitlCount > 0) {
         process.stdout.write(`[HITL 待审批] 检测到 ${hitlCount} 个待审批 HITL 提案，请检查并处理\n`)
       }
+    }
+  }
+
+  /**
+   * ⑤ Memory L1 快照注入（ADD_MEMORY_RECALL_MODE 三态）:
+   *   off    → 不输出
+   *   shadow → 仅提示快照存在（召回可执行并落审计，但不注入上下文）
+   *   inject → 读预计算快照注入（新鲜度 ≤7 天，token 预算截断，带来源边界标签）
+   * 同步 Hook ≤200ms 约束：只读文件，任何异常 fail-open 静默跳过。
+   */
+  protected emitMemoryL1(): void {
+    try {
+      const mode = recallMode()
+      if (mode === "off" || !this.magicDir) return
+      const file = join(this.projectDir, this.magicDir, MEMORY_DIR_NAME, L1_SNAPSHOT_FILE)
+      if (!existsSync(file)) return
+      if (mode === "shadow") {
+        process.stdout.write(`[Memory] L1 快照已生成（shadow 模式未注入）。需要时调用 recall_memory 显式召回: ${file}\n`)
+        return
+      }
+      // inject：过期快照不注入
+      if (Date.now() - statSync(file).mtimeMs > L1_SNAPSHOT_TTL_MS) return
+      const text = readFileSync(file, "utf-8")
+      const budget = memoryMaxTokens()
+      if (estimateTokens(text) <= budget) {
+        process.stdout.write(text)
+        return
+      }
+      // 超预算：按行截断，不静默吞掉——追加显式截断标记
+      const lines = text.split("\n")
+      const kept: string[] = []
+      let used = 0
+      for (const line of lines) {
+        const t = estimateTokens(line)
+        if (used + t > budget) break
+        kept.push(line)
+        used += t
+      }
+      kept.push(`[Memory L1] ⚠️ 超出预算 ${budget} tokens，已截断（完整快照: ${file}）`)
+      process.stdout.write(kept.join("\n") + "\n")
+    } catch {
+      /* fail-open：记忆子系统故障不阻断 session-start（Plan §9.3） */
     }
   }
 }

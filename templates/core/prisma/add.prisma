@@ -216,3 +216,206 @@ model CollaborationPlanBinding {
   @@unique([contractId, projectKey, adapterKey, planName])
   @@index([projectKey, adapterKey, planName])
 }
+
+// ===== Agent Memory 知识治理层（Plan: add-coder-agent-memory-plan-v2） =====
+// 数据约束（Plan §4.4）：
+// - ACTIVE 必须至少关联一条 Evidence；approve 时 approvedBy/approvedAt 必填
+// - SUPERSEDED 必须设置 supersededById，且新旧 repository/scope 兼容
+// - validUntil <= now() 不得进入默认召回；HYPOTHESIS 不得作为 Gate 强约束
+// - importance/confidence ∈ [0,1]；contentHash = sha256(规范化文本)，幂等含 repository+scope
+// - ORGANIZATION scope 首版禁用（枚举保留，写入拒绝，§17-7 定案）
+
+enum MemoryKind {
+  DECISION
+  CONSTRAINT
+  PITFALL
+  FAILURE
+  LESSON
+  PATTERN
+  CONVENTION
+  FACT
+  HANDOFF_DIGEST
+  HYPOTHESIS
+}
+
+enum MemoryStatus {
+  CANDIDATE
+  PENDING
+  ACTIVE
+  STALE
+  SUPERSEDED
+  REJECTED
+  ARCHIVED
+}
+
+enum MemoryScopeType {
+  ORGANIZATION
+  REPOSITORY
+  BRANCH
+  MODULE
+  PATH
+  SYMBOL
+  PLAN
+  SPEC
+}
+
+enum MemorySourceType {
+  PLAN
+  SPEC
+  DPS_GATE
+  DEV_OPERATION
+  RAHS_GATE
+  HANDOFF
+  MANUAL
+  IMPORT
+}
+
+enum EmbeddingState {
+  DISABLED
+  PENDING
+  READY
+  FAILED
+  STALE
+}
+
+enum RecallOutcome {
+  UNKNOWN
+  USED
+  USEFUL
+  IRRELEVANT
+  OUTDATED
+  CONTRADICTED
+  HARMFUL
+}
+
+model AddMemory {
+  id              String          @id @default(cuid())
+  kind            MemoryKind
+  status          MemoryStatus    @default(CANDIDATE)
+  topic           String
+  content         String
+  summary         String?
+
+  scopeType       MemoryScopeType
+  scopeValue      String
+  repositoryRef   String
+
+  importance      Float           @default(0.5)
+  confidence      Float           @default(0.5)
+  validFrom       DateTime        @default(now())
+  validUntil      DateTime?
+
+  supersededById  String?
+  supersededBy    AddMemory?      @relation("MemorySupersession", fields: [supersededById], references: [id])
+  supersedes      AddMemory[]     @relation("MemorySupersession")
+
+  contentHash     String
+  embeddingModel  String?
+  embeddingDim    Int?
+  embeddingState  EmbeddingState  @default(DISABLED)
+
+  createdBy       String?
+  approvedBy      String?
+  approvedAt      DateTime?
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  evidenceLinks   AddMemoryEvidenceLink[]
+  recalls         AddMemoryRecallItem[]
+
+  @@index([repositoryRef, status, kind])
+  @@index([scopeType, scopeValue])
+  @@index([supersededById])
+  @@index([status, validUntil])
+  @@unique([repositoryRef, contentHash, scopeType, scopeValue])
+}
+
+model AddMemoryEvidence {
+  id            String           @id @default(cuid())
+  repositoryRef String
+  sourceType    MemorySourceType
+  sourceRef     String
+  planKeyword   String?
+  excerpt       String
+  contentHash   String
+  occurredAt    DateTime?
+  metadata      Json?
+  createdAt     DateTime         @default(now())
+
+  memoryLinks   AddMemoryEvidenceLink[]
+
+  @@index([repositoryRef, sourceType, sourceRef])
+  @@index([planKeyword])
+  @@unique([repositoryRef, sourceType, sourceRef, contentHash])
+}
+
+model AddMemoryEvidenceLink {
+  memoryId    String
+  evidenceId  String
+  relation    String?
+  createdAt   DateTime          @default(now())
+
+  memory      AddMemory         @relation(fields: [memoryId], references: [id])
+  evidence    AddMemoryEvidence @relation(fields: [evidenceId], references: [id])
+
+  @@id([memoryId, evidenceId])
+}
+
+// sourceRef 约定：必须包含当次运行标识（格式 {gate}:{planKeyword}:{runId}），
+// 同一 Gate 对同一来源的重复测量由 runId 区分（Review P1 #2 回流）
+model AddMetricSnapshot {
+  id            String   @id @default(cuid())
+  repositoryRef String
+  metricType    String
+  value         Float
+  baseline      Float?
+  delta         Float?
+  unit          String?
+  planKeyword   String?
+  specRef       String?
+  commitSha     String?
+  sourceRef     String
+  metadata      Json?
+  measuredAt    DateTime @default(now())
+
+  @@index([repositoryRef, metricType, measuredAt])
+  @@unique([repositoryRef, metricType, sourceRef])
+}
+
+model AddMemoryRecall {
+  id               String          @id @default(cuid())
+  repositoryRef    String
+  query            String
+  stage            String
+  consumerRef      String?
+  scopeContext     Json
+  candidateIds     Json
+  selectedIds      Json
+  scoreBreakdown   Json
+  exclusionReasons Json?
+  rankingVersion   String
+  tokenBudget      Int
+  injectedTokens   Int
+  latencyMs        Int?
+  degradedMode     String?
+  createdAt        DateTime        @default(now())
+  items            AddMemoryRecallItem[]
+
+  @@index([repositoryRef, stage, createdAt])
+}
+
+model AddMemoryRecallItem {
+  recallId   String
+  memoryId   String
+  selected   Boolean
+  rank       Int?
+  outcome    RecallOutcome @default(UNKNOWN)
+  feedback   String?
+  updatedAt  DateTime      @updatedAt
+
+  recall     AddMemoryRecall @relation(fields: [recallId], references: [id])
+  memory     AddMemory       @relation(fields: [memoryId], references: [id])
+
+  @@id([recallId, memoryId])
+}

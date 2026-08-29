@@ -17,6 +17,10 @@ import {
 import { loadDevKeywords, matchTrigger } from "./vocabulary.js"
 import { writeHookEvent } from "./notify.js"
 import { event } from "./rules.js"
+import { recallMode } from "../scripts/mcp-server/shared/memory/switches.js"
+
+/** 显式记忆回忆意图触发词（Plan §9.1：对话触发词仅作补充入口；vocabulary 文档类别 G 同步维护） */
+const MEMORY_RECALL_HINT_RE = /之前|上次|还记得|记得吗|为什么当时|类似问题|历史决策|以前的方案|曾经怎么/i
 
 /**
  * UserPromptSubmit 触发词路由基类（模板方法）:
@@ -108,6 +112,25 @@ export class PromptRouter {
     // core 协议: 无前置注入
   }
 
+  /**
+   * 显式记忆回忆提示（Spec §10 / Plan §9.1 补充入口）:
+   * 命中回忆词且 ADD_MEMORY_RECALL_MODE != off → 提示调用 recall_memory。
+   * 不做自动召回（同步 Hook ≤200ms 无 DB）；shadow 模式下提示语明示"仅显式调用"。
+   */
+  protected maybeMemoryHint(prompt: string): void {
+    try {
+      if (recallMode() === "off") return
+      if (!MEMORY_RECALL_HINT_RE.test(prompt)) return
+      const mode = recallMode()
+      const suffix = mode === "shadow" ? "（当前 shadow 模式：召回将落审计，Hook 不自动注入）" : ""
+      process.stdout.write(
+        `[Memory] 检测到历史回忆意图${suffix}。可调用 recall_memory({ query: <你的问题>, stage: "prompt" }) 获取受治理的记忆上下文（含来源与评分）。\n`
+      )
+    } catch {
+      /* fail-open */
+    }
+  }
+
   /** Layer 3 输出形态（core: 纯文本逐行；qoder: hookSpecificOutput JSON 包） */
   protected layer3Json(): boolean {
     return false
@@ -147,6 +170,9 @@ export class PromptRouter {
       for (const m of matched) process.stdout.write(m + "\n")
       return 0
     }
+
+    // ─── Layer 1.5: 显式记忆回忆意图（补充入口；不替代确定性召回，见 Plan §9.1）───
+    this.maybeMemoryHint(prompt)
 
     // ─── 开发关键词检测（动态加载） ───
     const devKw = loadDevKeywords()

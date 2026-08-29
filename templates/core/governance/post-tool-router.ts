@@ -3,10 +3,12 @@
 //
 // 设计范式: OOP 路由类（§1 DPS 哨兵自动化 / §2 Edit·Write 守卫 / §3 Bash 增强）。
 
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, readdirSync, appendFileSync, writeFileSync } from "node:fs"
 import { join, basename, dirname } from "node:path"
 import { jsonGet } from "./common.js"
 import { AuditBridge } from "./audit-bridge.js"
+import { evidenceEnabled, EVIDENCE_QUEUE_FILE, MEMORY_DIR_NAME, recallMode } from "../scripts/mcp-server/shared/memory/switches.js"
+import { buildEvidenceEvent, classifyEvidenceSource } from "../scripts/mcp-server/shared/memory/jobs/evidence-collector.js"
 
 /** 纯函数：从 input 中提取 output/content 拼接文本（对齐 bash grep -o 组合） */
 function extractOutputText(raw: string): string {
@@ -165,6 +167,9 @@ export class PostToolRouter {
 
       // §2f: 审计桥接（Task 8.1，ADD-7 自动化）——文件写入事件 → jsonl → MCP 常驻消费落库
       this.emitWriteEvent(filePath)
+
+      // §2g: Memory 采证入队（白名单 → evidence-queue.jsonl → consolidation 异步落库）
+      this.emitMemoryEvidence(filePath)
     } else if (toolName === "Bash") {
       // ═══════════════ §3: Bash matcher: 结果增强（扩展点: codex 文本）═══════════════
       this.emitLine(this.emitBashDone())
@@ -198,6 +203,33 @@ export class PostToolRouter {
    *  如有端需关闭/改造事件面在此 override——本轮 5 端全接入，无关闭端） */
   protected emitWriteEvent(filePath: string): void {
     this.auditBridge.emit(filePath)
+  }
+
+  /**
+   * §2g Memory 采证入队（Spec §10 PostToolUse 白名单，扩展点）:
+   *   白名单路径（plans/specs/reviews/handoff）→ 追加 evidence-queue.jsonl（幂等 dedupKey），
+   *   由 consolidation job 异步落库。ADD_MEMORY_EVIDENCE=off 或 RECALL_MODE=off 时关闭。
+   *   fail-open：任何异常不阻断文件写入主路径（Plan §9.3）。
+   */
+  protected emitMemoryEvidence(filePath: string): void {
+    try {
+      if (!evidenceEnabled() || recallMode() === "off") return
+      if (!classifyEvidenceSource(filePath)) return
+      if (!this.magicDir) return
+      let excerpt = ""
+      try {
+        excerpt = readFileSync(filePath, "utf-8").slice(0, 500)
+      } catch {
+        excerpt = basename(filePath)
+      }
+      const ev = buildEvidenceEvent(filePath, excerpt)
+      const dir = join(this.projectDir, this.magicDir, MEMORY_DIR_NAME)
+      mkdirSync(dir, { recursive: true })
+      appendFileSync(join(dir, EVIDENCE_QUEUE_FILE), JSON.stringify(ev) + "\n", "utf-8")
+      this.emitLine(`[ADD PostToolUse] 🧠 记忆采证入队: ${filePath}（consolidation 时落库）\n`)
+    } catch {
+      /* fail-open */
+    }
   }
 
   /** §3 Bash 增强（core: lint/tsc；codex 子类: lint/typecheck/test） */

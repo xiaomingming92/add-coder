@@ -17,19 +17,19 @@
 | 触发词 | LLM 默认操作 | 优先级 |
 |--------|-------------|--------|
 | `PRD` / `prd` / `需求文档` / `产品需求` | ①新建：读 `prd-standard-template.md` → 写 `docs/*/knowledge/00-需求/`；②增量：读 `prd-incremental-template.md` → 在已有PRD基础上追加/修改 | 🟡 P1 |
-| `Plan` / `plan` | **二段式**: ①先读 `.codex/plans/index.md` 按 planName 匹配路径（P0 优先）；②无匹配才全局 glob 搜索 `*-plan-v*.md`。**禁止跳过 index.md 直接 glob**。**模板选择**：≤3 文件、无新模块/架构 → `simple-plan-template.md`（Tasks+Handoff 融合在 Plan 体内，无需独立 spec/handoff 文件）；多模块/跨系统/含架构 → `standard-plan-template.md` | 🔴 P0 |
-| `Spec` / `spec` | 查 `.codex/specs/{name}/spec.md` | 🔴 P0 |
-| `Tasks` / `tasks` | 查 `.codex/specs/{name}/tasks.md` | 🟡 P1 |
-| `Checklist` / `checklist` | 查 `.codex/specs/{name}/checklist.md` | 🟡 P1 |
-| `Review` / `review` | **二段式**: ①先读 `.codex/plans/index.md` 定位 plan → 查其关联 Review；②无匹配才全局 glob `*-review*.md` | 🔴 P0 |
-| `review-implementation` | 查 `.codex/reviews/` 下 `*-review-implementation*.md` | 🟡 P1 |
-| `review-runtime` | 查 `.codex/reviews/` 下 `*-review-runtime*.md` | 🟡 P1 |
-| `Handoff` / `handoff` / `交接` | **二段式**: ①先读 `.codex/plans/index.md` 按 planName 匹配路径 → 定位 handoff；②无匹配才全局 glob `*-handoff*.md` | 🔴 P0 |
-| `add-route` / `执行路线图` | **二段式**: ①先读 `.codex/plans/index.md` 定位 plan → 查其 add-route；②调 `check_add_route_status`；③无匹配才全局 glob | 🔴 P0 |
+| `Plan` / `plan` | **二段式**: ①先读 `{{magicDir}}/plans/index.md` 按 planName 匹配路径（P0 优先）；②无匹配才全局 glob 搜索 `*-plan-v*.md`。**禁止跳过 index.md 直接 glob**。**模板选择**：≤3 文件、无新模块/架构 → `simple-plan-template.md`（Tasks+Handoff 融合在 Plan 体内，无需独立 spec/handoff 文件）；多模块/跨系统/含架构 → `standard-plan-template.md` | 🔴 P0 |
+| `Spec` / `spec` | 查 `{{magicDir}}/specs/{name}/spec.md` | 🔴 P0 |
+| `Tasks` / `tasks` | 查 `{{magicDir}}/specs/{name}/tasks.md` | 🟡 P1 |
+| `Checklist` / `checklist` | 查 `{{magicDir}}/specs/{name}/checklist.md` | 🟡 P1 |
+| `Review` / `review` | **二段式**: ①先读 `{{magicDir}}/plans/index.md` 定位 plan → 查其关联 Review；②无匹配才全局 glob `*-review*.md` | 🔴 P0 |
+| `review-implementation` | 查 `{{magicDir}}/reviews/` 下 `*-review-implementation*.md` | 🟡 P1 |
+| `review-runtime` | 查 `{{magicDir}}/reviews/` 下 `*-review-runtime*.md` | 🟡 P1 |
+| `Handoff` / `handoff` / `交接` | **二段式**: ①先读 `{{magicDir}}/plans/index.md` 按 planName 匹配路径 → 定位 handoff；②无匹配才全局 glob `*-handoff*.md` | 🔴 P0 |
+| `add-route` / `执行路线图` | **二段式**: ①先读 `{{magicDir}}/plans/index.md` 定位 plan → 查其 add-route；②调 `check_add_route_status`；③无匹配才全局 glob | 🔴 P0 |
 | `devlog` / `开发日志` | **双触发**: ①用户说"devlog 记录下"→ 立即写；②Step 8 收敛通过 → 自动写（无需提醒）| 🔴 P0 |
-| `index.md` / `Plan索引` | 读 `.codex/plans/index.md`（匹配依赖优先）。**当用户问及任何 doc 类型（Plan/Review/Handoff/add-route）但未给明确路径时，此条优先于上述所有 doc 类型触发词执行** | 🔴 P0 |
-| `gateway.md` / `gateway报告` / `运行时报告` | 读 `.codex/reports/add-coder-runtime-report/gateway.md` | 🟡 P1 |
-| `report-handoff` / `report交接` | 读 `.codex/templates/report-handoff-template.md` | 🟡 P1 |
+| `index.md` / `Plan索引` | 读 `{{magicDir}}/plans/index.md`（匹配依赖优先）。**当用户问及任何 doc 类型（Plan/Review/Handoff/add-route）但未给明确路径时，此条优先于上述所有 doc 类型触发词执行** | 🔴 P0 |
+| `gateway.md` / `gateway报告` / `运行时报告` | 读 `{{magicDir}}/reports/{{projectName}}-runtime-report/gateway.md` | 🟡 P1 |
+| `report-handoff` / `report交接` | 读 `{{magicDir}}/templates/report-handoff-template.md` | 🟡 P1 |
 
 ---
 
@@ -115,6 +115,24 @@
 
 ---
 
+## 类别 G: 记忆治理（Agent Memory，8 个）
+
+> 本类别词汇**不进**下半部分触发词映射（loadTriggers 仅加载类别 A-F）——
+> 回忆意图是低频补充入口（Plan §9.1），由 prompt-router 内置正则检测，不承担主流程召回。
+
+| 触发词 | LLM 含义 | 优先级 |
+|--------|---------|--------|
+| `propose_memory` / `提记忆` / `记住这个` | MCP 工具：提出 CANDIDATE 候选（绝不直接 ACTIVE），自动去重/密钥扫描/冲突检测 | 🟡 P1 |
+| `recall_memory` / `召回记忆` | MCP 工具：受约束混合召回，返回含 whySelected/scoreBreakdown 的结构化结果 + recallId | 🔴 P0 |
+| `之前` / `上次` / `还记得` / `历史决策` / `类似问题` | 显式回忆意图（补充入口）：建议调用 `recall_memory({ query, stage: "prompt" })` | 🟡 P1 |
+| `review_memory` / `审核记忆` | MCP 工具：查看治理队列（CANDIDATE/PENDING + 证据 + 冲突） | 🟡 P1 |
+| `resolve_memory` / `批准记忆` / `归档记忆` | MCP 工具：状态机迁移（submit_review/approve/reject/stale/supersede/archive/restore） | 🟡 P1 |
+| `ADD_MEMORY_RECALL_MODE` | 发布开关三态：off（全关）/ shadow（召回落审计不注入，默认）/ inject（L1 快照注入） | 🟡 P1 |
+| `consolidation` / `记忆固化` | 异步任务：采证落库 + 去重/冲突队列 + 指标候选 + L1 快照刷新（`scripts/memory/memory-jobs.ts consolidate`） | 🟢 P2 |
+| `L1` / `L2 召回` | 分层注入：L1=session-start repository 级小上下文（预计算快照）；L2=任务级按需召回 | 🟡 P1 |
+
+---
+
 ## Few-Shot 示例
 
 > 以下为 LLM 最容易误解的高频场景，每个场景给出标准输入 → 标准输出映射。
@@ -133,7 +151,7 @@ LLM: "所有 checklist 项 [x]，RAHS ≥ 90，add-route 闭环。验收通过�
 LLM: "所有 checklist 项 [x]，RAHS ≥ 90，add-route 闭环。验收通过！"
 
 ① 写 devlog日志(走mcp) → Edit handoff 写入验收记录（本轮改了什么 + 验收结果 + 遗留项）
-② 更新 handoff → Write(".codex/plans/{date}/xxx-handoff-v1.md", "handoff 模板内容")
+② 更新 handoff → Write("{{magicDir}}/plans/{date}/xxx-handoff-v1.md", "handoff 模板内容")
 ③ 架构文档回看 → Read 相关 specs，确认文档不落后于代码
 
 [LLM 执行完以上三步后才算真正结束]
@@ -148,7 +166,7 @@ LLM: "让我搜索所有 plan 文件..." [全局 Grep 所有 *.md，慢且可能
 
 **正确输出**：
 ```
-LLM: "先查索引 → Read('.codex/plans/index.md') 查找相关 Plan 条目"
+LLM: "先查索引 → Read('{{magicDir}}/plans/index.md') 查找相关 Plan 条目"
 [如有匹配 → 直接定位文件；无匹配 → 再用 Grep 全局搜索]
 ```
 
@@ -156,7 +174,7 @@ LLM: "先查索引 → Read('.codex/plans/index.md') 查找相关 Plan 条目"
 
 **错误输出**：
 ```
-用户: "review add-coder-three-tier-reasoning-graph-handoff-v3.md 和这个 plan 的直属相关文件"
+用户: "review {{projectName}}-three-tier-reasoning-graph-handoff-v3.md 和这个 plan 的直属相关文件"
 LLM 词汇匹配: "plan" 命中 → 第 19 行 → Glob("**/*-plan-v*.md") / find 全盘搜索
            ↓ 浪费大量 token，且 index.md（第 29 行）被短路
 ```
@@ -164,10 +182,10 @@ LLM 词汇匹配: "plan" 命中 → 第 19 行 → Glob("**/*-plan-v*.md") / fin
 **正确输出**：
 ```
 LLM 词汇匹配: "plan" 命中 → 第 19 行二段式:
-  ① Read('.codex/plans/index.md') — 搜索 "three-tier-reasoning-graph"
-     → 命中 06/29/add-coder-three-tier-reasoning-graph-plan-v3.md
-     → 命中 06/29/add-coder-three-tier-reasoning-graph-handoff-v3.md
-     → 命中 06/29/add-coder-three-tier-reasoning-graph-add-route-v3.md
+  ① Read('{{magicDir}}/plans/index.md') — 搜索 "three-tier-reasoning-graph"
+     → 命中 06/29/{{projectName}}-three-tier-reasoning-graph-plan-v3.md
+     → 命中 06/29/{{projectName}}-three-tier-reasoning-graph-handoff-v3.md
+     → 命中 06/29/{{projectName}}-three-tier-reasoning-graph-add-route-v3.md
   ② 按匹配路径直接 Read 上述文件（无需 glob）
 [仅当 index.md 无匹配时才 fallback 到全局 glob]
 ```
@@ -245,7 +263,7 @@ LLM: "验收通过 → 自动写 devlog日志(走mcp)（无需用户提醒）→
 > **消费者**: IDE 侧 LLM + 未来治理 AI
 > **设计意图**: 将 ADD 范式专有词汇和操作惯例预埋到 always-on 上下文中，使 LLM 听到触发词时零额外 prompt 执行正确操作。
 > **优先级**: P0 = 日常高频，LLM 必须本能响应；P1 = 开发流程频繁涉及，应预埋；P2 = 低频但易误解，可选预埋。
-> **维护**: 单一真值源，被 `.codex/rules/project_rules.md` 和 `AGENTS.md` 引用。
+> **维护**: 单一真值源，被 `{{magicDir}}/rules/project_rules.md` 和 `AGENTS.md` 引用。
 
 ---
 
@@ -255,17 +273,17 @@ LLM: "验收通过 → 自动写 devlog日志(走mcp)（无需用户提醒）→
 |:--:|------|-------------|
 | P0 | `PRD` / `prd` / `需求文档` / `产品需求` | ①新建：读 `prd-standard-template.md` → 写 `docs/*/knowledge/00-需求/`；②增量：读 `prd-incremental-template.md` → 在已有PRD基础上追加/修改 |
 | P1 | `增量更新 PRD` / `修改PRD` / `PRD变更` | 读 `prd-incremental-template.md` → 在原 PRD 上追加/修改/删除 |
-| P0 | `Plan` / `plan` | **二段式**: ①先读 `.codex/plans/index.md` 按 planName 匹配路径；②无匹配才全局 glob。**index.md 优先** |
-| P0 | `Spec` / `spec` | 查 `.codex/specs/{name}/spec.md` |
-| P1 | `Tasks` / `tasks` | 查 `.codex/specs/{name}/tasks.md` |
-| P1 | `Checklist` / `checklist` | 查 `.codex/specs/{name}/checklist.md` |
-| P0 | `Review` / `review` | **二段式**: ①先读 `.codex/plans/index.md` 定位 plan → 读关联 Review；②无匹配才全局 glob |
-| P0 | `Handoff` / `handoff` / `交接` | **二段式**: ①先读 `.codex/plans/index.md` 定位 plan → 读 handoff；②无匹配才全局 glob |
-| P0 | `add-route` / `执行路线图` | **二段式**: ①先读 `.codex/plans/index.md` 定位 plan → 读 add-route；②调 `check_add_route_status`；③无匹配才全局 glob |
+| P0 | `Plan` / `plan` | **二段式**: ①先读 `{{magicDir}}/plans/index.md` 按 planName 匹配路径；②无匹配才全局 glob。**index.md 优先** |
+| P0 | `Spec` / `spec` | 查 `{{magicDir}}/specs/{name}/spec.md` |
+| P1 | `Tasks` / `tasks` | 查 `{{magicDir}}/specs/{name}/tasks.md` |
+| P1 | `Checklist` / `checklist` | 查 `{{magicDir}}/specs/{name}/checklist.md` |
+| P0 | `Review` / `review` | **二段式**: ①先读 `{{magicDir}}/plans/index.md` 定位 plan → 读关联 Review；②无匹配才全局 glob |
+| P0 | `Handoff` / `handoff` / `交接` | **二段式**: ①先读 `{{magicDir}}/plans/index.md` 定位 plan → 读 handoff；②无匹配才全局 glob |
+| P0 | `add-route` / `执行路线图` | **二段式**: ①先读 `{{magicDir}}/plans/index.md` 定位 plan → 读 add-route；②调 `check_add_route_status`；③无匹配才全局 glob |
 | P0 | `devlog` / `开发日志` / `devlog记录` | **两种触发**: ①用户说即写 → 调用 `record_dev_operation` 落库审计 + 更新 handoff 的验收记录（本轮改了什么/验收结果/devlog查询语句/遗留项）；②Step 8 收敛通过后 → **必须自动写**（无需用户提醒） |
 | P0 | `增量更新` / `增量` / `incremental` / `修改文档` / `调整文档` | 修改已有 Plan/Spec/Review/handoff/task/checklist 文档时，**必须在原有内容基础上插入或扩展**，禁止删除已有内容后全量重写。具体：保留原文结构 → 插入新段落 → 更新修订时间 → 变更对照表标注增量范围 |
-| P1 | `review-implementation` | 查 `.codex/reviews/` 下 `*-review-implementation*.md` |
-| P1 | `review-runtime` | 查 `.codex/reviews/` 下 `*-review-runtime*.md` |
+| P1 | `review-implementation` | 查 `{{magicDir}}/reviews/` 下 `*-review-implementation*.md` |
+| P1 | `review-runtime` | 查 `{{magicDir}}/reviews/` 下 `*-review-runtime*.md` |
 | P1 | `计划` / `规划` | 同 `Plan`——二段式查 index.md → Plan 文件 |
 | P1 | `规格书` / `spec文档` | 同 `Spec`——查 specs/{name}/spec.md |
 | P1 | `任务清单` / `task列表` | 同 `Tasks`——查 specs/{name}/tasks.md |
