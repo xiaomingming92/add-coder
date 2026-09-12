@@ -29,6 +29,14 @@ import {
   getEmbeddings,
 } from "./helpers.js";
 import { getRuntimeContext } from "../../shared/env.js";
+import {
+  buildGateCaptureDetail,
+  createGateWriterDeps,
+  deriveGateRunId,
+  formatGateCaptureSummary,
+  writeGateMetric,
+  GATE_METRIC_TYPE,
+} from "../../shared/memory/metrics/gate-writer.js";
 
 export function registerCheckDps(server: ToolRegistrar) {
   const runtimeContext = getRuntimeContext();
@@ -561,6 +569,35 @@ export function registerCheckDps(server: ToolRegistrar) {
         } catch {
           /* 非阻塞：回写失败不影响 DPS 判定 */
         }
+
+        // ── Gate 采证（Spec §GateMetric）：评分已完成 → 独立提交 MetricSnapshot；
+        //    runId 由被评分内容派生（同内容重放 = 重复采证）；旁路不阻塞评分返回 ──
+        const gateSeed = `${pc}\n${sc}\n${rc}`;
+        const captureInput = {
+          gate: "check_dps" as const,
+          planKeyword: pp,
+          runId: deriveGateRunId("check_dps", pp, gateSeed),
+          metricType: GATE_METRIC_TYPE.check_dps,
+          score: dps,
+          repository: runtimeContext.projectKey,
+          dimensionScores: {
+            semantic: semScore,
+            entropy: entropyScore,
+            cpm: cpmScore,
+            structure: structFinal,
+          },
+          baseline: CFG.THRESHOLD_PASS,
+          unit: "score",
+        };
+        const capture = await writeGateMetric(
+          captureInput,
+          createGateWriterDeps((prisma as Record<string, unknown>).addMetricSnapshot),
+        );
+        parts.push(
+          "",
+          "=== Gate 采证（MetricSnapshot）===",
+          `  ${formatGateCaptureSummary(buildGateCaptureDetail(captureInput, capture))}`,
+        );
 
         return textResponse(parts.join("\n"));
       } catch (e) {
