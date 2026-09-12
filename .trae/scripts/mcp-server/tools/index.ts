@@ -9,6 +9,7 @@ import { registerHookEventTools } from "./hook-event-report.js"
 import { registerHitlTools } from "./hitl.js"
 import { registerPlanTools } from "./plan.js"
 import { registerReviewTools } from "./review.js"
+import { registerMemoryTools } from "./memory.js"
 import { PROJECT_ID } from "../shared/env.js"
 import type { ToolRegistrar } from "./registrar.js"
 
@@ -24,6 +25,7 @@ const READ_TOOLS = new Set([
   "check_dps", "check_rahs", "check_add_route_status", "check_spec_sync",
   "check_add_route_completeness", "check_phase_symmetry", "check_failure_path",
   "check_add_compliance", "get_hook_events",
+  "recall_memory", "get_memory", "list_memories", "review_memory", "get_memory_health",
 ])
 
 function createSemaphore(limit: number) {
@@ -104,5 +106,6 @@ export function registerAllTools(server: McpServer) {
   registerHitlTools(registrar)       // 4 tools: create_hitl / update_hitl / status_hitl / render_hitl_approval
   registerPlanTools(registrar)       // 3 tools: plan_track / plan_status / plan_sync
   registerReviewTools(registrar)     // 3 tools: review_track / review_status / review_sync
-  // Total: 30 tools
+  registerMemoryTools(registrar)     // 8 tools: propose_memory / recall_memory / get_memory / list_memories / review_memory / resolve_memory / feedback_memory / get_memory_health
+  // Total: 38 tools
 }

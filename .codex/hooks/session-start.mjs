@@ -292,7 +292,7 @@ function projectHash() {
 var DEV_FLAG = `/tmp/add_dev_${projectHash()}`;
 
 // templates/core/governance/session-start-guard.ts
-import { existsSync as existsSync3, readdirSync, statSync } from "node:fs";
+import { existsSync as existsSync3, readdirSync, readFileSync as readFileSync3, statSync } from "node:fs";
 import { join as join3 } from "node:path";
 
 // templates/core/governance/preload-templates.ts
@@ -483,6 +483,30 @@ var PreloadTemplates = class _PreloadTemplates {
   }
 };
 
+// templates/core/scripts/mcp-server/shared/memory/switches.ts
+function recallMode(env = process.env) {
+  const v = (env.ADD_MEMORY_RECALL_MODE ?? "shadow").toLowerCase();
+  return v === "off" || v === "inject" ? v : "shadow";
+}
+function memoryMaxTokens(env = process.env) {
+  const n = Number(env.ADD_MEMORY_MAX_TOKENS ?? 600);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 600;
+}
+var MEMORY_DIR_NAME = "memory";
+var L1_SNAPSHOT_FILE = "l1-context.md";
+var L1_SNAPSHOT_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
+
+// templates/core/scripts/mcp-server/shared/memory/retrieval/context-builder.ts
+function estimateTokens(text) {
+  let cjk = 0;
+  let other = 0;
+  for (const ch of text) {
+    if (/[぀-ヿ㐀-䶿一-鿿豈-﫿＀-￯]/.test(ch)) cjk++;
+    else other++;
+  }
+  return cjk + Math.ceil(other / 4);
+}
+
 // templates/core/governance/session-start-guard.ts
 var SessionStartGuard = class {
   projectDir;
@@ -502,6 +526,7 @@ var SessionStartGuard = class {
     this.emitIndex();
     this.emitTodoReminder(state);
     this.emitHitlPending();
+    this.emitMemoryL1();
     return 0;
   }
   // ─────────────────────────── 扩展点 ───────────────────────────
@@ -548,6 +573,45 @@ var SessionStartGuard = class {
         process.stdout.write(`[HITL \u5F85\u5BA1\u6279] \u68C0\u6D4B\u5230 ${hitlCount} \u4E2A\u5F85\u5BA1\u6279 HITL \u63D0\u6848\uFF0C\u8BF7\u68C0\u67E5\u5E76\u5904\u7406
 `);
       }
+    }
+  }
+  /**
+   * ⑤ Memory L1 快照注入（ADD_MEMORY_RECALL_MODE 三态）:
+   *   off    → 不输出
+   *   shadow → 仅提示快照存在（召回可执行并落审计，但不注入上下文）
+   *   inject → 读预计算快照注入（新鲜度 ≤7 天，token 预算截断，带来源边界标签）
+   * 同步 Hook ≤200ms 约束：只读文件，任何异常 fail-open 静默跳过。
+   */
+  emitMemoryL1() {
+    try {
+      const mode = recallMode();
+      if (mode === "off" || !this.magicDir) return;
+      const file = join3(this.projectDir, this.magicDir, MEMORY_DIR_NAME, L1_SNAPSHOT_FILE);
+      if (!existsSync3(file)) return;
+      if (mode === "shadow") {
+        process.stdout.write(`[Memory] L1 \u5FEB\u7167\u5DF2\u751F\u6210\uFF08shadow \u6A21\u5F0F\u672A\u6CE8\u5165\uFF09\u3002\u9700\u8981\u65F6\u8C03\u7528 recall_memory \u663E\u5F0F\u53EC\u56DE: ${file}
+`);
+        return;
+      }
+      if (Date.now() - statSync(file).mtimeMs > L1_SNAPSHOT_TTL_MS) return;
+      const text = readFileSync3(file, "utf-8");
+      const budget = memoryMaxTokens();
+      if (estimateTokens(text) <= budget) {
+        process.stdout.write(text);
+        return;
+      }
+      const lines = text.split("\n");
+      const kept = [];
+      let used = 0;
+      for (const line of lines) {
+        const t = estimateTokens(line);
+        if (used + t > budget) break;
+        kept.push(line);
+        used += t;
+      }
+      kept.push(`[Memory L1] \u26A0\uFE0F \u8D85\u51FA\u9884\u7B97 ${budget} tokens\uFF0C\u5DF2\u622A\u65AD\uFF08\u5B8C\u6574\u5FEB\u7167: ${file}\uFF09`);
+      process.stdout.write(kept.join("\n") + "\n");
+    } catch {
     }
   }
 };
