@@ -6,7 +6,8 @@
  *  2. 重复检测 —— 同 repositoryRef+contentHash 多行 → 报告（不自动合并，人审）
  *  3. 冲突队列 —— CANDIDATE/PENDING 与 ACTIVE 高相似 → 报告（不自动激活，Plan §3）
  *  4. 指标候选 —— AddMetricSnapshot 连续异常 streak 命中 → 创建 CANDIDATE（幂等）
- *  5. 刷新 L1 快照 —— 供 session-start Hook 注入
+ *  5. Handoff Digest —— HANDOFF Evidence → HANDOFF_DIGEST Candidate（幂等，绝不直接 ACTIVE）
+ *  6. 刷新 L1 快照 —— 供 session-start Hook 注入
  */
 import type {
   AddMemoryEvidenceRow,
@@ -18,12 +19,13 @@ import type {
 import { detectConflicts, type Conflict } from "../domain/conflicts.js"
 import { contentHash } from "../domain/dedup.js"
 import { detectAnomalyStreak, type MetricPoint } from "../domain/metric-candidate.js"
+import { buildHandoffDigest } from "../domain/handoff-digest.js"
 import { drainEvidenceQueue, type DrainResult } from "./evidence-collector.js"
 import { refreshL1Snapshot, type SnapshotDeps, type SnapshotResult } from "./snapshot.js"
 
 export interface ConsolidationDeps extends SnapshotDeps {
   memoryDb: TableDelegate<AddMemoryRow>
-  evidenceDb: Pick<TableDelegate<AddMemoryEvidenceRow>, "upsert">
+  evidenceDb: Pick<TableDelegate<AddMemoryEvidenceRow>, "upsert" | "findMany">
   linkDb: Pick<TableDelegate<AddMemoryEvidenceLinkRow>, "findFirst" | "create">
   metricDb: TableDelegate<AddMetricSnapshotRow>
 }
@@ -33,6 +35,7 @@ export interface ConsolidationReport {
   duplicates: { contentHash: string; ids: string[] }[]
   conflictQueue: { candidateId: string; topic: string; conflicts: Conflict[] }[]
   metricCandidatesCreated: string[]
+  handoffDigestsCreated: string[]
   snapshot: SnapshotResult | null
   errors: string[]
 }
@@ -43,6 +46,7 @@ export async function runConsolidation(deps: ConsolidationDeps): Promise<Consoli
     duplicates: [],
     conflictQueue: [],
     metricCandidatesCreated: [],
+    handoffDigestsCreated: [],
     snapshot: null,
     errors: [],
   }
@@ -123,7 +127,7 @@ export async function runConsolidation(deps: ConsolidationDeps): Promise<Consoli
           repositoryRef: deps.repositoryRef,
           contentHash: hash,
           createdBy: "memory-jobs:consolidation",
-        } as Partial<AddMemoryRow>,
+        },
       })
       for (const ref of proposal.evidenceSourceRefs) {
         const ev = await deps.evidenceDb.upsert({
@@ -135,11 +139,11 @@ export async function runConsolidation(deps: ConsolidationDeps): Promise<Consoli
           create: {
             repositoryRef: deps.repositoryRef, sourceType: "DPS_GATE", sourceRef: ref,
             excerpt: ref.slice(0, 500), contentHash: contentHash(ref),
-          } as Partial<AddMemoryEvidenceRow>,
+          },
           update: {},
         })
         const linked = await deps.linkDb.findFirst({ where: { memoryId: created.id, evidenceId: ev.id } })
-        if (!linked) await deps.linkDb.create({ data: { memoryId: created.id, evidenceId: ev.id } as Partial<AddMemoryEvidenceLinkRow> })
+        if (!linked) await deps.linkDb.create({ data: { memoryId: created.id, evidenceId: ev.id } })
       }
       report.metricCandidatesCreated.push(created.id)
     }
@@ -147,7 +151,71 @@ export async function runConsolidation(deps: ConsolidationDeps): Promise<Consoli
     report.errors.push(`metric-candidates: ${e instanceof Error ? e.message : String(e)}`)
   }
 
-  // 5. 刷新 L1 快照
+  // 5. Handoff Digest（Plan §3.1 轮 2）：HANDOFF Evidence → HANDOFF_DIGEST Candidate
+  //    幂等去重靠 dedupKey 派生的 contentHash；绝不直接置 ACTIVE（只产 CANDIDATE）
+  try {
+    const handoffEvidence = await deps.evidenceDb.findMany({
+      where: { repositoryRef: deps.repositoryRef, sourceType: "HANDOFF" },
+      orderBy: { occurredAt: "asc" },
+      take: 200,
+    })
+    for (const ev of handoffEvidence) {
+      const proposal = buildHandoffDigest(
+        { handoffRef: ev.sourceRef, excerpt: ev.excerpt, planKeyword: ev.planKeyword },
+        { repositoryRef: deps.repositoryRef },
+      )
+      const existing = await deps.memoryDb.findFirst({
+        where: {
+          repositoryRef: deps.repositoryRef,
+          contentHash: proposal.contentHash,
+          scopeType: proposal.scopeType,
+          scopeValue: proposal.scopeValue,
+          status: { notIn: ["REJECTED", "ARCHIVED"] },
+        },
+      })
+      if (existing) {
+        // 幂等：同一交接 evidence 的摘要已入队过 → 仅补齐证据关联
+        const linkedAlready = await deps.linkDb.findFirst({
+          where: { memoryId: existing.id, evidenceId: ev.id },
+        })
+        if (!linkedAlready) {
+          await deps.linkDb.create({
+            data: { memoryId: existing.id, evidenceId: ev.id },
+          })
+        }
+        continue
+      }
+      const created = await deps.memoryDb.create({
+        data: {
+          kind: proposal.kind,
+          status: "CANDIDATE", // 绝不直接 ACTIVE
+          topic: proposal.topic,
+          content: proposal.content,
+          scopeType: proposal.scopeType,
+          scopeValue: proposal.scopeValue,
+          repositoryRef: deps.repositoryRef,
+          contentHash: proposal.contentHash,
+          importance: 0.6,
+          confidence: 0.5,
+          createdBy: "memory-jobs:consolidation",
+          metadata: { ...proposal.metadata, dedupKey: proposal.dedupKey, evidenceId: ev.id },
+        },
+      })
+      const linked = await deps.linkDb.findFirst({
+        where: { memoryId: created.id, evidenceId: ev.id },
+      })
+      if (!linked) {
+        await deps.linkDb.create({
+          data: { memoryId: created.id, evidenceId: ev.id },
+        })
+      }
+      report.handoffDigestsCreated.push(created.id)
+    }
+  } catch (e) {
+    report.errors.push(`handoff-digest: ${e instanceof Error ? e.message : String(e)}`)
+  }
+
+  // 6. 刷新 L1 快照
   try {
     report.snapshot = await refreshL1Snapshot(deps)
   } catch (e) {
