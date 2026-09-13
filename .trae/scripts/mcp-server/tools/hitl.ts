@@ -187,15 +187,47 @@ export function registerHitlTools(server: ToolRegistrar) {
       if (!dimensions.length) {
         return errorResponse(`HITL 提案缺少可渲染维度: ${proposalPath ?? planName}`)
       }
+      // 产物-进程新鲜度（覆盖全 adapter；判定不确定 → "unknown"，不误报"需重启"）
+      const { computeFreshness } = await import("../shared/runtime-freshness.js")
+      const { writeHitlInstanceHtml } = await import("../shared/hitl-widget-instance.js")
+      const stale = computeFreshness(MAGIC_DIR, PROJECT_ROOT)
+      // 确定性降级入口：markdown 提案 + 已落盘实例 HTML（无 UI 能力/进程陈旧时仍可完成审批）
+      const toRel = (abs: string): string => abs.replace(`${PROJECT_ROOT}/`, "")
+      const markdownPath = proposalPath ? toRel(proposalPath) : ""
+      let htmlPath = ""
+      try {
+        htmlPath = toRel(
+          writeHitlInstanceHtml({
+            projectRoot: PROJECT_ROOT,
+            magicDir: MAGIC_DIR,
+            planName,
+            type,
+            round: current.round,
+            status: current.status,
+            dimensions,
+          }).htmlPath,
+        )
+      } catch {
+        htmlPath = "" // 模板缺失等 → 仍保留 markdown 降级路径（fail-open）
+      }
       const output = {
         planName,
         type,
         round: current.round,
         status: current.status,
         dimensions,
+        stale,
+        // 服务端无法得知客户端是否真的渲染了 widget —— 如实标注 unknown，不谎报
+        ui: { resourceUri: HITL_APPROVAL_WIDGET_URI, rendered: "unknown" as const },
+        fallback: { markdownPath, htmlPath },
       }
+      const fallbackHint = markdownPath || htmlPath
+      const text =
+        stale.stale === true
+          ? `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。⚠️ 当前 server 进程早于产物更新（需重启）；widget 若未显示，降级入口：${fallbackHint}`
+          : `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。widget 若未显示，降级入口：${fallbackHint}`
       return {
-        content: [{ type: "text" as const, text: `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。请在 widget 中拍板。` }],
+        content: [{ type: "text" as const, text }],
         structuredContent: output,
       }
     } catch (e) {
