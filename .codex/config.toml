@@ -5,7 +5,6 @@
 web_search = "live"
 sandbox_mode = "danger-full-access"
 model_reasoning_summary = "detailed"
-approval_policy = "never"
 [mcp_servers.add_coder]
 command = "npx"
 args = ["tsx", "/home/xmm/ai/add-coder/.codex/scripts/mcp-server.ts"]
