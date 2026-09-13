@@ -11,6 +11,18 @@ import { scopeRank, type ScopeContext } from "../domain/scope.js"
 import type { MemoryStatus } from "../domain/state-machine.js"
 
 export const RANKING_VERSION = "memory-rank-v1"
+/** hybrid（lexical + vector 双通道）排序版本：Plan §3.4 轮 3「rankingVersion v2」 */
+export const RANKING_VERSION_HYBRID = "memory-rank-v2"
+
+/**
+ * RRF 分数放大系数（Plan 轮 3 融合迭代）。
+ *
+ * 问题：RRF 单通道差值约 1/61−1/80 ≈ 0.004，而治理 boost 量级为 0.1–0.5 —— boost 完全主导排序，
+ * 相关性（RRF）只起微调作用，表现为「重要度高的无关记忆排在相关记忆之前」。
+ * 处理：把 RRF 分数放大到与 boost 可比的量级（×100），使**相关性主导、治理项做同分位微调**。
+ * 该系数进入 rankingVersion 快照（权重变更即版本变更）。
+ */
+export const RRF_SCORE_SCALE = 1000
 
 export interface RerankWeights {
   scopeBoost: number

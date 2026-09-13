@@ -15,10 +15,21 @@
 import { DEFAULT_RECALL_STATUSES, DIAGNOSTIC_RECALL_STATUSES, type MemoryStatus } from "../domain/state-machine.js"
 import { scopeApplies, type ScopeContext } from "../domain/scope.js"
 import { rrfFuse, DEFAULT_RRF_K } from "./fusion.js"
-import { rerankOne, DEFAULT_WEIGHTS, RANKING_VERSION, type RerankWeights } from "./reranker.js"
+import {
+  rerankOne,
+  DEFAULT_WEIGHTS,
+  RANKING_VERSION,
+  RANKING_VERSION_HYBRID,
+  RRF_SCORE_SCALE,
+  type RerankWeights,
+} from "./reranker.js"
 import { buildContext, estimateTokens } from "./context-builder.js"
 import { writeRecallAudit, type RecallAuditStore } from "./recall-writer.js"
 import type { LexicalSearchAdapter, RankedId, RecallFilter, RecalledMemory } from "./types.js"
+
+/** 向量通道默认权重与候选预算（Plan 轮 3 融合迭代：低精度通道不与词法等权） */
+export const DEFAULT_VECTOR_WEIGHT = 0.3
+export const DEFAULT_VECTOR_TOP_K = 5
 
 /** 管线需要的记忆行字段子集（与 AddMemoryRow 对齐） */
 export interface MemoryRowLike {
@@ -54,6 +65,12 @@ export interface RecallPipelineDeps {
   lexical: LexicalSearchAdapter[]
   /** Vector 候选（可选；首版不传即 FTS-only） */
   vector?: { search(query: string, filter: RecallFilter, limit: number): Promise<RankedId[]> } | null
+  /** 向量通道权重（RRF 加权；默认 DEFAULT_VECTOR_WEIGHT —— 低精度通道不与词法等权） */
+  vectorWeight?: number
+  /** 向量候选预算（默认 DEFAULT_VECTOR_TOP_K —— 不按总 limit 灌入，避免稀释词法信号） */
+  vectorTopK?: number
+  /** 补位模式阈值：仅当词法候选数 < 该值时启用向量通道（缺省=始终补充） */
+  vectorFallbackThreshold?: number
   fetchByIds(ids: string[]): Promise<MemoryRowLike[]>
   fetchEvidenceSourceRefs(memoryIds: string[]): Promise<Map<string, string[]>>
   audit?: RecallAuditStore | null
@@ -68,6 +85,8 @@ export interface RecallPipelineResult {
   items: RecalledMemory[]
   recallId: string | null
   degradedMode: string | null
+  /** 实际参与融合的候选通道（Spec §7 RecallResultMeta） */
+  fusedChannels: ("lexical" | "vector")[]
   excluded: { memoryId: string; reason: string }[]
   candidateCount: number
   injectedTokens: number
@@ -99,32 +118,58 @@ export async function recallPipeline(
 
   // Step 4/5：候选生成（FTS 多通道 + 可选 Vector）
   const channelLists: RankedId[][] = []
+  let lexicalChannels = 0
   for (const adapter of deps.lexical) {
     const multi = adapter as LexicalSearchAdapter & {
       searchChannels?(q: string, f: RecallFilter, l: number): Promise<RankedId[][]>
     }
     if (typeof multi.searchChannels === "function") {
-      channelLists.push(...(await multi.searchChannels(input.query, filter, limit)))
+      const channels = await multi.searchChannels(input.query, filter, limit)
+      channelLists.push(...channels)
+      lexicalChannels += channels.length
     } else {
       channelLists.push(await adapter.search(input.query, filter, limit))
+      lexicalChannels += 1
     }
   }
+  let vectorUsed = false
+  const channelWeights: number[] = channelLists.map(() => 1) // 词法通道权重恒为 1
   if (deps.vector) {
+    const lexicalCandidates = new Set(channelLists.flat().map((c) => c.memoryId)).size
+    const fallbackOnly = deps.vectorFallbackThreshold != null
+    const shouldUseVector = !fallbackOnly || lexicalCandidates < (deps.vectorFallbackThreshold as number)
     try {
-      channelLists.push(await deps.vector.search(input.query, filter, limit))
+      if (shouldUseVector) {
+        const vectorCandidates = await deps.vector.search(
+          input.query,
+          filter,
+          Math.min(deps.vectorTopK ?? DEFAULT_VECTOR_TOP_K, limit),
+        )
+        channelLists.push(vectorCandidates)
+        channelWeights.push(deps.vectorWeight ?? DEFAULT_VECTOR_WEIGHT)
+        vectorUsed = true
+      }
     } catch {
       // Vector 故障不阻塞 FTS（Plan §8.4）
     }
   }
+  const fusedChannels: ("lexical" | "vector")[] = [
+    ...(lexicalChannels > 0 ? (["lexical"] as const) : []),
+    ...(vectorUsed ? (["vector"] as const) : []),
+  ]
+  // rankingVersion：向量通道真正参与融合才记 v2；否则保持 v1（可被调用方显式覆盖）
+  const effectiveRankingVersion =
+    deps.rankingVersion ?? (vectorUsed ? RANKING_VERSION_HYBRID : RANKING_VERSION)
 
   // Step 6：RRF 融合
-  const fused = rrfFuse(channelLists, deps.rrfK ?? DEFAULT_RRF_K)
+  const fused = rrfFuse(channelLists, deps.rrfK ?? DEFAULT_RRF_K, channelWeights)
   const candidateIds = [...fused.keys()]
   if (candidateIds.length === 0) {
     const empty: RecallPipelineResult = {
       items: [], recallId: null, degradedMode: deps.degradedMode ?? null,
+      fusedChannels,
       excluded: [], candidateCount: 0, injectedTokens: 0,
-      latencyMs: Date.now() - start, rankingVersion: deps.rankingVersion ?? RANKING_VERSION,
+      latencyMs: Date.now() - start, rankingVersion: effectiveRankingVersion,
     }
     if (deps.audit) {
       empty.recallId = await writeRecallAudit(deps.audit, {
@@ -159,7 +204,8 @@ export async function recallPipeline(
     row: r,
     rr: rerankOne({
       memoryId: r.id,
-      rrfScore: fused.get(r.id) ?? 0,
+      // 相关性主导：RRF 放大到与治理 boost 可比量级（见 RRF_SCORE_SCALE 注释）
+      rrfScore: (fused.get(r.id) ?? 0) * RRF_SCORE_SCALE,
       kind: r.kind,
       status: r.status as MemoryStatus,
       importance: r.importance,
@@ -217,7 +263,7 @@ export async function recallPipeline(
       candidateIds,
       items,
       excluded,
-      rankingVersion: deps.rankingVersion ?? RANKING_VERSION,
+      rankingVersion: effectiveRankingVersion,
       tokenBudget: input.maxTokens,
       injectedTokens,
       latencyMs,
@@ -229,10 +275,11 @@ export async function recallPipeline(
     items,
     recallId,
     degradedMode: deps.degradedMode ?? null,
+    fusedChannels,
     excluded,
     candidateCount: candidateIds.length,
     injectedTokens,
     latencyMs,
-    rankingVersion: deps.rankingVersion ?? RANKING_VERSION,
+    rankingVersion: effectiveRankingVersion,
   }
 }

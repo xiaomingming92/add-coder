@@ -14,6 +14,7 @@ export const MEMORY_ERROR = {
   ERR_SECRET_DETECTED: "内容命中密钥/凭证模式，拒写",
   ERR_NOT_FOUND: "记录不存在",
   ERR_EMBEDDING_DISABLED: "EmbeddingProvider=none，向量能力未启用",
+  ERR_DIMENSION_MISMATCH: "嵌入维度与真源不一致（模型元数据 vs 声明维度），拒绝写入脏向量",
 } as const
 
 export type MemoryErrorCode = keyof typeof MEMORY_ERROR

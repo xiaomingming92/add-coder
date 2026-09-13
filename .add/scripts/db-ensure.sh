@@ -123,14 +123,54 @@ build_target() {
     [ -n "$tables" ] && EXCLUDE_ARGS=(--exclude "$tables")
     echo ">>> Atlas 同步（共库模式: 仅 ADD 治理表，其余 $(echo "$tables" | tr ',' '\n' | wc -l) 张表排除）..."
   fi
+  # Atlas 自身的版本记录 schema 不属于期望态，必须排除，否则 diff 会生成 DROP SCHEMA ... CASCADE
+  EXCLUDE_ARGS+=(--exclude atlas_schema_revisions)
   TARGET_URL="${TARGET_URL}?sslmode=disable"
 }
 
-# ④ baseline 生成（同源：Prisma schema SQL，过滤 Prisma 7 ◇ 提示）
+# ③.5 raw 对象登记（schema 表达不了的对象：trgm 索引 / 向量层；单一事实源）
+#   期望态必须能表达这些对象，否则 diff 把「raw 对象」判成多余并生成 DROP（review 发现 #2）。
+#   约束：Atlas dev-url 必须是干净库且具备同名扩展（否则 gin_trgm_ops / vector 类型无法解析）；
+#   本项目的 dev 库是一次性沙箱 → 每次 diff 前从 template1 重建（见 prepare_atlas_dev_db）。
+RAW_OBJECTS_SQL="prisma/raw-objects.sql"
+RAW_OBJECTS_VECTOR_SQL="prisma/raw-objects-vector.sql"
+
+# dev 沙箱库准备：DROP + CREATE TEMPLATE template1（template1 内已装 pg_trgm/vector）
+prepare_atlas_dev_db() {
+  local c="${PROJECT_NAME:-add-project}-dev" u="${ATLAS_DEV_USER:-admin}" d="${ATLAS_DEV_DB:-add-project-dev}"
+  podman exec "$c" true >/dev/null 2>&1 || { echo ">>> [dev-url] 容器 $c 不可达，跳过重建（依赖现有 dev 库）"; return 0; }
+  if [ "${ADD_DB_KEEP_DEV:-}" = "yes" ]; then
+    echo ">>> [dev-url] ADD_DB_KEEP_DEV=yes：沿用现有 dev 库"
+    return 0
+  fi
+  podman exec "$c" psql -U "$u" -d postgres -tAc "DROP DATABASE IF EXISTS \"$d\";" >/dev/null 2>&1 || true
+  if podman exec "$c" psql -U "$u" -d postgres -tAc "CREATE DATABASE \"$d\" TEMPLATE template1;" >/dev/null 2>&1; then
+    echo ">>> [dev-url] 已从 template1 重建沙箱库 $d（干净 + 扩展齐备）"
+  else
+    echo ">>> [dev-url] 重建 $d 失败，沿用现有库（若解析报错请检查 template1 扩展）"
+  fi
+}
+
+# 目标库是否具备 pgvector（决定是否把向量段并入期望态）
+has_pgvector_in_target() {
+  local c="${PROJECT_NAME:-add-project}-postgres" u="${DATABASE_USER:-admin}" d="${PROJECT_NAME:-add-project}" has
+  has="$(podman exec "$c" psql -U "$u" -d "$d" -tAc "SELECT 1 FROM pg_available_extensions WHERE name='vector' LIMIT 1;" 2>/dev/null || true)"
+  [ "$has" = "1" ]
+}
+
+# ④ baseline 生成（同源：Prisma schema SQL + raw 对象登记段，过滤 Prisma 7 ◇ 提示）
 generate_baseline() {
   BASELINE_SQL="$(mktemp /tmp/atlas-target.XXXXXX.sql)"
   trap 'rm -f "$BASELINE_SQL"' EXIT
   npx prisma migrate diff --from-empty --to-schema "$SCHEMA_TARGET" --script 2>/dev/null | sed '/^◇/d' > "$BASELINE_SQL"
+  if [ -f "$RAW_OBJECTS_SQL" ]; then
+    printf '\n-- ===== raw objects registry =====\n' >> "$BASELINE_SQL"
+    cat "$RAW_OBJECTS_SQL" >> "$BASELINE_SQL"
+  fi
+  if has_pgvector_in_target && [ -f "$RAW_OBJECTS_VECTOR_SQL" ]; then
+    printf '\n-- ===== raw objects registry (vector) =====\n' >> "$BASELINE_SQL"
+    cat "$RAW_OBJECTS_VECTOR_SQL" >> "$BASELINE_SQL"
+  fi
 }
 
 # ⑤ diff 检测（SQL 语句特征判定：Atlas 无变更时输出 "Schemas are synced..." 非空，不算变更）
@@ -140,10 +180,28 @@ run_atlas_diff() {
   echo "$DIFF_SQL" | grep -qE "^(CREATE|ALTER|DROP|COMMENT|-- *(Create|Modify|Drop))"
 }
 
-# ⑥ apply（确认门槛：交互输出 SQL → 确认 → apply；拒绝则跳过）
+# ⑥ apply（双门槛：DROP 守卫 → 交互确认 → apply；任一不通过则跳过）
+#   DROP 守卫（Plan 轮 3 前置 / runtime review 发现 #2）：破坏性语句一律拒绝——
+#   raw SQL 对象（如 pg_trgm GIN 索引、pgvector 列/索引）无法被 Prisma schema 表达，
+#   diff 会误判为「多余对象」并生成 DROP；若放行，索引会被静默删除且不报错。
+#   显式放行需人工设 ADD_DB_ALLOW_DROP=yes，并在迁移评审中登记（禁止默认自动放行）。
 apply_atlas_diff() {
   echo "=== 待应用 diff SQL（前 60 行）==="
   echo "$DIFF_SQL" | head -60
+  local drops
+  drops="$(printf '%s\n' "$DIFF_SQL" | grep -nE '^DROP |DROP COLUMN|DROP CONSTRAINT|DROP INDEX|DROP TABLE|DROP TYPE|DROP SCHEMA' || true)"
+  if [ -n "$drops" ]; then
+    echo "!!! 检测到破坏性语句（DROP），已拒绝应用："
+    printf '%s\n' "$drops" | sed 's/^/    /'
+    echo "    处置建议："
+    echo "      ① 若是无法被 schema 表达的 raw SQL 对象（索引/扩展/向量列）→ 核对登记清单 prisma/raw-objects.sql、prisma/raw-objects-vector.sql；"
+    echo "      ② 确需删除时人工执行，并在迁移评审中登记（能力矩阵 §六 已登记同类缺口）。"
+    if [ "${ADD_DB_ALLOW_DROP:-}" != "yes" ]; then
+      echo "    （如需在评审后放行：ADD_DB_ALLOW_DROP=yes 重新执行）"
+      return 1
+    fi
+    echo "    ⚠️ ADD_DB_ALLOW_DROP=yes 已设置：放行破坏性变更（确认已完成迁移评审）"
+  fi
   read -rp "应用以上 schema 变更？[y/N] " ANS
   if [ "$ANS" = "y" ] || [ "$ANS" = "yes" ]; then
     atlas_cmd schema apply --url "$TARGET_URL" --to "file://$BASELINE_SQL" --dev-url "$ATLAS_DEV_URL" "${EXCLUDE_ARGS[@]}"
@@ -173,6 +231,7 @@ atlas_sync() {
     echo "!!! ATLAS_DEV_URL 未配置。请运行 add-coder init（分库引导自动创建 {project}-add-dev 常驻容器并登记）或手动配置"
     return 1
   fi
+  prepare_atlas_dev_db
   build_target
   generate_baseline
   if run_atlas_diff; then
