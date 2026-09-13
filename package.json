@@ -31,7 +31,7 @@
     "predev": "npm run db:ensure",
     "dev": "tsup --watch",
     "db:ensure": "bash scripts/db-ensure.sh",
-    "sync": "tsx scripts/sync-magic.ts",
+    "sync": "tsx scripts/sync-magic.ts && tsx scripts/mcp-restart-notice.ts",
     "sync:bash": "bash scripts/benchmark/sync-magic.sh",
     "benchmark": "tsx scripts/benchmark/benchmark-sync.ts",
     "lint": "eslint src/",
