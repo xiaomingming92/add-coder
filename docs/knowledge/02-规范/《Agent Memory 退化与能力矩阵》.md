@@ -78,6 +78,27 @@ Test Files 11 passed | Tests 137 passed
 
 | # | 缺口 | 影响 | 处理计划 |
 |---|------|------|---------|
-| G1 | 向量 DDL 会被 `db:ensure` 判为「schema 表达不了的多余对象」并自动 apply DROP | 向量列/索引可能被静默删除 | 轮 3 前置：先落 `db-ensure` 的 DROP 守卫 |
+| G1 | ~~向量 DDL 会被 `db:ensure` 判为「schema 表达不了的多余对象」并自动 apply DROP~~ | — | **已根治**：期望态并入 raw 对象登记段（`prisma/raw-objects*.sql`）+ dev 沙箱库每次从 template1 重建 + 排除 Atlas 自身 schema → diff 返回 `Schemas are synced`；DROP 守卫保留为安全网 |
 | G2 | v1 兼容门面为「映射 + 弃用声明」，未真正转发执行 | 旧调用方拿到的是迁移指引而非结果 | 需把 `memory.ts` 操作层抽为共享 ops 模块后转发（轮次边界内不做） |
 | G3 | v1 工具名清单无历史实证（仓库内零命中） | 若真实旧名单不同，映射会错位 | 表驱动：改 `memory-compat.ts` 的 `SHIM_TABLE` 一行即可 |
+| G4 | Atlas 免费版不接受期望态中的 `CREATE EXTENSION` | 扩展只能由迁移/环境保证，不能写进登记段 | 已在登记段注释说明；扩展由迁移 + template1 双保险 |
+
+---
+
+## 七、环境事实（轮 3 落地，2026-09-13）
+
+| 事实 | 值 | 说明 |
+|------|-----|------|
+| PG 镜像 | `docker.io/pgvector/pgvector:pg16` | 与 `postgres:16-alpine` 同为 PG16 大版本，数据卷直接沿用；三容器（主库 5434 / 影子库 5437 / dev 5438）统一 |
+| 向量扩展 | `vector 0.8.6` 可装可启用 | 主库已由迁移 `20260913090000_agent_memory_vector.sql` 启用并建 `add_memory_vector`（15 表） |
+| 词法扩展 | `pg_trgm 1.6` | 三容器均已装 |
+| Atlas dev-url 约束 | **必须干净**（不允许额外 schema），且需具备与期望态同名的扩展（否则 `gin_trgm_ops`/`vector` 无法解析） | 解法：dev 库按一次性沙箱对待 —— `db-ensure` 每次 diff 前 `DROP/CREATE DATABASE ... TEMPLATE template1`（template1 内扩展装在 **public**）；`ADD_DB_KEEP_DEV=yes` 可跳过 |
+| DROP 守卫行为 | 检测到 DROP → 拒绝 apply 并列出语句；放行需 `ADD_DB_ALLOW_DROP=yes`（迁移评审后人工使用） | 主库当前同步会**停下**并要求人工决策——这是安全语义，不是故障 |
+| ⚠️ `npm run sync` 与运行中的 MCP server | sync 会覆盖 `.codex/scripts/mcp-server/**` 与 hooks 烘焙产物，**正在运行的 server 连接会中断（Transport closed）** | 操作顺序：先 `npm run sync` → 再重启 IDE/MCP server；sync 后不要期待旧连接继续可用（2026-09-13 实测） |
+
+> 复现命令：
+> ```bash
+> podman exec add-coder-postgres psql -U admin -d add-coder -tAc \
+>   "SELECT extname||' '||extversion FROM pg_extension WHERE extname IN ('vector','pg_trgm')"
+> # vector 0.8.6 / pg_trgm 1.6
+> ```

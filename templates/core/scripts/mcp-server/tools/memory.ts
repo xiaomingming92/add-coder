@@ -39,15 +39,19 @@ import { assertScopeWritable, scopesCompatible, type ScopeContext, type MemorySc
 import { contentHash } from "../shared/memory/domain/dedup.js"
 import { detectConflicts } from "../shared/memory/domain/conflicts.js"
 import { assertNoSecrets } from "../shared/memory/domain/secrets.js"
-import { recallPipeline, type MemoryRowLike } from "../shared/memory/retrieval/pipeline.js"
+import { recallPipeline } from "../shared/memory/retrieval/pipeline.js"
 import type { LexicalSearchAdapter, RawQuerier, RecallFilter } from "../shared/memory/retrieval/types.js"
 import { createPgFtsAdapter } from "../shared/memory/retrieval/fts/pg.js"
 import { createSqliteFtsAdapter } from "../shared/memory/retrieval/fts/sqlite.js"
 import {
   createNoneEmbeddingProvider,
+  createEmbeddingProviderFromConfig,
+  parseEmbeddingEnv,
   type EmbeddingProvider,
   type VectorSearchAdapter,
 } from "../shared/memory/embedding/index.js"
+import { createPgVectorAdapter } from "../shared/memory/retrieval/vector/pgvector.js"
+import { createSqliteVecAdapter } from "../shared/memory/retrieval/vector/sqlite-vec.js"
 
 /** 测试可注入依赖（生产默认从 prisma/DATABASE_URL 构建） */
 export interface MemoryToolDeps {
@@ -80,8 +84,45 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
   const lexical: LexicalSearchAdapter[] = deps.lexical ?? [
     DATABASE_URL.startsWith("postgres") ? createPgFtsAdapter(rawQuerier) : createSqliteFtsAdapter(rawQuerier),
   ]
-  const embedding: EmbeddingProvider = deps.embedding ?? createNoneEmbeddingProvider()
-  const vector: VectorSearchAdapter | null = deps.vector === undefined ? null : deps.vector
+  // ── 轮 3：按配置装配 provider / vector adapter（默认 none + 不启用向量 = 首版行为）──
+  // 惰性解析：只在真正召回时构建，避免启动期加载 ONNX/网络依赖；任一环节不可用即降级。
+  interface RuntimePair { embedding: EmbeddingProvider; vector: VectorSearchAdapter | null }
+  let cachedRuntime: Promise<RuntimePair> | null = null
+
+  function resolveRuntimePair(): Promise<RuntimePair> {
+    if (deps.embedding || deps.vector !== undefined) {
+      return Promise.resolve({
+        embedding: deps.embedding ?? createNoneEmbeddingProvider(),
+        vector: deps.vector ?? null,
+      })
+    }
+    if (!cachedRuntime) cachedRuntime = buildRuntimePairFromEnv()
+    return cachedRuntime
+  }
+
+  async function buildRuntimePairFromEnv(): Promise<RuntimePair> {
+    const cfg = parseEmbeddingEnv()
+    let embedding: EmbeddingProvider
+    try {
+      embedding = await createEmbeddingProviderFromConfig(cfg)
+    } catch {
+      // 配置要求向量但 provider 不可用 → 合法降级为 none（degradedMode 明示）
+      embedding = createNoneEmbeddingProvider()
+    }
+    const mode = (process.env.ADD_MEMORY_VECTOR ?? "off").toLowerCase()
+    if (mode === "off" || embedding.id === "none") return { embedding, vector: null }
+
+    const model = cfg.model ?? (embedding.id === "local-onnx" ? "Xenova/bge-small-zh-v1.5" : "text-embedding-3-small")
+    const dimension = embedding.dimension || cfg.dimension || 0
+    if (dimension <= 0) return { embedding, vector: null }
+
+    const adapter = DATABASE_URL.startsWith("postgres")
+      ? createPgVectorAdapter({ querier: rawQuerier, dimension, model })
+      : createSqliteVecAdapter({ querier: rawQuerier, dimension, model })
+    const health = await adapter.health()
+    // 能力不足（扩展缺失/表缺失）→ 不启用向量，召回侧以 degradedMode 明示
+    return { embedding, vector: health.status === "ok" ? adapter : null }
+  }
 
   // ── 横切守卫 ──
 
@@ -127,7 +168,7 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
         beforeState: { status: input.from },
         afterState: { status: input.to, actor: input.actor ?? null },
         reason: input.reason ?? null,
-      } as Partial<AuditLogRow>,
+      },
     })
     return log.id
   }
@@ -222,7 +263,7 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
         })
         const linkKey = { memoryId: created.id, evidenceId: ev.id }
         const linked = await linkDb.findFirst({ where: linkKey })
-        if (!linked) await linkDb.create({ data: linkKey as Partial<AddMemoryEvidenceLinkRow> })
+        if (!linked) await linkDb.create({ data: linkKey })
         evidenceCount++
       }
 
@@ -256,6 +297,9 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
     try {
       const repositoryRef = args.repositoryRef as string
       assertRepository(repositoryRef)
+
+      // 轮 3：按配置解析 provider / vector adapter（惰性；默认 none + 不启用向量 = 首版行为）
+      const { embedding, vector } = await resolveRuntimePair()
 
       const scopeCtx: ScopeContext = {
         repository: repositoryRef,
@@ -301,10 +345,10 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
           lexical,
           vector: vectorForPipeline,
           fetchByIds: async (ids) =>
-            (await memoryDb.findMany({
+            await memoryDb.findMany({
               where: { id: { in: ids } },
               include: { supersedes: { select: { id: true } } },
-            })) as unknown as MemoryRowLike[],
+            }),
           fetchEvidenceSourceRefs: async (memoryIds) => {
             const links = await linkDb.findMany({ where: { memoryId: { in: memoryIds } } })
             const evIds = [...new Set(links.map((l) => l.evidenceId))]
@@ -321,8 +365,8 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
             return out
           },
           audit: {
-            createRecall: (data) => recallDb.create({ data: data as Partial<AddMemoryRecallRow> }),
-            createRecallItem: (data) => recallItemDb.create({ data: data as Partial<AddMemoryRecallItemRow> }),
+            createRecall: (data) => recallDb.create({ data: data }),
+            createRecallItem: (data) => recallItemDb.create({ data: data }),
           },
           degradedMode: degradedMode ?? undefined,
         },
@@ -484,7 +528,7 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
       const action = args.action as string
       const actor = args.actor as string | undefined
       const row = await getScopedMemory(memoryId)
-      const current = row.status as MemoryStatus
+      const current = row.status
       const domainAction: MemoryAction = action === "stale" ? "mark_stale" : (action as MemoryAction)
 
       // 迁移上下文：按动作装配不变量证据
@@ -515,7 +559,7 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
       const data: Record<string, unknown> = { status: t.to }
       if (domainAction === "approve") { data.approvedBy = actor; data.approvedAt = new Date() }
       if (domainAction === "supersede") data.supersededById = args.supersededById
-      await memoryDb.update({ where: { id: memoryId }, data: data as Partial<AddMemoryRow> })
+      await memoryDb.update({ where: { id: memoryId }, data: data })
 
       const auditRef = await writeTransitionAudit({
         memoryId, action: `TRANSITION_${action.toUpperCase()}`,
@@ -572,6 +616,7 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
     try {
       const repositoryRef = args.repositoryRef as string
       assertRepository(repositoryRef)
+      const { embedding } = await resolveRuntimePair()
 
       // backlog：raw count（validatedDelegate 不支持 count/select 裁剪）
       const backlogRows = await rawQuerier.query<{ status: string; count: number | string }>(

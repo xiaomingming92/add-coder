@@ -14,6 +14,9 @@ import { fileURLToPath } from "node:url"
 import { createSqliteFtsAdapter } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/fts/sqlite.js"
 import { recallPipeline, type MemoryRowLike } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/pipeline.js"
 import type { RawQuerier } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/types.js"
+import { homedir } from "node:os"
+import { createLocalOnnxEmbeddingProvider } from "../../templates/core/scripts/mcp-server/shared/memory/embedding/local-onnx.js"
+import type { VectorSearchAdapter } from "../../templates/core/scripts/mcp-server/shared/memory/embedding/index.js"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..")
 const FIXTURE = JSON.parse(
@@ -75,7 +78,48 @@ async function main() {
   const fetchByIds = (ids: string[]) =>
     Promise.resolve(ids.map((id) => rowById.get(id)).filter((r): r is MemoryRowLike => !!r))
 
+  // ── 可选 hybrid 通道（--hybrid）：本地 ONNX 嵌入 + 内存暴力余弦检索 ──
+  //    评测用内存实现（不依赖 pgvector/sqlite-vec），衡量的是**排序质量**而非存储后端。
+  const hybrid = process.argv.includes("--hybrid")
+  let vector: VectorSearchAdapter | null = null
+  let hybridDetail = ""
+  if (hybrid) {
+    // 复用 add-coder 预下载缓存（与 DPS 网关同一锚定链），并用 hf-mirror 兜底
+    const provider = createLocalOnnxEmbeddingProvider({
+      cacheDir: process.env.HF_HUB_CACHE ?? join(homedir(), ".cache", "huggingface", "hub"),
+      remoteHost: "https://hf-mirror.com",
+    })
+    const memVec = new Map<string, number[]>()
+    const vectors = await provider.embed(FIXTURE.memories.map((m) => `${m.topic} ${m.content}`))
+    FIXTURE.memories.forEach((m, i) => memVec.set(m.id, vectors[i]))
+    const cos = (a: number[], b: number[]): number => {
+      let dot = 0, na = 0, nb = 0
+      for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i] }
+      return dot / (Math.sqrt(na) * Math.sqrt(nb) || 1)
+    }
+    vector = {
+      search: async (queryText: string, filter, limit: number) => {
+        const [qv] = await provider.embed([queryText])
+        return [...memVec.entries()]
+          .filter(([id]) => {
+            const r = rowById.get(id)
+            // 与真实适配器同语义：仓库 + 生命周期状态双重过滤（否则候选池被噪声稀释）
+            return !!r && r.repositoryRef === filter.repositoryRef &&
+              (filter.statuses as readonly string[]).includes(r.status)
+          })
+          .map(([id, v]) => ({ id, score: cos(qv, v) }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit)
+          .map((s, i) => ({ memoryId: s.id, rank: i + 1, score: s.score }))
+      },
+      upsert: () => Promise.resolve(),
+      health: () => Promise.resolve({ component: "vector-search", status: "ok" as const, detail: "eval in-memory" }),
+    }
+    hybridDetail = `local-onnx dim=${provider.dimension}`
+  }
+
   let recallSum = 0, mrrSum = 0, leaks = 0, mandatoryMiss = 0, scopeViolations = 0
+  let rankingVersion = ""
   const latency: number[] = []
   const misses: string[] = []
 
@@ -87,7 +131,8 @@ async function main() {
       scopeCtx: { repository: "eval-repo", paths: q.paths ?? ["src/"] },
       maxTokens: 500,
       limit: 20,
-    }, { lexical: [adapter], fetchByIds, fetchEvidenceSourceRefs: () => Promise.resolve(new Map()), audit: null })
+    }, { lexical: [adapter], vector, fetchByIds, fetchEvidenceSourceRefs: () => Promise.resolve(new Map()), audit: null })
+    rankingVersion = res.rankingVersion
     latency.push(res.latencyMs)
 
     const top5 = res.items.slice(0, 5).map((i) => i.memoryId)
@@ -133,18 +178,23 @@ async function main() {
     scopeViolations,
     mandatoryMiss,
     latencyP95ms: p95,
-    degradedMode: "fts-only",
+    degradedMode: hybrid ? `hybrid(${hybridDetail})` : "fts-only",
+    rankingVersion,
   }
 
-  console.log("=== Agent Memory 召回评测（FTS-only, SQLite trigram）===")
+  console.log(`=== Agent Memory 召回评测（${hybrid ? "HYBRID: FTS + 向量" : "FTS-only, SQLite trigram"}）===`)
   console.table(metrics)
   if (misses.length > 0) {
     console.log("--- 明细 ---")
     for (const m of misses) console.log(" ", m)
   }
 
-  const pass = metrics["Recall@5"] >= 0.70 && leaks === 0 && mandatoryMiss === 0 && scopeViolations === 0
-  console.log(pass ? "✅ 达标（Recall@5 ≥ 0.70，leakage=0，mandatory=0）" : "❌ 未达标")
+  const pass = hybrid
+    ? metrics["MRR@5"] >= 0.75 && leaks === 0 && mandatoryMiss === 0 && scopeViolations === 0
+    : metrics["Recall@5"] >= 0.70 && leaks === 0 && mandatoryMiss === 0 && scopeViolations === 0
+  console.log(pass
+    ? (hybrid ? "✅ 达标（Hybrid MRR@5 ≥ 0.75，leakage=0，mandatory=0）" : "✅ 达标（Recall@5 ≥ 0.70，leakage=0，mandatory=0）")
+    : "❌ 未达标")
   process.exit(pass ? 0 : 1)
 }
 
