@@ -237,7 +237,7 @@
   "core/scripts/mcp-server/shared/review-files.ts": "863e9074",
   "core/scripts/mcp-server/shared/run-command.ts": "42caf972",
   "core/scripts/mcp-server/shared/runtime-context.ts": "51d0b45f",
-  "core/scripts/mcp-server/shared/runtime-freshness.ts": "1d2c927b",
+  "core/scripts/mcp-server/shared/runtime-freshness.ts": "de5f0fb9",
   "core/scripts/mcp-server/shared/schema-topology.ts": "a680b738",
   "core/scripts/mcp-server/tasks/index.ts": "c040eb75",
   "core/scripts/mcp-server/tasks/runner.ts": "d84bd35d",

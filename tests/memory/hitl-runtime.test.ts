@@ -68,10 +68,30 @@ describe("listRunningMcpServers 全 adapter 扫描", () => {
     const servers = listRunningMcpServers({ psOutput: realPsOutput, now: () => new Date("2026-09-13T10:00:00Z") })
     expect(servers.filter((s) => s.magicDir === ".codex")).toHaveLength(5)
     expect(servers.filter((s) => s.magicDir === ".qoder")).toHaveLength(1)
-    // node_modules 噪声、无点前缀目录、自身脚本 都不应出现
-    expect(servers.some((s) => s.command.includes("node_modules"))).toBe(false)
+    // 安装副本 / 无点前缀目录 / 自身脚本 都不应出现
     expect(servers.some((s) => s.command.includes("/any/"))).toBe(false)
     expect(servers.some((s) => s.command.includes("mcp-restart-notice"))).toBe(false)
+  })
+
+  /*
+   * 噪声过滤收窄回归（2026-09-14）：旧实现 `cmd.includes("node_modules") → skip` 会把
+   * **我们自己的 tsx 启动层**一并挡掉（argv 里必然出现 node_modules 路径），
+   * 导致回收只杀表层 npx/npm，深层 node/tsx 残部继续存活（实测留下两族残部）。
+   */
+  const nodeModulesPsOutput = [
+    " 9999    1 99999 /usr/bin/gnome-shell --mode=ubuntu",
+    "  444 9999    20 node /home/u/proj/node_modules/.bin/../tsx/dist/cli.mjs /home/u/proj/.codex/scripts/mcp-server.ts",
+    "  445 9999    20 node /home/u/proj/node_modules/some-pkg/.codex/scripts/mcp-server.ts",
+  ].join("\n")
+
+  it("自己的 tsx 启动层（argv 含 node_modules）必须被纳入", () => {
+    const servers = listRunningMcpServers({ psOutput: nodeModulesPsOutput })
+    expect(servers.map((s) => s.pid)).toContain(444)
+  })
+
+  it("安装副本（node_modules/<pkg>/.codex/…）仍被排除", () => {
+    const servers = listRunningMcpServers({ psOutput: nodeModulesPsOutput })
+    expect(servers.map((s) => s.pid)).not.toContain(445)
   })
 
   it("聚合后每个 adapter 只留一条，且取最早启动时间；陈旧判定不会被新进程掩盖", () => {
