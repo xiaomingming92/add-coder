@@ -5,6 +5,42 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.35] - 2026-09-14
+
+> 版本说明：`package.json` 对齐 npm 实况（latest = 0.3.34，本条目随发布追加为 0.3.35）。
+> 本版内容 = `memory_cache` 分支 30+ 提交（记忆闭环 Phase 4/5、校验层、运行时治理、HITL 链路、模板回灌）。
+
+### 新增
+
+- **文档校验层（core/validation）**：以 `templates/core/templates/*.schema.json` 为**唯一形式判定真源**的集中校验层——schema 驱动判定（章节/子章节/轮次/占位符/结构位禁词 + 锚定 + 半角全角等价）、17 类文档注册表（未注册即抛）、卡位策略（advisory/blocking + 依据）、规则适用性（Rule × Hook：锚定仅书写卡位、证据占位仅收尾卡位）；守卫删除内联实现改调 core；封口 `handoff` 因子改为"存在 ∧ 合规"；新增批量命令 `scripts/validate-docs.ts`（默认 advisory，`--strict` 才非零退出）
+- **跨轮记忆闭环（Phase 4/5）**：Gate→MetricSnapshot **幂等采证**（`sourceRef=<gate>:<planKeyword>:<runId>`，runId 内容派生）、位点确定性召回（五类词表 + 特异性优先）、Handoff Digest 候选生成 + v1 兼容门面（`deprecated+mappedTo`，不转发执行）、索引探针与重建；**向量/混合召回**（pgvector / sqlite-vec 双通道 + 能力检测 + `degradedMode` 降级）；`db:ensure` **DROP 守卫 + 期望态 raw 对象登记**（`prisma/raw-objects*.sql`），Atlas diff → `Schemas are synced`
+- **排序权重校准基座**：反馈统计（通道×位次×outcome）/ 冷启动批量拟合（n<5 门控）/ **权重快照作为排序参数单一事实源**（`rankingVersion` → v3 快照哈希）/ Kalman 在线估计 / FFT 节奏诊断（**不直接产出排序**）
+- **运行时治理**：产物-进程**新鲜度四态判定**（`stale`/`unknown`）+ 重启标记**启动自愈**；MCP **孤儿族识别与回收**（族根 ppid 落 init/systemd 或父进程已消失 → 整族标记；sync 末尾两段式回收；服务端孤儿自退看门狗）
+- **HITL 链路补全**：`create_hitl` 的 MCP Apps 分流（Codex 下不展开高维 inputRequired，支持 `_mcp_apps` 强制）+ 工具描述与行为对齐；`hitl.md` 生成器补齐 `## 审批结论` 并支持裁决回写（时间/决策/原因）；`render_hitl_approval` 返回 `stale` / `ui.rendered="unknown"` / fallback 双路径（markdown 提案 + 实例 HTML）
+
+### 修复
+
+- **非交互环境静默挂起**：`ask()` 在"永不 EOF 的管道"下永久阻塞（`add-coder init` 无输出卡死，实测 >75s）→ 改为宽限结队 + stderr 审计痕迹；peer 依赖安装失败只报退出码 → 带出真因
+- **依赖树被夹具反写**：集成测试经 `node_modules` 符号链接真跑 `npm install`，npm reify 反写仓库依赖树 → 夹具加包管理器垫片隔离
+- **三项既有测试失败**：版本硬编码（改为断言"真源版本 == 包版本"）、容器残留 + podman 映射 uid 清理（按名回收 + `podman unshare` 兜底）、基准抖动（5 次取最小值，阈值 100ms 未放宽）；端口夹具隔离到专属父目录
+- **校验层自举发现**：半角/全角标点不等价导致 4 份 tasks.md 假报缺章节；`countRounds` 对模板示范写法（`## 第 1 轮 抽层`）假报 0 轮
+- **追踪器口径漂移**：`plan_track` 的 `[T]` 计数改为复用校验层 `checklistStats`；`review_track` 兼容 `{plan}-plan-v1-review.md` 命名；`hitl.ts` 4 处既有 `as any` 换 MCP SDK 类型
+
+### 模板
+
+- `review-template` / `review-implementation-template` 增 **§0 三通道矩阵**（①生命周期流 ②内容流 ③结构化流，缺任一 = P0）；`review-implementation` 增 §6.1 **流式端点结构化字段投影完整性**；`checklist-template` 增 schema 变更后 client 新鲜度（`db:generate` + 重启校验）、三通道验收、外部契约版本漂移检查（自 farm-agent 回灌并泛化为通用表述）
+
+### 文档
+
+- 架构文档回填 as-built（实施现状对照表 + 校验层/运行时治理/HITL 三个子系统 + 未达标与挂账）
+- 新增规范：《校验层与生命周期联动》《孤儿进程族识别、回收与自防（Ubuntu 实测，可移植做法）》
+
+### 已知限制（如实登记）
+
+- **Hybrid `MRR@5` 实测 0.4867 < 0.75 门槛**（FTS-only `MRR@5=0.6551`、`Recall@5=0.9592`）：门槛**不下调**，由排序校准线程以数据校准替代手调，待足够多单元封口后复跑
+- widget 在 Codex `26.908` 不渲染（服务端与对照机 `26.903` 逐字节等价 → 客户端 build 行为）；审批走 markdown 提案 + 实例 HTML + 聊天拍板，结论照常落库/落文档
+
+---
 ## [0.3.32] - 2026-08-17
 
 ### 修复
