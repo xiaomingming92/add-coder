@@ -240,6 +240,16 @@ export function registerHitlTools(server: ToolRegistrar) {
       return {
         content: [{ type: "text" as const, text }],
         structuredContent: output,
+        /*
+         * 工具**调用结果**也要带 _meta（2026-09-14 修复 widget 不渲染）：
+         * 客户端渲染入口读的是 result._meta 上的 `openai/outputTemplate` / `ui.resourceUri`
+         * （app 二进制内 `core/src/mcp_tool_call.rs` 引用的正是 `ui` / `resourceUri` / `openai/outputTemplate`）；
+         * 只在工具声明上挂 `_meta` 时，客户端拿到结果却不知道要挂哪个 widget → 表现为"只回一段 JSON，不显示表单"。
+         */
+        _meta: {
+          ui: { resourceUri: HITL_APPROVAL_WIDGET_URI },
+          "openai/outputTemplate": HITL_APPROVAL_WIDGET_URI,
+        },
       }
     } catch (e) {
       return errorResponse(`render_hitl_approval 失败: ${e instanceof Error ? e.message : String(e)}`)

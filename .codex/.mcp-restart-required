@@ -1,7 +1,7 @@
 {
   "magicDir": ".codex",
-  "at": "2026-09-14T05:21:12.197Z",
+  "at": "2026-09-14T06:03:26.487Z",
   "reason": "sync 已重写产物，但该 adapter 的 server 进程启动早于产物更新",
-  "pid": 8217,
-  "artifactMtime": "2026-09-14T05:21:11.756Z"
+  "pid": 16688,
+  "artifactMtime": "2026-09-14T06:03:26.005Z"
 }
