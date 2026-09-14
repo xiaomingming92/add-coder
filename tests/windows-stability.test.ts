@@ -31,7 +31,16 @@ const hash8 = (c: string) => createHash("sha256").update(c).digest("hex").slice(
 describe("仓库自举 template version", () => {
     it("node_modules/add-coder 缺失时回退当前包 templates 真源", () => {
         const projectRoot = resolve(import.meta.dirname, "..");
-        expect(loadTemplateVersion(projectRoot)).toBe("0.3.27");
+        // 不硬编码版本号（2026-09-14 修复：0.3.27 写死导致版本升级后必然失败）——
+        // 改断言"关系"：回退必须命中 templates 真源，且真源版本与包版本同步。
+        const readJson = (p: string) => JSON.parse(readFileSync(p, "utf-8")) as Record<string, string>;
+        const version = loadTemplateVersion(projectRoot);
+        const srcVersion = readJson(join(projectRoot, "templates", ".add-coder-src-hash.json"))._version;
+        const pkgVersion = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf-8")).version as string;
+        expect(version).not.toBe(""); // 回退链命中（未落空）
+        expect(version).toBe(srcVersion); // 来自当前包 templates 真源
+        // 发布不变量：package.json 版本 == 模板真源版本（不一致说明 gen-src-hash 未重跑）
+        expect(version, "版本不一致：请运行 npx tsx scripts/gen-src-hash.ts 重新生成 templates/.add-coder-src-hash.json").toBe(pkgVersion);
     });
 });
 

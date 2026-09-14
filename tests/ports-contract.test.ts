@@ -30,19 +30,28 @@ const mockRunCommand = vi.mocked(runCommand);
 const mockCommandExists = vi.mocked(commandExists);
 
 let dir: string;
-const SIBLING = join(tmpdir(), "sibling-project");
+let root: string;
+/** 兄弟项目路径（相对本测试专属父目录；见 beforeEach 的隔离说明） */
+let SIBLING: string;
 
 beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "ports-contract-"));
-    rmSync(SIBLING, { recursive: true, force: true }); // 清理跨项目测试残留，防污染
+    /*
+     * 夹具隔离（2026-09-14）：跨项目事实源扫描的是「被测项目的**父目录**下的兄弟目录」，
+     * 若被测项目直接建在 /tmp 下，/tmp 里任何别的项目（含临时探针目录）都会被当成兄弟项目读走，
+     * 断言随机器上无关目录漂移（实测：/tmp 里的临时项目把 5433/5434 占走 → 期望 5433 实得 5435）。
+     * 故给被测项目一个**专属父目录**，兄弟项目只由本测试自己造。
+     */
+    root = mkdtempSync(join(tmpdir(), "ports-contract-root-"));
+    dir = join(root, "proj");
+    mkdirSync(dir, { recursive: true });
+    SIBLING = join(root, "sibling-project");
     vi.clearAllMocks();
     mockCommandExists.mockReturnValue(true);
     mockRunCommand.mockReturnValue({ status: 0, stdout: "", stderr: "" } as never);
 });
 
 afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
-    rmSync(SIBLING, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
     vi.restoreAllMocks();
 });
 
