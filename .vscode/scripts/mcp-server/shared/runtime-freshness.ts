@@ -17,8 +17,17 @@ export const DEFAULT_MAGIC_DIRS = [".codex", ".add", ".qoder", ".claude", ".vsco
 export interface RunningServer {
   magicDir: string
   pid: number
+  ppid: number
   command: string
   startedAt?: Date
+  /**
+   * 启动者已死（ppid 指向 init/systemd）——**残留族**（2026-09-14 新增）：
+   * 实测成因：IDE/app 退出时通常只杀直接子进程（`npx`），
+   * `npm exec → sh -c → tsx → node` 这几代被 reparent 到 systemd 继续存活
+   * （同一逻辑 server 5 个进程；旧实例的 server 在 app 重启后仍活了 20+ 分钟）。
+   * 这类进程的 stdio 对端已消失，属可回收垃圾；也不应参与新鲜度判定。
+   */
+  orphan?: boolean
 }
 
 export interface FreshnessInfo {
@@ -44,32 +53,77 @@ export function listRunningMcpServers(deps: Pick<FreshnessDeps, "psOutput" | "no
   let out = deps.psOutput
   if (out === undefined) {
     try {
-      out = execSync("ps -eo pid=,etimes=,args=", { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] })
+      out = execSync("ps -eo pid=,ppid=,etimes=,args=", { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] })
     } catch {
       return []
     }
   }
   const now = (deps.now ?? (() => new Date()))()
+  const lines = out.split("\n")
+  // 启动者已死的判定依据：ppid 落在 init / systemd 上（reparent 的结果）
+  const supervisorPids = new Set<number>()
+  const allPids = new Set<number>()
+  for (const line of lines) {
+    const m = line.trim().match(/^(\d+)\s+(\d+)\s+(\d+)\s+(.*)$/)
+    if (!m) continue
+    allPids.add(Number(m[1]))
+    if (/(^|\/)(systemd|init)(\s|$)/.test(m[4])) supervisorPids.add(Number(m[1]))
+  }
   const servers: RunningServer[] = []
-  for (const line of out.split("\n")) {
+  for (const line of lines) {
     if (!line.includes("mcp-server.ts")) continue
     if (line.includes("mcp-restart-notice")) continue // 跳过本脚本自身
-    const m = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/)
+    const m = line.trim().match(/^(\d+)\s+(\d+)\s+(\d+)\s+(.*)$/)
     if (!m) continue
-    const cmd = m[3]
+    const ppid = Number(m[2])
+    const cmd = m[4]
     if (cmd.includes("node_modules")) continue // 排除依赖树噪声
     // magic 段必须以点开头（.codex/.qoder…），且路径后是行尾或参数分隔
     const magic = cmd.match(/(?:^|[/\s])(\.[a-z][a-z0-9-]*)\/scripts\/mcp-server\.ts(?:\s|$)/)
     if (!magic) continue
-    const etimes = Number(m[2])
+    const etimes = Number(m[3])
     servers.push({
       magicDir: magic[1],
       pid: Number(m[1]),
+      ppid,
       command: cmd,
       startedAt: Number.isFinite(etimes) ? new Date(now.getTime() - etimes * 1000) : undefined,
+      orphan: false, // 先按 o 标记，稍后按"整族"传播（见下）
     })
   }
+  /*
+   * 孤儿按**整族**传播：链上后几代（npm exec / sh -c / tsx / node）的 ppid 指向族内进程，
+   * 单看自身 ppid 判不出来 —— 只有族根（其 ppid 不在族内）能反映"启动者是否还在"。
+   * 族根判定为孤儿时，整族标记（含 rootPpid 不存在＝父进程已消失的情形）。
+   */
+  const byPid = new Map(servers.map((s) => [s.pid, s]))
+  const childrenOf = new Map<number, number[]>()
+  for (const s of servers) {
+    if (!byPid.has(s.ppid)) continue
+    childrenOf.set(s.ppid, [...(childrenOf.get(s.ppid) ?? []), s.pid])
+  }
+  for (const s of servers) {
+    if (byPid.has(s.ppid)) continue // 不是族根
+    const rootParentGone = s.ppid === 1 || supervisorPids.has(s.ppid) || !allPids.has(s.ppid)
+    if (!rootParentGone) continue
+    const stack = [s.pid]
+    while (stack.length > 0) {
+      const pid = stack.pop() as number
+      const node = byPid.get(pid)
+      if (!node || node.orphan) continue
+      node.orphan = true
+      stack.push(...(childrenOf.get(pid) ?? []))
+    }
+  }
   return servers
+}
+
+/**
+ * 残留族清单（供 `scripts/mcp-restart-notice.ts` 回收）：
+ * 只按 adapter 取**全部孤儿 pid**（含 npx/npm/sh/tsx/node 各代），非孤儿一律不动。
+ */
+export function orphanPidsToReap(servers: readonly RunningServer[]): number[] {
+  return [...new Set(servers.filter((s) => s.orphan).map((s) => s.pid))].sort((a, b) => a - b)
 }
 
 /**
@@ -113,9 +167,10 @@ export function computeFreshness(
   if (!mtime) {
     return { ...base, stale: "unknown", detail: "产物不存在，无法判定新鲜度" }
   }
-  const perAdapter = earliestPerAdapter(
-    (deps.listServers ?? (() => listRunningMcpServers()))().filter((s) => s.magicDir === magicDir),
-  )
+  const allServers = deps.listServers ? deps.listServers() : listRunningMcpServers()
+  // 残留族（启动者已死）不参与新鲜度判定：否则"孤儿进程"会把判定带偏
+  // （实测：旧实例的 server 让新鲜度报出错误的 pid / 错误的 stale 值）
+  const perAdapter = earliestPerAdapter(allServers.filter((s) => s.magicDir === magicDir && !s.orphan))
   const server = perAdapter.get(magicDir)
   if (!server) {
     return { ...base, stale: false, detail: `${magicDir} 无运行中 server` }
