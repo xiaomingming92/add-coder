@@ -77,7 +77,16 @@ export function listRunningMcpServers(deps: Pick<FreshnessDeps, "psOutput" | "no
     if (!m) continue
     const ppid = Number(m[2])
     const cmd = m[4]
-    if (cmd.includes("node_modules")) continue // 排除依赖树噪声
+    /*
+     * 噪声过滤（2026-09-14 收窄）：
+     * 旧实现是 `cmd.includes("node_modules") → skip`，把**我们自己的 tsx 启动层**也一并挡掉
+     * （`node …/node_modules/.bin/../tsx/dist/cli.mjs <magicDir>/scripts/mcp-server.ts`）——
+     * 后果是回收只能杀掉表层 npx/npm，深层 node/tsx 残部继续存活（实测：回收后仍留
+     * `135292/135310`、`135897/135913` 两族残部）。
+     * 现在只排除「安装副本」：dot 目录直接位于 node_modules 树内
+     * （如 `node_modules/<pkg>/.codex/scripts/mcp-server.ts`），其余照常纳入。
+     */
+    if (/(^|[/\s])node_modules\/(?:[^/\s]+\/)*\.[a-z][a-z0-9-]*\/scripts\/mcp-server\.ts/.test(cmd)) continue
     // magic 段必须以点开头（.codex/.qoder…），且路径后是行尾或参数分隔
     const magic = cmd.match(/(?:^|[/\s])(\.[a-z][a-z0-9-]*)\/scripts\/mcp-server\.ts(?:\s|$)/)
     if (!magic) continue
