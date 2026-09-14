@@ -8,6 +8,8 @@ import { prisma } from "../shared/prisma.js"
 import type { PlanRow, ReviewRow } from "../shared/db-types.js"
 import { PlanRowSchema, ReviewRowSchema, validatedDelegate } from "../shared/db-types.js"
 import { getRuntimeContext } from "../shared/env.js"
+// 审查文档命名识别（纯函数，见 shared/review-files.ts：两种命名并存，规则需被用例钉住）
+import { pickReviewFiles, derivePlanNameFromReviewFile } from "../shared/review-files.js"
 import { assertPathInRuntimeScope } from "../shared/runtime-context.js"
 
 const db = {
@@ -52,18 +54,19 @@ export function registerReviewTools(server: ToolRegistrar) {
       const reviewsDir = join(PROJECT_ROOT, MAGIC_DIR, "reviews")
       if (!existsSync(reviewsDir)) return errorResponse(`reviews 目录不存在: ${reviewsDir}`)
       const allFiles = await readdirRecursive(reviewsDir)
-      const reviewFiles = allFiles.filter(f => f.endsWith(".md") && f.includes("-review-"))
+      /*
+       * 审查文档命名兼容（2026-09-14 放宽）：
+       * 仓库里同时存在两种形态 —— `{planPrefix}-review-v1.md`（历史）与
+       * `{planPrefix}-plan-v1-review.md`（create_hitl 的占位路径落点，也是 review 文档的自然命名）。
+       * 旧匹配要求包含 `-review-`（review 后必须跟连字符），会把后者整类漏掉。
+       */
+      const reviewFiles = pickReviewFiles(allFiles)
       const results: string[] = []
       let count = 0
 
       for (const rf of reviewFiles) {
         const fullPath = join(reviewsDir, rf)
-        // 从文件名推导 planName
-        // 格式: {plan-name}-review-v1.md 或 {plan-name}-review-implementation.md
-        const derivedPlan = basename(rf, ".md")
-          .replace(/-review-.*$/, "")
-          .replace(/-implementation.*$/, "")
-          .replace(/-runtime.*$/, "")
+        const derivedPlan = derivePlanNameFromReviewFile(rf)
         // [2026-08-09 修复] 过滤方向颠倒：derivedPlan 是前缀，pn 是完整 planName（{prefix}-plan-v{n}），
         // 应为 pn.includes(derivedPlan)；原实现 derivedPlan.includes(pn) 永远 false → 传入 planName 时全部跳过
         if (pn && !pn.includes(derivedPlan)) continue

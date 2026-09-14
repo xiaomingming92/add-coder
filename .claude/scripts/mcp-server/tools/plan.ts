@@ -8,6 +8,8 @@ import { prisma } from "../shared/prisma.js"
 import type { PlanRow } from "../shared/db-types.js"
 import { PlanRowSchema, validatedDelegate } from "../shared/db-types.js"
 import { getRuntimeContext } from "../shared/env.js"
+// 口径单一真源：checklist 的 [T]/[R] 统计直接复用校验层，避免 tracker 与校验器两套口径漂移
+import { checklistStats } from "../../../validation/validators/checklist.js"
 import { assertPathInRuntimeScope } from "../shared/runtime-context.js"
 import { resolvePlanStatus } from "../shared/plan-lifecycle.js"
 import { createPrismaPlanStatusStore } from "../shared/plan-status-store.js"
@@ -104,9 +106,12 @@ export function registerPlanTools(server: ToolRegistrar) {
         let checklistT = 0, checklistTDone = 0, checklistR = 0
         const checklistContent = await readFileSafe(checklistPath)
         if (checklistContent) {
-          checklistT = (checklistContent.match(/\[T\]/g) || []).length
-          checklistTDone = (checklistContent.match(/\[x\].*\[T\]/g) || []).length
-          checklistR = (checklistContent.match(/\[R\]/g) || []).length
+          // 单一真源：复用校验层 checklistStats（旧实现按全文出现次数统计，把正文里提到的
+          // `[T]` 也计入分母 —— 实测 16/16 被报成 17/18，2026-09-14 修正）
+          const stats = checklistStats(checklistContent)
+          checklistT = stats.tTotal
+          checklistTDone = stats.tDone
+          checklistR = stats.rTotal
         }
         // 定位 add-route
         const planPrefix = basename(t.name).replace(/-plan-v\d+$/, "")

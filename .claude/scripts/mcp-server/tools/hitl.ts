@@ -1,5 +1,5 @@
 import * as z from "zod/v4"
-import { inputRequired, acceptedContent } from "@modelcontextprotocol/server"
+import { inputRequired, acceptedContent, type ElicitInputParams } from "@modelcontextprotocol/server"
 import type { ToolRegistrar } from "./registrar.js"
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
 import { join, basename, relative } from "path"
@@ -28,6 +28,23 @@ import { HITL_APPROVAL_WIDGET_URI } from "../shared/hitl-ui.js"
 // 无类型边界单点（zod 托管）：动态加载的 prisma client 在此一次性转为运行期校验的泛型委托
 const db = {
   get hitl() { return validatedDelegate<HitlRow>(prisma.hitlRecord, HitlRowSchema, "HitlRecord") },
+}
+
+/**
+ * 表单式 elicitation 的 `requestedSchema`（2026-09-14：替换 4 处 `as any`）。
+ *
+ * 为什么需要一个函数：属性表是**运行时按维度动态构造**的（`dim_0_content`/`dim_0_decision`…），
+ * 而 SDK 的 `ElicitInputParams["requestedSchema"]` 是静态 JSON Schema 形状 —— 字面量直接赋值
+ * 会因索引签名不匹配而报错。这里把**唯一的窄化点**收在一处，类型取自 SDK 而非 `any`。
+ */
+/** 表单里单个属性的形状（本仓库只用字符串型 + 可选枚举） */
+type ElicitFormProperty = { type: "string"; enum?: string[]; description?: string }
+
+function elicitFormSchema(
+  properties: Record<string, ElicitFormProperty>,
+  required: string[],
+): ElicitInputParams["requestedSchema"] {
+  return { type: "object", properties, required } as ElicitInputParams["requestedSchema"]
 }
 
 export function registerHitlTools(server: ToolRegistrar) {
@@ -241,10 +258,12 @@ export function registerHitlTools(server: ToolRegistrar) {
         content: [{ type: "text" as const, text }],
         structuredContent: output,
         /*
-         * 工具**调用结果**也要带 _meta（2026-09-14 修复 widget 不渲染）：
-         * 客户端渲染入口读的是 result._meta 上的 `openai/outputTemplate` / `ui.resourceUri`
-         * （app 二进制内 `core/src/mcp_tool_call.rs` 引用的正是 `ui` / `resourceUri` / `openai/outputTemplate`）；
-         * 只在工具声明上挂 `_meta` 时，客户端拿到结果却不知道要挂哪个 widget → 表现为"只回一段 JSON，不显示表单"。
+         * 结果侧 `_meta`（Apps SDK 兼容补位，2026-09-14）：
+         * 宿主实际读的是**工具定义**的 `_meta.ui.resourceUri`（`tools/list` 时解析，
+         * 实测 `thread_items` 里已带 `mcpAppResourceUri`，而 `result._meta` 仍为 null 也照常绑定）；
+         * 这里补一份结果侧 `_meta` 不改变行为，只为兼容同时读结果位的客户端。
+         * 真正的渲染前提是：客户端 MCP Apps 能力开关（Codex: `/experimental` 的 enable_mcp_apps）
+         * + 资源 mimeType 为 `text/html;profile=mcp-app` + 资源存在 + dimensions 非空。
          */
         _meta: {
           ui: { resourceUri: HITL_APPROVAL_WIDGET_URI },
@@ -320,7 +339,7 @@ export function registerHitlTools(server: ToolRegistrar) {
 
           if (!decResp) {
             // 首次调用 — 构建扁平逐项弹框
-            const props: Record<string, unknown> = {
+            const props: Record<string, ElicitFormProperty> = {
               globalAction: {
                 type: "string", enum: ["", "同意全部", "驳回全部"],
                 description: "同意全部=通过所有(含已调整行); 驳回全部=驳回提案; 留空=逐项"
@@ -344,7 +363,7 @@ export function registerHitlTools(server: ToolRegistrar) {
               inputRequests: {
                 confirm: inputRequired.elicit({
                   message: `确认创建 HITL 提案\n\nplan: ${planName}\ntype: ${type}\n\n共 ${dimensions.length} 个决策维度：\n${dimDesc}`,
-                  requestedSchema: { type: "object", properties: props, required: requiredKeys } as any
+                  requestedSchema: elicitFormSchema(props, requiredKeys),
                 })
               }
             })
@@ -376,7 +395,10 @@ export function registerHitlTools(server: ToolRegistrar) {
               inputRequests: {
                 confirm: inputRequired.elicit({
                   message: `确认创建 HITL 提案？\n\nplan: ${planName}\ntype: ${type}`,
-                  requestedSchema: { type: "object", properties: { action: { type: "string", enum: ["同意", "取消"], description: "同意=确认创建提案, 取消=取消操作" } }, required: ["action"] } as any
+                  requestedSchema: elicitFormSchema(
+                    { action: { type: "string", enum: ["同意", "取消"], description: "同意=确认创建提案, 取消=取消操作" } },
+                    ["action"],
+                  ),
                 })
               }
             })
@@ -527,7 +549,7 @@ export function registerHitlTools(server: ToolRegistrar) {
           const decResp = _parseDecisions(ctx)
 
           if (!decResp) {
-            const props: Record<string, unknown> = {
+            const props: Record<string, ElicitFormProperty> = {
               globalAction: {
                 type: "string", enum: ["", "同意全部", "驳回全部"],
                 description: "同意全部=通过所有维度; 驳回全部=驳回提案; 留空=逐项"
@@ -550,7 +572,7 @@ export function registerHitlTools(server: ToolRegistrar) {
               inputRequests: {
                 confirm: inputRequired.elicit({
                   message: `HITL 审批决策\n\nplan: ${planName}\ntype: ${type}\n\n逐项决策以下 ${dims.length} 个维度：\n${dimDesc}`,
-                  requestedSchema: { type: "object", properties: props, required: requiredKeys } as any
+                  requestedSchema: elicitFormSchema(props, requiredKeys),
                 })
               }
             })
@@ -574,7 +596,10 @@ export function registerHitlTools(server: ToolRegistrar) {
               inputRequests: {
                 confirm: inputRequired.elicit({
                   message: `HITL 审批决策\n\nplan: ${planName}\ntype: ${type}`,
-                  requestedSchema: { type: "object", properties: { action: { type: "string", enum: ["同意", "驳回", "取消"], description: "同意=通过审批, 驳回=驳回重做, 取消=暂不操作" } }, required: ["action"] } as any
+                  requestedSchema: elicitFormSchema(
+                    { action: { type: "string", enum: ["同意", "驳回", "取消"], description: "同意=通过审批, 驳回=驳回重做, 取消=暂不操作" } },
+                    ["action"],
+                  ),
                 })
               }
             })
