@@ -1,7 +1,9 @@
 # 《Agent Memory 知识治理层架构设计》
 
 > 对应 Plan：`.codex/plans/2026-08/19/add-coder-agent-memory-plan-v2.md`
-> 版本：v1 · 日期：2026-08-19 · 状态：实施前基线（ADD-0.1 文档先行）
+> 关联 Plan（本分支）：`add-coder-agent-memory-closure-plan-v1`（闭包）、`add-coder-memory-rank-calibration-plan-v1`（排序校准）、
+> `add-coder-core-validation-lifecycle-plan-v1`（校验层接线）、`add-coder-hitl-widget-runtime-gap-plan-v1`（运行时可见性）
+> 版本：v2 · 日期：2026-09-14 · 状态：**实施后回填（as-built）** — v1 为 2026-08-19 实施前基线，§8 起为落地后的现状与新增子系统
 
 ---
 
@@ -93,3 +95,72 @@ Hook 侧约束：同步路径只读快照/写队列（无 DB），任何记忆�
 - AuditLog/DevOperation 是事实源；所有 Memory 状态迁移写 AuditLog（actor、reason、前后状态）；
 - Handoff 保持 Plan 级交接语义，可关联本 Plan 使用/产生的 Memory；
 - 会话注入分层：session-init 只注入小型 L1，任务相关 L2 由 `recall_memory` 按需获得。
+
+---
+
+## 8. 实施现状（as-built，2026-09-14 回填）
+
+v1 的 §1–§7 是**设计基线**；下表是落地后与基线的对应关系（差异处已注明实测）。
+
+| 基线条目 | 落地情况 | 证据 / 落点 |
+|---------|---------|-----------|
+| §2 数据模型 6 枚举 + 6 模型 | ✅ 已建 | `prisma/add.prisma`；主库 15 表 / `vector 0.8.6` / `add_memory_vector` + 2 索引 |
+| §3.5 FTS 基线 + Vector 可选 | ✅ 已落地**双通道** | `memory/retrieval/vector/{pgvector,sqlite-vec}.ts` + 能力检测与 `degradedMode`；`memory/embedding/{local-onnx,openai-compatible}.ts` |
+| §4 写入流（Evidence→Candidate→ACTIVE） | ✅ 已落地 + **Gate→MetricSnapshot 采证** | `memory/metrics/{gate-writer,stage-words,gate-recall}.ts`（采证幂等：`sourceRef=<gate>:<planKeyword>:<runId>`，runId **内容派生**） |
+| §6 发布开关 | ✅ 已落地（含 L1/L2 快照与采证队列） | `shared/memory/switches.ts`、`${MAGIC_DIR}/memory/{l1,l2}-context.md`、`evidence-queue.jsonl` |
+| §3.8 Embedding 首版 none | ⬆️ 已推进到 Phase 5（双 provider） | 同上；`ADD_MEMORY_VECTOR_MODE=off|auto|required` |
+| Handoff Digest（v1 未列） | ✅ 新增：候选态生成，不进 ACTIVE | `memory/domain/handoff-digest.ts`；`memory-compat.ts` 提供 v1 门面（`deprecated+mappedTo`，**不转发执行**） |
+| 排序参数（v1 硬编码） | ⬆️ 改为**由观测校准**（权重快照为单一事实源） | `calibration/*`（反馈统计 / 批量拟合 / 快照 / Kalman / FFT 诊断）+ `scripts/memory/*`；`rankingVersion` → v3（快照哈希） |
+
+**实测指标（门槛不下调，如实登记）**：FTS-only `Recall@5 = 0.9592`（≥ 0.9188 ✅）、`MRR@5 = 0.6551`；
+Hybrid 融合把 `MRR@5` 从 0.2612 抬到 **0.4867 后收敛，仍 < 0.75 门槛 ❌** —— 瓶颈是 top-5 内的排序判别力，
+由 `memory-rank-calibration` 以数据校准替代手调（该 plan 仍在飞，见 §11）。
+
+## 9. 校验层与生命周期联动（本分支新增子系统）
+
+原设计里"文档是否合规"散落在 hook 内联实现与临时脚手架中（三重真源）。本分支把它收敛为一层：
+
+```text
+schema 真源（templates/core/templates/*.schema.json，20 份）
+        │
+        ▼
+core 校验层 templates/core/validation/
+  ├─ schema-validator  章节/子章节/轮次/占位符/结构位禁词 + 锚定 + 半角全角等价
+  ├─ registry          17 类文档 → schema 工厂（未注册即抛，不回落通用校验）
+  ├─ policy            卡位 → advisory|blocking（带依据）+ 规则适用性（Rule × Hook）
+  └─ validators/*      各类型专司语义（handoff 需可执行审计查询、checklist 需 [T]/[R]…）
+        │
+        ├─► 写入守卫（PreToolUse/PostToolUse；SearchReplace 分支只判占位符+禁词）
+        ├─► 封口判定（unit-state 的 handoff 因子 = 存在 ∧ 合规）
+        └─► 批量命令 scripts/validate-docs.ts（收尾/sync 巡检；默认 advisory，--strict 才非零退出）
+```
+
+三条硬约束：**判定只读 schema 真源**（不得自解析模板/硬编码章节名）；**schema 缺失即显式失败**（不静默放行）；
+**规则集与适用性分离**（锚定类仅书写卡位算缺陷，避免把历史文档判违规）。分发随 `sync-magic-rules.toml` 的
+`validation` 分类到六个 magic 目录；追踪器（`plan_track`/`review_track`）与校验层**同口径**（复用 `checklistStats`）。
+
+## 10. 运行时治理与 HITL 链路（本分支新增）
+
+**产物-进程新鲜度**（`shared/runtime-freshness.ts`）：`npm run sync` 重写产物但不会重启运行中的 MCP server →
+按 adapter 扫描进程并与产物 mtime 比对，四态判定（`stale | true | false | unknown`），陈旧者点名告警并写
+`{magicDir}/.mcp-restart-required`；server 启动时自愈清除该标记。
+
+**孤儿族治理**：IDE/app 退出只杀直接子进程，`npm exec → sh -c → tsx → node` 被 reparent 到 `systemd --user` 继续存活
+（`.qoder`/`.codex` 上反复出现）。判定按**整族**（族根 ppid 落在 init/systemd/conmon 或父进程已消失 → 整链标记），
+回收在 sync 末尾两段式 SIGTERM→SIGKILL，只动孤儿；server 侧另有孤儿自退看门狗。做法文书：`docs/knowledge/02-规范/孤儿进程识别与回收.md`。
+
+**HITL 链路**：`create_hitl`（Codex/mcpApps 直接产出 DRAFT，不展开 elicitation）→ `render_hitl_approval`（只读渲染，
+返回 `stale` + `ui.rendered="unknown"` **不谎报** + `fallback{markdownPath,htmlPath}`）→ 用户拍板 →
+`update_hitl`（写库 + 哨兵 + **回写 `hitl.md` 的「审批结论」表：时间/决策/原因**）。widget 渲染的完整前提 =
+客户端 MCP Apps 能力（Codex 各 build 行为不同，26.903 渲染、26.908 对项目级 server 判 fallback）+
+工具定义 `_meta.ui.resourceUri` + 资源 mime `text/html;profile=mcp-app` + 资源存在 + `dimensions` 非空。
+**widget 不可用时，markdown 提案 + 实例 HTML + 聊天拍板是正式通道**（不依赖客户端能力）。
+
+## 11. 未达标与挂账（如实登记）
+
+| 项 | 状态 | 说明 |
+|----|------|------|
+| Hybrid `MRR@5 ≥ 0.75` | ❌ 未达标（0.4867） | 校准基座已交付；**门槛不下调**，待足够多单元封口后复跑（`rank-calibration` 仍 in-flight） |
+| `rank-calibration` checklist 证据 | ⏳ 38 处待回填 | 依赖上述样本前提；该文档是当前唯一仍报缺陷的产物 |
+| widget 在 Codex 26.908 的渲染 | ⏸ 客户端侧 | 服务端逐字节对齐对照机（z2u/26.903）仍为 fallback；结论=客户端 build 回归，已归档待上游修复 |
+| 单元封口四要素（memory-closure） | ⏳ 未合取 | `ROUND_CLOSED ✅ / handoff ✅ / 验收证据 ❌（MRR）/ planStatus ❌` → 不得作为跨单元校准样本 |
