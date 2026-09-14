@@ -129,6 +129,7 @@ export {
   inferRoundHeading,
   countRounds,
   stripFencedBlocks,
+  normalizeWidth,
 } from "./schema-validator.js"
 export type { SchemaFile, SchemaSection, ValidationIssue, IssueCode } from "./schema-validator.js"
 export { typeCheckFor, uncoveredTypes } from "./validators/index.js"

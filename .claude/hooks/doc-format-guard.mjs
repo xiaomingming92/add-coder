@@ -499,13 +499,31 @@ function writeHookEvent(hook, decision, cmd, reason, plan = "unknown", status = 
 // templates/core/validation/schema-validator.ts
 function countOccurrences(haystack, needle) {
   if (!needle) return 0;
+  const h = normalizeWidth(haystack);
+  const n = normalizeWidth(needle);
   let count = 0;
-  let idx = haystack.indexOf(needle);
+  let idx = h.indexOf(n);
   while (idx !== -1) {
     count++;
-    idx = haystack.indexOf(needle, idx + needle.length);
+    idx = h.indexOf(n, idx + n.length);
   }
   return count;
+}
+var FULLWIDTH_START = 65281;
+var FULLWIDTH_END = 65374;
+var FULLWIDTH_TO_HALF = 65248;
+var WIDTH_FOLD_EXTRA = { "\u3000": " " };
+function normalizeWidth(text) {
+  let out = "";
+  for (const ch of text) {
+    const code = ch.codePointAt(0);
+    if (code >= FULLWIDTH_START && code <= FULLWIDTH_END) {
+      out += String.fromCharCode(code - FULLWIDTH_TO_HALF);
+    } else {
+      out += WIDTH_FOLD_EXTRA[ch] ?? ch;
+    }
+  }
+  return out;
 }
 function stripFencedBlocks(content) {
   return content.replace(/```[\s\S]*?```/g, "\n");
@@ -524,22 +542,24 @@ function structText(content, groupColumn) {
 }
 function validateAnchors(content, schema, templateContent) {
   const issues = [];
+  const nContent = normalizeWidth(content);
   for (const section of schema.sections) {
     if (!section.anchor) continue;
-    const refLine = templateContent.split("\n").find((l) => l.includes(section.anchor));
+    const refAnchor = normalizeWidth(section.anchor);
+    const refLine = templateContent.split("\n").find((l) => normalizeWidth(l).includes(refAnchor));
     if (!refLine) continue;
     const tokens = [
       ...new Set(
-        refLine.replace(/[#*`|(){]/g, " ").split(/\s+/).filter((t) => t !== "" && !t.includes("{"))
+        normalizeWidth(refLine).replace(/[#*`|(){]/g, " ").split(/\s+/).filter((t) => t !== "" && !t.includes("{"))
       )
     ];
     if (tokens.length === 0) continue;
-    let scope = content;
+    let scope = nContent;
     if (section.within) {
-      const startIdx = content.indexOf(section.within);
+      const startIdx = nContent.indexOf(normalizeWidth(section.within));
       if (startIdx < 0) continue;
-      const endIdx = content.indexOf("\n## ", startIdx + 1);
-      scope = content.slice(startIdx, endIdx === -1 ? void 0 : endIdx);
+      const endIdx = nContent.indexOf("\n## ", startIdx + 1);
+      scope = nContent.slice(startIdx, endIdx === -1 ? void 0 : endIdx);
     }
     const missTokens = tokens.filter((tok) => !scope.includes(tok));
     if (missTokens.length > 0) {
@@ -557,14 +577,16 @@ function inferRoundHeading(schema) {
   return round?.heading ?? null;
 }
 function countRounds(content, roundHeading) {
-  if (!roundHeading.includes("<\u7B2CN\u8F6E>")) return 0;
-  const pattern = roundHeading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("<\u7B2CN\u8F6E>", "[^\\n]*\u8F6E");
-  const re = new RegExp(`^${pattern}\\s*$`, "gm");
-  return (content.match(re) ?? []).length;
+  const heading = normalizeWidth(roundHeading);
+  if (!heading.includes("<\u7B2CN\u8F6E>")) return 0;
+  const pattern = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("<\u7B2CN\u8F6E>", "\u7B2C\\s*\\d+\\s*\u8F6E");
+  const re = new RegExp(`^${pattern}`, "gm");
+  return (normalizeWidth(content).match(re) ?? []).length;
 }
 function validateAgainstSchema(content, schema, opts = {}) {
   const issues = [];
   const proseOnly = stripFencedBlocks(content);
+  const contentNormalized = normalizeWidth(content);
   const roundHeading = opts.roundHeading ?? inferRoundHeading(schema);
   for (const section of schema.sections) {
     if (!section.heading) continue;
@@ -605,13 +627,16 @@ function validateAgainstSchema(content, schema, opts = {}) {
     }
   }
   for (const ph of schema.placeholders ?? []) {
-    if (ph && content.includes(ph)) {
-      issues.push({ code: "PLACEHOLDER_LEFT", detail: `\u5360\u4F4D\u7B26\u672A\u66FF\u6362\uFF1A${ph}`, expected: ph });
-    }
+    if (!ph) continue;
+    const nPh = normalizeWidth(ph);
+    const idx = contentNormalized.indexOf(nPh);
+    if (idx === -1) continue;
+    const hit = nPh === ph ? ph : `${content.slice(idx, idx + nPh.length)}\uFF08\u5BBD\u5EA6\u7B49\u4EF7\u4E8E ${ph}\uFF09`;
+    issues.push({ code: "PLACEHOLDER_LEFT", detail: `\u5360\u4F4D\u7B26\u672A\u66FF\u6362\uFF1A${hit}`, expected: ph });
   }
-  const struct = structText(content, schema.groupColumn);
+  const struct = normalizeWidth(structText(content, schema.groupColumn));
   for (const term of schema.forbidden_terms ?? []) {
-    if (term && struct.includes(term)) {
+    if (term && struct.includes(normalizeWidth(term))) {
       issues.push({ code: "FORBIDDEN_TERM", detail: `\u7ED3\u6784\u4F4D\u7981\u8BCD\uFF1A${term}\uFF08\u4EC5\u6807\u9898\u884C\u4E0E\u6307\u5B9A\u5217\u5224\u5B9A\uFF09`, expected: term });
     }
   }

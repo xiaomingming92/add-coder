@@ -10,6 +10,9 @@
  *  - 多轮文档轮次不足 → ROUND_COUNT_SHORT（由调用方给 expectRounds）
  *  - schema.placeholders 中仍残留的占位符 → PLACEHOLDER_LEFT
  *  - schema.forbidden_terms 命中（**围栏代码块外**）→ FORBIDDEN_TERM
+ *
+ * 匹配口径：**半角/全角等价**（见 normalizeWidth）。schema 真源只用一种写法，
+ * 判定时对两侧同时归一，避免"冒号全角了就判缺章节"这类假缺陷。
  */
 
 export interface SchemaSection {
@@ -63,13 +66,43 @@ export interface ValidateOptions {
 /** 统计子串出现次数 */
 function countOccurrences(haystack: string, needle: string): number {
   if (!needle) return 0
+  const h = normalizeWidth(haystack)
+  const n = normalizeWidth(needle)
   let count = 0
-  let idx = haystack.indexOf(needle)
+  let idx = h.indexOf(n)
   while (idx !== -1) {
     count++
-    idx = haystack.indexOf(needle, idx + needle.length)
+    idx = h.indexOf(n, idx + n.length)
   }
   return count
+}
+
+/**
+ * 半角/全角归一（2026-09-14：半角全角都支持）。
+ *
+ * 为什么放在**匹配层**而不是 schema 真源：真源是形式定义，不该为书写习惯准备两份；
+ * 归一化属于"怎么比"，与"比什么"分离（同 policy.ts 的规则/适用性分离）。
+ *
+ * 覆盖：全角 ASCII 区 U+FF01–U+FF5E → U+0021–U+007E（：（）？！，；／＃ + 全角字母数字），
+ * 以及表意空格 U+3000 → 半角空格。两侧同时归一，故任一侧写全角都能匹配。
+ * 逐码点 1:1 映射，归一后字符串长度不变——indexOf 的下标语义不受影响。
+ */
+const FULLWIDTH_START = 0xff01
+const FULLWIDTH_END = 0xff5e
+const FULLWIDTH_TO_HALF = 0xfee0
+const WIDTH_FOLD_EXTRA: Readonly<Record<string, string>> = { "\u3000": " " }
+
+export function normalizeWidth(text: string): string {
+  let out = ""
+  for (const ch of text) {
+    const code = ch.codePointAt(0) as number
+    if (code >= FULLWIDTH_START && code <= FULLWIDTH_END) {
+      out += String.fromCharCode(code - FULLWIDTH_TO_HALF)
+    } else {
+      out += WIDTH_FOLD_EXTRA[ch] ?? ch
+    }
+  }
+  return out
 }
 
 /** 去掉围栏代码块（禁词判定不该命中示例代码与引用块） */
@@ -108,25 +141,27 @@ export function validateAnchors(
   templateContent: string,
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = []
+  const nContent = normalizeWidth(content)
   for (const section of schema.sections) {
     if (!section.anchor) continue
-    const refLine = templateContent.split("\n").find((l) => l.includes(section.anchor as string))
+    const refAnchor = normalizeWidth(section.anchor)
+    const refLine = templateContent.split("\n").find((l) => normalizeWidth(l).includes(refAnchor))
     if (!refLine) continue
     const tokens = [
       ...new Set(
-        refLine
+        normalizeWidth(refLine)
           .replace(/[#*`|(){]/g, " ")
           .split(/\s+/)
           .filter((t) => t !== "" && !t.includes("{")),
       ),
     ]
     if (tokens.length === 0) continue
-    let scope = content
+    let scope = nContent
     if (section.within) {
-      const startIdx = content.indexOf(section.within)
+      const startIdx = nContent.indexOf(normalizeWidth(section.within))
       if (startIdx < 0) continue
-      const endIdx = content.indexOf("\n## ", startIdx + 1)
-      scope = content.slice(startIdx, endIdx === -1 ? undefined : endIdx)
+      const endIdx = nContent.indexOf("\n## ", startIdx + 1)
+      scope = nContent.slice(startIdx, endIdx === -1 ? undefined : endIdx)
     }
     const missTokens = tokens.filter((tok) => !scope.includes(tok))
     if (missTokens.length > 0) {
@@ -148,11 +183,18 @@ export function inferRoundHeading(schema: SchemaFile): string | null {
 
 /** 轮次标题在文档中的实际出现次数（把 `<第N轮>` 视为通配片段） */
 export function countRounds(content: string, roundHeading: string): number {
-  if (!roundHeading.includes("<第N轮>")) return 0
-  // 通配片段替换为「本行以轮结尾」，避免 `## 附录` 之类被误计
-  const pattern = roundHeading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("<第N轮>", "[^\\n]*轮")
-  const re = new RegExp(`^${pattern}\\s*$`, "gm")
-  return (content.match(re) ?? []).length
+  const heading = normalizeWidth(roundHeading)
+  if (!heading.includes("<第N轮>")) return 0
+  /*
+   * `<第N轮>` → `第<数字>轮`（2026-09-14 修正）：
+   * 旧实现把通配片段缩成「本行以轮结尾」，于是模板自己示范的写法
+   * `## <第N轮> {Round简短描述}`（落地即 `## 第 1 轮 抽层`）被计为 **0 轮** →
+   * 多轮 handoff 一律假报 ROUND_COUNT_SHORT。改为按"第+数字+轮"识别（只锚行首、不锚行尾）：
+   * 既能计带描述的轮次标题，也不会把 `## 附录` / `## 轮次依赖` 之类误计为轮次。
+   */
+  const pattern = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("<第N轮>", "第\\s*\\d+\\s*轮")
+  const re = new RegExp(`^${pattern}`, "gm") // 行首锚定即可，`{Round简短描述}` 可有可无
+  return (normalizeWidth(content).match(re) ?? []).length
 }
 
 export function validateAgainstSchema(
@@ -162,6 +204,8 @@ export function validateAgainstSchema(
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const proseOnly = stripFencedBlocks(content)
+  /** 归一化视图（匹配用，报告仍引原文）；口径与原文一致：占位符查全文（含围栏内），禁词查结构位 */
+  const contentNormalized = normalizeWidth(content)
 
   // 1) 章节与子章节
   const roundHeading = opts.roundHeading ?? inferRoundHeading(schema)
@@ -206,17 +250,20 @@ export function validateAgainstSchema(
     }
   }
 
-  // 2) 占位符残留（只查 schema 声明的那些）
+  // 2) 占位符残留（只查 schema 声明的那些；半角/全角写法都算残留——放宽写法不等于放过残留）
   for (const ph of schema.placeholders ?? []) {
-    if (ph && content.includes(ph)) {
-      issues.push({ code: "PLACEHOLDER_LEFT", detail: `占位符未替换：${ph}`, expected: ph })
-    }
+    if (!ph) continue
+    const nPh = normalizeWidth(ph)
+    const idx = contentNormalized.indexOf(nPh)
+    if (idx === -1) continue
+    const hit = nPh === ph ? ph : `${content.slice(idx, idx + nPh.length)}（宽度等价于 ${ph}）`
+    issues.push({ code: "PLACEHOLDER_LEFT", detail: `占位符未替换：${hit}`, expected: ph })
   }
 
   // 3) 结构位禁词（**标题行 + groupColumn 列**；正文叙述不判）
-  const struct = structText(content, schema.groupColumn)
+  const struct = normalizeWidth(structText(content, schema.groupColumn))
   for (const term of schema.forbidden_terms ?? []) {
-    if (term && struct.includes(term)) {
+    if (term && struct.includes(normalizeWidth(term))) {
       issues.push({ code: "FORBIDDEN_TERM", detail: `结构位禁词：${term}（仅标题行与指定列判定）`, expected: term })
     }
   }
