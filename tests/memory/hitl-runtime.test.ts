@@ -16,6 +16,7 @@ import {
   listRunningMcpServers,
   readRestartRequiredMarker,
   writeRestartRequiredMarker,
+  orphanPidsToReap,
 } from "../../templates/core/scripts/mcp-server/shared/runtime-freshness.js"
 import {
   buildHitlInstanceHtml,
@@ -32,9 +33,10 @@ const newer = new Date("2026-09-13T10:30:00Z")
 describe("listRunningMcpServers 全 adapter 扫描", () => {
   it("从 ps 输出解析出 .codex 与 .qoder 两个 server（非仅 .codex）", () => {
     const psOutput = [
-      "  111  120 npx tsx /home/u/proj/.codex/scripts/mcp-server.ts",
-      "  222  60  npx tsx /home/u/proj/.qoder/scripts/mcp-server.ts",
-      "  333  10  node /home/u/proj/node_modules/.bin/vitest run",
+      " 9999    1 99999 /usr/bin/gnome-shell --mode=ubuntu",
+      "  111  9999  120 npx tsx /home/u/proj/.codex/scripts/mcp-server.ts",
+      "  222  9999   60 npx tsx /home/u/proj/.qoder/scripts/mcp-server.ts",
+      "  333  9999   10 node /home/u/proj/node_modules/.bin/vitest run",
     ].join("\n")
     const servers = listRunningMcpServers({ psOutput, now: () => new Date("2026-09-13T10:00:00Z") })
     expect(servers.map((s) => s.magicDir).sort()).toEqual([".codex", ".qoder"])
@@ -43,22 +45,23 @@ describe("listRunningMcpServers 全 adapter 扫描", () => {
   })
 
   it("无 server 时返回空数组（不抛）", () => {
-    expect(listRunningMcpServers({ psOutput: "  1  5  bash" })).toEqual([])
+    expect(listRunningMcpServers({ psOutput: "  1  9999  5  bash" })).toEqual([])
   })
 
   // 真实场景回归（2026-09-13 sync 现场捞出的两个 bug）：
   // ① 同一逻辑 server 会呈现为 npx → npm exec → sh -c → tsx 的进程链；
   // ② 路径噪声（node_modules）与无点前缀目录不得被误判为 adapter。
   const realPsOutput = [
-    "  75649  79300 npx tsx /home/u/proj/.codex/scripts/mcp-server.ts",
-    "  75658  79299 npm exec tsx /home/u/proj/.codex/scripts/mcp-server.ts",
-    "  75788  79298 sh -c 'tsx' /home/u/proj/.codex/scripts/mcp-server.ts",
-    "1346370   3600 tsx /home/u/proj/.codex/scripts/mcp-server.ts",
-    "1346392   3500 tsx /home/u/proj/.codex/scripts/mcp-server.ts",
-    "    222     60 npx tsx /home/u/proj/.qoder/scripts/mcp-server.ts",
-    "    333     10 node /home/u/proj/node_modules/add-coder/scripts/mcp-server.ts",
-    "    444      5 tsx /home/u/proj/any/scripts/mcp-server.ts",
-    "    555      5 tsx /home/u/proj/.codex/scripts/mcp-restart-notice.ts",
+    " 9999    1 99999 /usr/bin/gnome-shell --mode=ubuntu",
+    "  75649  9999  79300 npx tsx /home/u/proj/.codex/scripts/mcp-server.ts",
+    "  75658  75649 79299 npm exec tsx /home/u/proj/.codex/scripts/mcp-server.ts",
+    "  75788  75658 79298 sh -c 'tsx' /home/u/proj/.codex/scripts/mcp-server.ts",
+    "1346370 75649  3600 tsx /home/u/proj/.codex/scripts/mcp-server.ts",
+    "1346392 75649  3500 tsx /home/u/proj/.codex/scripts/mcp-server.ts",
+    "    222  9999    60 npx tsx /home/u/proj/.qoder/scripts/mcp-server.ts",
+    "    333  9999    10 node /home/u/proj/node_modules/add-coder/scripts/mcp-server.ts",
+    "    444  9999     5 tsx /home/u/proj/any/scripts/mcp-server.ts",
+    "    555  9999     5 tsx /home/u/proj/.codex/scripts/mcp-restart-notice.ts",
   ].join("\n")
 
   it("真实进程链：同一 adapter 多条记录，node_modules 与无点前缀路径被排除", () => {
@@ -187,5 +190,54 @@ describe("HITL 实例 HTML", () => {
     expect(() =>
       writeHitlInstanceHtml({ ...input, projectRoot: root, magicDir: ".trae" }),
     ).toThrow(/模板缺失/)
+  })
+})
+
+/*
+ * 残留族识别与回收（2026-09-14 用户实测反馈：`.qoder` / `.codex` 上反复出现 MCP 残留）
+ *
+ * 成因：IDE/app 退出只杀直接子进程（npx），`npm exec → sh -c → tsx → node` 被 reparent 到
+ * init/systemd 继续存活。判定依据 = ppid 落在 init/systemd 上（systemd --user 同样算）。
+ */
+describe("残留族（孤儿 MCP 进程）", () => {
+  const orphanPsOutput = [
+    "    1    0 99999 /sbin/init",
+    " 1125    1 99999 /usr/lib/systemd/systemd --user",
+    " 8332    1  3600 npx tsx /home/u/proj/.codex/scripts/mcp-server.ts",
+    " 8386 8332  3600 npm exec tsx /home/u/proj/.codex/scripts/mcp-server.ts",
+    " 8549 8386  3600 sh -c 'tsx' /home/u/proj/.codex/scripts/mcp-server.ts",
+    "41234 1125    10 npx tsx /home/u/proj/.qoder/scripts/mcp-server.ts",
+    " 7777 9999    20 npx tsx /home/u/proj/.codex/scripts/mcp-server.ts",
+    " 9999    1 99999 /usr/bin/gnome-shell --mode=ubuntu",
+  ].join("\n")
+
+  it("ppid 落在 init/systemd 上的进程族被标为 orphan；正常启动者名下的不算", () => {
+    const servers = listRunningMcpServers({ psOutput: orphanPsOutput })
+    expect(servers.find((s) => s.pid === 8332)?.orphan).toBe(true) // ppid=1
+    expect(servers.find((s) => s.pid === 41234)?.orphan).toBe(true) // ppid=systemd --user
+    expect(servers.find((s) => s.pid === 7777)?.orphan).toBe(false) // ppid=gnome-shell
+  })
+
+  it("orphanPidsToReap 只列孤儿族（含链上各代），运行中的正常 server 不动", () => {
+    const servers = listRunningMcpServers({ psOutput: orphanPsOutput })
+    expect(orphanPidsToReap(servers)).toEqual([8332, 8386, 8549, 41234])
+  })
+
+  it("新鲜度判定忽略孤儿：只有孤儿时不报 stale，也不会把孤儿 pid 当成现役 server", () => {
+    const onlyOrphans = listRunningMcpServers({ psOutput: orphanPsOutput }).filter((s) => s.orphan)
+    const info = computeFreshness(".codex", root, { mtimeOf: () => mtime, listServers: () => onlyOrphans })
+    expect(info.stale).toBe(false)
+    expect(info.detail).toContain("无运行中 server")
+    expect(info.processStartedAt).toBeUndefined()
+  })
+
+  it("同 adapter 同时存在孤儿与现役时，判定取现役那条", () => {
+    const servers = listRunningMcpServers({ psOutput: orphanPsOutput })
+    const info = computeFreshness(".codex", root, {
+      mtimeOf: () => newer, // 产物比现役进程(20s)更新 → stale=true
+      listServers: () => servers,
+    })
+    expect(info.processStartedAt).toBeDefined()
+    expect(info.detail).toContain("7777") // 取的是现役那条，不是孤儿 8332
   })
 })

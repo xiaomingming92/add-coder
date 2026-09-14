@@ -241,10 +241,12 @@ export function registerHitlTools(server: ToolRegistrar) {
         content: [{ type: "text" as const, text }],
         structuredContent: output,
         /*
-         * 工具**调用结果**也要带 _meta（2026-09-14 修复 widget 不渲染）：
-         * 客户端渲染入口读的是 result._meta 上的 `openai/outputTemplate` / `ui.resourceUri`
-         * （app 二进制内 `core/src/mcp_tool_call.rs` 引用的正是 `ui` / `resourceUri` / `openai/outputTemplate`）；
-         * 只在工具声明上挂 `_meta` 时，客户端拿到结果却不知道要挂哪个 widget → 表现为"只回一段 JSON，不显示表单"。
+         * 结果侧 `_meta`（Apps SDK 兼容补位，2026-09-14）：
+         * 宿主实际读的是**工具定义**的 `_meta.ui.resourceUri`（`tools/list` 时解析，
+         * 实测 `thread_items` 里已带 `mcpAppResourceUri`，而 `result._meta` 仍为 null 也照常绑定）；
+         * 这里补一份结果侧 `_meta` 不改变行为，只为兼容同时读结果位的客户端。
+         * 真正的渲染前提是：客户端 MCP Apps 能力开关（Codex: `/experimental` 的 enable_mcp_apps）
+         * + 资源 mimeType 为 `text/html;profile=mcp-app` + 资源存在 + dimensions 非空。
          */
         _meta: {
           ui: { resourceUri: HITL_APPROVAL_WIDGET_URI },
