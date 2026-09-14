@@ -77,6 +77,13 @@ icon = "📕"
 name = "tools"
 icon = "🔧"
 
+# ── core 校验层（Plan core-validation-lifecycle）：hooks 烘焙内联 + MCP 侧运行态引用 ──
+#   分发后各 magic 目录形如 .codex/validation/**，与 .codex/scripts/** 同级，
+#   使 `shared/memory/calibration/unit-state.ts` 的相对引用（../../../../..）在源码与 magic 两侧一致
+[[categories]]
+name = "validation"
+icon = "✅"
+
 # ── 验证：同步后逐文件比对 ──
 [[verify]]
 src = "templates/adapters/claude/hooks"

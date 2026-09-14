@@ -34,6 +34,8 @@ function makeDeps(over: Partial<UnitStateDeps> = {}, contents = defaultFiles): U
     exists: () => true,
     findRoundClosed: () => Promise.resolve(null),
     findPlanRecord: () => Promise.resolve({ id: "cm-plan-record", totalTasks: 10, doneTasks: 10 }),
+    // handoff 合规校验默认走 core 校验层；单测注入 stub（真实路径由集成验证覆盖）
+    validateHandoff: () => ({ ok: true, issues: [] }),
     ...over,
   }
 }
@@ -117,6 +119,44 @@ describe("resolveUnitState 三态判定", () => {
 })
 
 describe("单元引用表（引用而非复制）", () => {
+  it("handoff 存在但**不合规** → 不 closed（存在 ≠ 合规）", async () => {
+    const unit = await resolveUnitState(
+      planKeyword,
+      makeDeps({
+        findRoundClosed: () => Promise.resolve({ id: "cm-rc" }),
+        validateHandoff: () => ({
+          ok: false,
+          issues: [{ code: "MISSING_SUBSECTION", detail: "缺子章节：### 总体一键恢复" }],
+        }),
+      }),
+    )
+    expect(unit.evidence.handoff).toBe(false)
+    expect(unit.handoffValidation?.ok).toBe(false)
+    expect(unit.state).toBe("in-flight")
+  })
+
+  it("缺 handoff 文件 → 不调用校验器（无 handoffValidation）", async () => {
+    const withoutHandoff = { ...defaultFiles }
+    delete (withoutHandoff as Record<string, string>)["demo-plan-v1-handoff-v1.md"]
+    let called = false
+    const unit = await resolveUnitState(
+      planKeyword,
+      makeDeps(
+        {
+          findRoundClosed: () => Promise.resolve({ id: "cm-rc" }),
+          validateHandoff: () => {
+            called = true
+            return { ok: true, issues: [] }
+          },
+        },
+        withoutHandoff,
+      ),
+    )
+    expect(called).toBe(false)
+    expect(unit.handoffValidation).toBeUndefined()
+    expect(unit.state).toBe("in-flight")
+  })
+
   it("支持 plans/{YYYY-MM}/{DD}/ 日期分层（真实仓库布局）", async () => {
     const unit = await resolveUnitState(
       planKeyword,

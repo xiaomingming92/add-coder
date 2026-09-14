@@ -22,7 +22,8 @@ export const SYNC_MAGIC_CONFIG = {
     { name: "scripts", icon: "📜", bake: true },
     { name: "docs", icon: "📖", bake: true },
     { name: "vocabulary", icon: "📕", bake: true },
-    { name: "tools", icon: "🔧", bake: true }
+    { name: "tools", icon: "🔧", bake: true },
+    { name: "validation", icon: "✅", bake: true }
     ],
     VERIFY: [
     { src: "templates/adapters/claude/hooks", dest: ".claude/hooks", name: "claude hooks" },

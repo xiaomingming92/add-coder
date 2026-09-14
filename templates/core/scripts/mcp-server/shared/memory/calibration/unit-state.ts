@@ -9,6 +9,8 @@
  * 同时产出**单元引用表**（refs）：报告按单元分层时直接引用这些制品，不复制内容（§2.3）。
  */
 
+import { validate as coreValidate, type ValidationIssue } from "../../../../../validation/index.js"
+
 export interface UnitRefs {
   planPath?: string
   addRoutePath?: string
@@ -33,6 +35,8 @@ export interface UnitState {
     acceptance: boolean
     planStatus: boolean
   }
+  /** handoff 合规校验明细（来自 core 校验层；存在 ≠ 合规，Spec §2.2） */
+  handoffValidation?: { type: "handoff.single" | "handoff.multi"; ok: boolean; issues: ValidationIssue[] }
   /** 缺失的既有制品（§2.3：缺证据的单元不可作为训练依据） */
   missingArtifacts: string[]
   refs: UnitRefs
@@ -61,6 +65,34 @@ export interface UnitStateDeps {
     doneTasks?: number
     totalTasks?: number
   } | null>
+  /**
+   * handoff 合规校验（默认 = core 校验层，schema 真源）。
+   * 注入点仅供测试；生产路径必须走 core，不得再自解析模板（Spec §2.2/§2.4）。
+   */
+  validateHandoff?: (input: {
+    type: "handoff.single" | "handoff.multi"
+    path: string
+    expectRounds: number
+  }) => { ok: boolean; issues: ValidationIssue[] }
+}
+
+/**
+ * 轮次数推导（既有制品读取，不新建状态）。
+ *
+ * 语义：取各制品中 `轮次 N` 的最大编号；**编号从 0 起 → +1，从 1 起 → 不变**。
+ * 例：`轮次 0..3` → 4 轮；`轮次 1` → 1 轮（单轮）。
+ * 输入建议按真源优先级传入：[planContent, tasksContent, addRouteContent]
+ * （tasks.md 的「轮次拓扑」是最稳定的轮次真源；add-route 的轮次常写在代码块内）。
+ */
+export function planRounds(...contents: readonly string[]): number {
+  const nums: number[] = []
+  for (const content of contents) {
+    for (const m of content.matchAll(/轮次\s*(\d+)/g)) nums.push(Number(m[1]))
+  }
+  if (nums.length === 0) return 1
+  const max = Math.max(...nums)
+  const min = Math.min(...nums)
+  return min === 0 ? max + 1 : max
 }
 
 /** 统计 add-route 产出项勾选情况（只认 `- [ ]` / `- [x]`） */
@@ -138,9 +170,38 @@ export async function resolveUnitState(
 
   const evidence = {
     roundClosed: !!roundClosed,
-    handoff: !!handoffRel,
+    handoff: false, // 由下方 handoff 合规校验填充（存在 ≠ 合规）
     acceptance,
     planStatus,
+  }
+
+  // 轮次真源：Plan 正文 + tasks.md（若有）+ add-route，取最大编号推导
+  const specBaseFromRefs = refs.specsDir ? `${deps.projectRoot}/${refs.specsDir}` : ""
+  const tasksContent = specBaseFromRefs ? (readFile(`${specBaseFromRefs}/tasks.md`) ?? "") : ""
+  const planContentForRounds = planRel ? (readFile(`${plansDir}/${planRel}`) ?? "") : ""
+
+  // handoff 合规校验：走 core 校验层（schema 真源）；缺文件即不合规
+  let handoffValidation: UnitState["handoffValidation"]
+  if (handoffRel) {
+    const rounds = planRounds(planContentForRounds, tasksContent, addRouteContent)
+    const type = rounds > 1 ? "handoff.multi" : "handoff.single"
+    const absPath = `${plansDir}/${handoffRel}`
+    const runner =
+      deps.validateHandoff ??
+      ((input: { type: "handoff.single" | "handoff.multi"; path: string; expectRounds: number }) => {
+        // core 校验层读 schema 真源；本模块不自解析模板（Spec §2.2/§2.4）
+        return coreValidate({
+          type: input.type,
+          path: input.path,
+          hook: "manual",
+          expectRounds: input.expectRounds,
+          projectRoot: deps.projectRoot,
+          magicDir: deps.magicDir,
+        })
+      })
+    const result = runner({ type, path: absPath, expectRounds: rounds })
+    handoffValidation = { type, ok: result.ok, issues: result.issues }
+    evidence.handoff = result.ok
   }
 
   let state: UnitState["state"]
@@ -156,6 +217,7 @@ export async function resolveUnitState(
     state,
     documentationLag: { openSteps: open, totalSteps: total, lagging: total > 0 && open > 0 },
     evidence,
+    ...(handoffValidation ? { handoffValidation } : {}),
     missingArtifacts,
     refs,
   }
