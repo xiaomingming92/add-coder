@@ -7,6 +7,7 @@ import { textResponse, errorResponse } from "../shared/response.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
 import { HITL_INTERACTION_CONFIG } from "../shared/hitl-interaction.strategy.js"
+import { shouldSkipHitlCreateDialog } from "../shared/hitl-create-policy.js"
 import type { HitlRow } from "../shared/db-types.js"
 import { HitlRowSchema, validatedDelegate } from "../shared/db-types.js"
 import { getRuntimeContext } from "../shared/env.js"
@@ -18,6 +19,10 @@ import {
   createHitlProposalAndPublish,
   type HitlProposalDatabase,
 } from "../shared/hitl-proposal-mutation.js"
+import {
+  buildHitlProposalMarkdown,
+  applyHitlDecisionToProposal,
+} from "../shared/hitl-proposal-content.js"
 import { HITL_APPROVAL_WIDGET_URI } from "../shared/hitl-ui.js"
 
 // 无类型边界单点（zod 托管）：动态加载的 prisma client 在此一次性转为运行期校验的泛型委托
@@ -123,9 +128,15 @@ export function registerHitlTools(server: ToolRegistrar) {
     filePath: string,
     status: HitlRow["status"],
     dimensions?: { name: string; content?: string }[],
+    reason?: string,
   ): void {
     let proposal = readFileSync(filePath, "utf-8")
-    proposal = proposal.replace(/(状态:\s*)[A-Z_]+/, `$1${status}`)
+    // 状态行 + 「审批结论」行（2026-09-14：原实现只改状态行，裁决结论不回写文档）
+    proposal = applyHitlDecisionToProposal(proposal, {
+      status,
+      at: new Date().toISOString(),
+      reason,
+    })
 
     if (dimensions?.length) {
       const byName = new Map(dimensions.map((d) => [d.name.trim(), d.content ?? ""]))
@@ -275,13 +286,14 @@ export function registerHitlTools(server: ToolRegistrar) {
       // ── 最终维度内容（从弹框结果合并） ──
       let finalDims: { name: string; content: string }[] = []
 
-      // ── genui/降级模式：无弹框环节，直接采用传入的 dimensions（降级丢维度会退化成默认空模板） ──
-      if (_use_genui || _fallback) {
+      // ── genui/降级/mcpApps 模式：无弹框环节，直接采用传入的 dimensions（降级丢维度会退化成默认空模板） ──
+      const skipDialog = shouldSkipHitlCreateDialog(_interaction.mode, { fallback: _fallback, useGenui: _use_genui })
+      if (skipDialog) {
         finalDims = (dimensions || []).map(d => ({ name: d.name, content: d.content || "" }))
       }
 
       // ── 交互式确认（非降级模式且非 genui 模式） ──
-      if (!_fallback && !_use_genui) {
+      if (!skipDialog) {
         // 环境裁决：genui 模式下不发起注定失败的 elicitation，引导 LLM 走 widget 流程
         if (_interaction.mode === "genui") {
           const dimDesc = (dimensions || []).map((d, i) => `${i + 1}. ${d.name}: ${d.content || ""}`).join("\n")
@@ -393,34 +405,14 @@ export function registerHitlTools(server: ToolRegistrar) {
       // 生成 hitl.md
       const isoNow = now.toISOString()
 
-      // 动态生成维度表格行
-      const tableRows = finalDims.length > 0
-        ? finalDims.map((d, i) => `| ${i + 1} | ${d.name} | ${d.content} | 同意/驳回 |`).join("\n")
-        : [
-            "| 1 | 实施主体 | | 同意/驳回 |",
-            "| 2 | 数据模型 | | 同意/驳回 |",
-            "| 3 | MCP 工具 | | 同意/驳回 |",
-            "| 4 | 文件命名 | | 同意/驳回 |",
-            "| 5 | 模板 + schema | | 同意/驳回 |",
-            "| 6 | 新增依赖 | | 同意/驳回 |",
-            "| 7 | 预计文件数 | | 同意/驳回 |",
-            "| 8 | 预计轮次 | | 同意/驳回 |",
-          ].join("\n")
-
-      const tpl = [
-        `# ${planName} — HITL 提案 (round ${round})`,
-        "",
-        `> 创建: ${isoNow}  |  类型: ${type}  |  状态: DRAFT`,
-        "",
-        "## HITL 计划总览",
-        "",
-        "请填写以下决策维度，人工审核后点击 update_hitl 弹框选择「同意/驳回」完成审批：",
-        "",
-        "| # | 维度 | 方案内容 | 决策 |",
-        "|---|------|----------|:----:|",
-        tableRows,
-        "",
-      ].join("\n")
+      // 生成提案文档（真源 hitl-template.md：HITL 计划总览 + 审批结论 两章节齐备）
+      const tpl = buildHitlProposalMarkdown({
+        planName: String(planName),
+        round,
+        type: String(type),
+        createdAt: isoNow,
+        dimensions: finalDims,
+      })
       mkdirSync(plansDir, { recursive: true })
       writeFileSync(proposalPath, tpl, "utf-8")
 
@@ -438,6 +430,10 @@ export function registerHitlTools(server: ToolRegistrar) {
       if (finalDims.length > 0) lines.push(`dimensions: ${finalDims.length} 项`)
       if (proposal.planProvisioned) lines.push(`PlanRecord: 自动预置（占位行，Plan 文件写出后 plan_track 回刷真实路径）`)
       if (_fallback) lines.push(`mode:     _fallback (跳过 dialog，原始代码降级)`)
+      if (_interaction.mode === "mcpApps" && !_fallback) {
+        lines.push(`mode:     mcpApps (Codex：不展开 inputRequired)`)
+        lines.push(``, `➡️ 下一步：调用 render_hitl_approval({ planName: "${planName}", type: "${type}" }) 打开审批 widget，由用户拍板。`)
+      }
       return textResponse(lines.join("\n"))
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -617,7 +613,7 @@ export function registerHitlTools(server: ToolRegistrar) {
       // P3 #6：回写 .hitl.md 提案文件状态（DRAFT → TONGYI/BOHUI），保证双通道校验一致
       const proposalPath = findHitlFile(String(planName))
       if (proposalPath) {
-        updateHitlProposal(proposalPath, s, (_use_widget || _use_genui) ? dimensions : undefined)
+        updateHitlProposal(proposalPath, s, (_use_widget || _use_genui) ? dimensions : undefined, reason)
       }
       // 响应
       const lines = [
