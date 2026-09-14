@@ -110,4 +110,11 @@ describe("create_hitl 的环境裁决（Codex 空转回归）", () => {
     expect(shouldSkipHitlCreateDialog("inputRequired", { useGenui: true })).toBe(true)
     expect(shouldSkipHitlCreateDialog("inputRequired", { fallback: true })).toBe(true)
   })
+
+  it("_mcp_apps 显式强制：非 mcpApps 环境下也跳过弹框（farm 回灌的强制入口）", () => {
+    expect(shouldSkipHitlCreateDialog("inputRequired", { mcpApps: true })).toBe(true)
+    expect(shouldSkipHitlCreateDialog("genui", { mcpApps: true })).toBe(true)
+    // 不传时仍按环境判定，行为不变
+    expect(shouldSkipHitlCreateDialog("inputRequired", { mcpApps: false })).toBe(false)
+  })
 })
