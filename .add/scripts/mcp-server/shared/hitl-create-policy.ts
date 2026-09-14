@@ -17,7 +17,11 @@
  */
 export function shouldSkipHitlCreateDialog(
   mode: string, // 运行期取 toml 裁决值，收窄到 string 边界
-  flags: { fallback?: boolean; useGenui?: boolean } = {},
+  flags: { fallback?: boolean; useGenui?: boolean; mcpApps?: boolean } = {},
 ): boolean {
-  return Boolean(flags.useGenui || flags.fallback) || mode === "mcpApps"
+  /*
+   * `_mcp_apps` 显式开关（2026-09-14 自 farm-agent 回灌）：环境裁决之外再给调用方一个强制入口——
+   * 适配其它客户端/build、或需要确定性地走 widget 流程时不必依赖 toml 探测结果。
+   */
+  return Boolean(flags.useGenui || flags.fallback || flags.mcpApps) || mode === "mcpApps"
 }

@@ -280,9 +280,11 @@ export function registerHitlTools(server: ToolRegistrar) {
     description: "HITL 审批：创建提案。写入 HitlRecord（status=DRAFT，自动递增 round），并生成 hitl.md 提案文件供人工审核。\n" +
       "交互模式按安装环境自动裁决（caijuehub: hitl-interaction-rules.toml）：\n" +
       "- genui 模式环境（如 Qoder，客户端未声明 elicitation capability）：MUST 直接走 genui 流程——先用 genui show_widget 渲染逐项决策表单，用户拍板后以 _use_genui=true + 最终 dimensions 调用本工具。不带模式参数调用会返回 genui 引导而非弹框。\n" +
+      "- MCP Apps 模式环境（如 Codex）：MUST NOT 展开高维 inputRequired——创建阶段直接落 DRAFT，审批走 render_hitl_approval 打开的 core widget（其回调以 update_hitl(_use_widget=true) 落库）。不带模式参数时按环境自动走该路径；也可用 _mcp_apps=true 强制。\n" +
       "- 支持 elicitation 的客户端（2026-07-28+ 协议）：inputRequired 弹框，含逐项决策（LLM 传 dimensions）或简单弹框两种模式。\n" +
       "降级模式（_fallback=true）：genui 与弹框均不可用时兜底，跳过弹框直接以传入的 dimensions 创建，人工审核 hitl.md。\n" +
       "_use_genui=true：genui widget 回调后使用，跳过所有弹框，直接以传入的 dimensions 创建 DB+文件。\n" +
+      "_mcp_apps=true：强制 MCP Apps 流程（落 DRAFT 不弹框，审批走 core widget）。\n" +
       "planName 示例: add-coder-hitl-mcp-hook-plan-v1\n" +
       "type: PLAN=计划审批, PLAN_REVIEW=方案评审",
     inputSchema: z.object({
@@ -294,10 +296,11 @@ export function registerHitlTools(server: ToolRegistrar) {
       })).optional().describe("决策维度列表（LLM 根据对话生成）。不传则按模板默认 8 维度"),
       _fallback: z.boolean().optional().default(false).describe("降级模式：跳过 inputRequired，按原始代码行为直接创建 DB 记录+hitl.md"),
       _use_genui: z.boolean().optional().default(false).describe("genui 模式：genui widget 回调后使用，跳过所有弹框直接创建（dimensions 需传最终确认值）"),
+      _mcp_apps: z.boolean().optional().default(false).describe("Codex MCP Apps 强制模式：落 DRAFT 不弹 inputRequired，审批走 render_hitl_approval core widget（update_hitl(_use_widget=true)）"),
     }),
   }, async (args: Record<string, unknown>, ctx: Record<string, unknown>) => {
     try {
-      const { planName, type, dimensions, _fallback, _use_genui } = args as { planName: string; type: string; dimensions?: { name: string; content?: string }[]; _fallback?: boolean; _use_genui?: boolean }
+      const { planName, type, dimensions, _fallback, _use_genui, _mcp_apps } = args as { planName: string; type: string; dimensions?: { name: string; content?: string }[]; _fallback?: boolean; _use_genui?: boolean; _mcp_apps?: boolean }
 
       // ── planName 入口强校验（弱模型友好：不合规返回可照抄修正调用，而非让错误漂移） ──
       const _pnValid = /-(plan|collab-contract)-v\d+$/.test(planName)
@@ -316,7 +319,7 @@ export function registerHitlTools(server: ToolRegistrar) {
       let finalDims: { name: string; content: string }[] = []
 
       // ── genui/降级/mcpApps 模式：无弹框环节，直接采用传入的 dimensions（降级丢维度会退化成默认空模板） ──
-      const skipDialog = shouldSkipHitlCreateDialog(_interaction.mode, { fallback: _fallback, useGenui: _use_genui })
+      const skipDialog = shouldSkipHitlCreateDialog(_interaction.mode, { fallback: _fallback, useGenui: _use_genui, mcpApps: _mcp_apps })
       if (skipDialog) {
         finalDims = (dimensions || []).map(d => ({ name: d.name, content: d.content || "" }))
       }
@@ -462,8 +465,8 @@ export function registerHitlTools(server: ToolRegistrar) {
       if (finalDims.length > 0) lines.push(`dimensions: ${finalDims.length} 项`)
       if (proposal.planProvisioned) lines.push(`PlanRecord: 自动预置（占位行，Plan 文件写出后 plan_track 回刷真实路径）`)
       if (_fallback) lines.push(`mode:     _fallback (跳过 dialog，原始代码降级)`)
-      if (_interaction.mode === "mcpApps" && !_fallback) {
-        lines.push(`mode:     mcpApps (Codex：不展开 inputRequired)`)
+      if ((_interaction.mode === "mcpApps" || _mcp_apps) && !_fallback) {
+        lines.push(`mode:     mcpApps (Codex：不展开 inputRequired${_mcp_apps ? "，_mcp_apps 显式强制" : ""})`)
         lines.push(``, `➡️ 下一步：调用 render_hitl_approval({ planName: "${planName}", type: "${type}" }) 打开审批 widget，由用户拍板。`)
       }
       return textResponse(lines.join("\n"))
