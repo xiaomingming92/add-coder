@@ -58,6 +58,15 @@ describe("多轮轮次计数", () => {
     expect(countRounds(doc, "## <第N轮>")).toBe(2)
   })
 
+  it("countRounds 计带描述的轮次标题（模板示范写法 `## <第N轮> {描述}`）", () => {
+    const doc = "## 第 1 轮 抽层（core/validation）\n## 第 2 轮 专司 validators\n## 每轮收敛判定补充规则\n"
+    expect(countRounds(doc, "## <第N轮>")).toBe(2)
+  })
+
+  it("countRounds 不把无编号的轮次类标题误计（`## 轮次依赖` / `## 附录`）", () => {
+    expect(countRounds("## 轮次依赖\n## 轮次拓扑\n## 附录：每轮启动模板\n", "## <第N轮>")).toBe(0)
+  })
+
   it("轮次不足 → ROUND_COUNT_SHORT（期望 4 实际 1）", () => {
     const doc = "## 甲章\n## 第1轮\n### 你当前的位置\n### 验证标准\n"
     const issues = validateAgainstSchema(doc, schema, { expectRounds: 4 })

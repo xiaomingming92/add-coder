@@ -185,9 +185,15 @@ export function inferRoundHeading(schema: SchemaFile): string | null {
 export function countRounds(content: string, roundHeading: string): number {
   const heading = normalizeWidth(roundHeading)
   if (!heading.includes("<第N轮>")) return 0
-  // 通配片段替换为「本行以轮结尾」，避免 `## 附录` 之类被误计
-  const pattern = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("<第N轮>", "[^\\n]*轮")
-  const re = new RegExp(`^${pattern}\\s*$`, "gm")
+  /*
+   * `<第N轮>` → `第<数字>轮`（2026-09-14 修正）：
+   * 旧实现把通配片段缩成「本行以轮结尾」，于是模板自己示范的写法
+   * `## <第N轮> {Round简短描述}`（落地即 `## 第 1 轮 抽层`）被计为 **0 轮** →
+   * 多轮 handoff 一律假报 ROUND_COUNT_SHORT。改为按"第+数字+轮"识别（只锚行首、不锚行尾）：
+   * 既能计带描述的轮次标题，也不会把 `## 附录` / `## 轮次依赖` 之类误计为轮次。
+   */
+  const pattern = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("<第N轮>", "第\\s*\\d+\\s*轮")
+  const re = new RegExp(`^${pattern}`, "gm") // 行首锚定即可，`{Round简短描述}` 可有可无
   return (normalizeWidth(content).match(re) ?? []).length
 }
 

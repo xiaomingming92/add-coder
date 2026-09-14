@@ -318,7 +318,7 @@
   "core/validation/index.ts": "0a91bf6c",
   "core/validation/policy.ts": "ff60b1ef",
   "core/validation/registry.ts": "7d5c094a",
-  "core/validation/schema-validator.ts": "dd673b40",
+  "core/validation/schema-validator.ts": "5f7cd2a8",
   "core/validation/validators/add-route.ts": "241ff346",
   "core/validation/validators/checklist.ts": "5adb68b2",
   "core/validation/validators/handoff.ts": "5f7a3611",
