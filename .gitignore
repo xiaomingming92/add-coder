@@ -21,6 +21,8 @@ docker-compose.add.yml
 # Runtime artifacts
 debug-dump/
 */debug-dump/
+# MCP 运行态"需重启"标记：由 server 启动时自愈清除（2026-09-14），属瞬态产物，不跟踪
+*/.mcp-restart-required
 # Local workflow artifacts（plans/specs/reviews/hitl 为本地运行产物，不同步远端）
 */plans/
 */specs/
