@@ -254,7 +254,7 @@
   "core/scripts/mcp-server/tools/gateway/helpers.ts": "f8794a92",
   "core/scripts/mcp-server/tools/gateway/index.ts": "cffe9783",
   "core/scripts/mcp-server/tools/gateway.backup": "65eae393",
-  "core/scripts/mcp-server/tools/hitl.ts": "30706d77",
+  "core/scripts/mcp-server/tools/hitl.ts": "dccac266",
   "core/scripts/mcp-server/tools/hook-event-report.ts": "1d825b3f",
   "core/scripts/mcp-server/tools/index.ts": "fcebff02",
   "core/scripts/mcp-server/tools/memory-compat.ts": "8812c5b7",
