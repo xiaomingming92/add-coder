@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/session-start.sh\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/session-start.mjs\"",
             "statusMessage": "Loading ADD state",
             "additionalContextLimit": 5000
           }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/prompt-submit.sh\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/prompt-submit.mjs\"",
             "statusMessage": "Routing ADD workflow"
           }
         ]
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-tool-use.sh\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-tool-use.mjs\"",
             "statusMessage": "Checking ADD policy",
             "timeout": 30
           }
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/post-tool-use.sh\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/post-tool-use.mjs\"",
             "statusMessage": "Recording ADD result",
             "timeout": 30
           }
@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/stop-check.sh\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/stop-check.mjs\"",
             "statusMessage": "Checking ADD closure",
             "timeout": 30
           }

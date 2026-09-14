@@ -5,6 +5,44 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.32] - 2026-08-17
+
+### 修复
+
+- **打包/sync 缺陷：Codex hooks `.mjs` 产物缺失**——发布包 `templates/adapters/codex/hooks/` 只有 `.ts` 源、`hooks.json` 引用 `.mjs`，而 CLI `init`/`sync` 无编译步骤，全新用户 Codex hooks 全部失效。`hook-bake --publish` 发布预烘焙（产物随 npm 分发），`prepare`/`predev`/`prebuild` 自动烘焙，新增打包冒烟测试（hooks.json 引用产物存在性 + hash parity）
+- **生成态收敛**：`.codex/hooks.json` 过期 `.sh` 引用修正为 `.mjs`，与源模板一致（ADD-12 双源漂移防护）
+- **trae 同类缺陷一并覆盖**（`hooks.json` 同样引用 `.mjs`）
+
+---
+## [0.3.31] - 2026-08-17
+
+### 变更
+
+- **历史重写收尾（决策过程文档私有化）**：`filter-repo` 重写全部历史——plans/specs/reviews/hitl/reports 从所有提交中剔除，新 clone 无法再拼出架构演进；README/文档体系引用的公开附件（benchmark 原始报告、模板关联工作流规范、README 链接的 Plan）恢复随库分发；hash 清单与私有边界对齐
+
+---
+## [0.3.30] - 2026-08-14
+
+### 修复
+
+- **脚本模板强制 ESM 运行**：模板脚本统一 ESM 执行，规避 CommonJS 兼容坑
+- **锚点查找收敛（anchor.ts）**：锚点解析从宽泛匹配收敛为确定性查找
+- **find-up 升 peerDependencies**：运行时依赖边界修正
+
+### 变更
+
+- add-coder 自用 magicDir 同步（dogfood 生成态与真源对齐）
+
+---
+## [0.3.29] - 2026-08-14
+
+### 文档
+
+- README 首部话术凝练（0.75→1 哲思 + 治理愿景）
+- README 社区号召话术优化（markdown 链接化 + 凝练）
+- README 英文版同步 slogan + 里程碑 + 社区号召；英文 slogan 修正为 humanity's Level-1 civilization
+
+---
 ## [0.3.28] - 2026-08-14
 
 ### 创新（Hook 治理协议层 v2——0.3.27 承诺的可证明兑现）
