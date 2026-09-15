@@ -1180,6 +1180,7 @@ PostToolUse 白名单事件 → evidence-queue.jsonl → consolidation job
 | [docs/caijuehub.md](./docs/caijuehub.md) | 集中裁决层（TOML 声明 → 转录 → 策略消费） |
 | [docs/interaction-spec.md](./docs/interaction-spec.md) | 交互规范 |
 | [docs/ports.md](./docs/ports.md) | 端口契约登记表（统一端口分配器自动维护，§十） |
+| [docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md) | 致谢清单（贡献者与 issue 反馈者，逐项可核对） |
 | [docs/DEPENDENCIES.md](./docs/DEPENDENCIES.md) | 依赖治理记录（§十四 的底账） |
 | [docs/跨平台兼容开发规范.md](./docs/跨平台兼容开发规范.md) | 跨平台约束（§8.7 的上游规范） |
 | [docs/knowledge/](./docs/knowledge/) | 规范与架构（校验层 / Agent Memory / 孤儿进程，§十六–§十八 的上游规范） |

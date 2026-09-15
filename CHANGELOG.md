@@ -26,6 +26,7 @@
 
 - README（中/英）跨轮记忆能力改写为「文档层 + 知识层」，预告表「对话记忆增强」置为 ✅ v0.3.35
 - DEVELOPMENT 增 §十六 文档校验层 / §十七 跨轮记忆闭环 / §十八 运行时治理 + §9.6 期望态登记与 DROP 守卫，目录重建（44 条、0 悬空锚点）
+- 新增 [docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md) 致谢清单（README 底部入口）：记录 `memory_cache` 分支记忆轮动贡献与持续输出 issue 的反馈者，逐项可核对
 
 ---
 ## [0.3.35] - 2026-09-14
