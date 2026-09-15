@@ -135,10 +135,21 @@ build_target() {
 RAW_OBJECTS_SQL="prisma/raw-objects.sql"
 RAW_OBJECTS_VECTOR_SQL="prisma/raw-objects-vector.sql"
 
+# template1 扩展引导（幂等）：新建库（含 Atlas dev 沙箱库）从 template1 继承扩展——
+#   缺扩展时期望态里的 gin_trgm_ops / vector 无法解析，diff 直接报错中止。
+#   镜像不含扩展时静默跳过（记忆检索按 fts-only 合法降级，不硬失败）。
+ensure_template1_extensions() {
+  local c="$1" u="$2"
+  podman exec "$c" true >/dev/null 2>&1 || return 0
+  podman exec "$c" psql -U "$u" -d template1 -tAc "CREATE EXTENSION IF NOT EXISTS pg_trgm;" >/dev/null 2>&1 || true
+  podman exec "$c" psql -U "$u" -d template1 -tAc "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null 2>&1 || true
+}
+
 # dev 沙箱库准备：DROP + CREATE TEMPLATE template1（template1 内已装 pg_trgm/vector）
 prepare_atlas_dev_db() {
   local c="${PROJECT_NAME:-add-project}-dev" u="${ATLAS_DEV_USER:-admin}" d="${ATLAS_DEV_DB:-add-project-dev}"
   podman exec "$c" true >/dev/null 2>&1 || { echo ">>> [dev-url] 容器 $c 不可达，跳过重建（依赖现有 dev 库）"; return 0; }
+  ensure_template1_extensions "$c" "$u"
   if [ "${ADD_DB_KEEP_DEV:-}" = "yes" ]; then
     echo ">>> [dev-url] ADD_DB_KEEP_DEV=yes：沿用现有 dev 库"
     return 0
@@ -231,6 +242,7 @@ atlas_sync() {
     echo "!!! ATLAS_DEV_URL 未配置。请运行 add-coder init（分库引导自动创建 {project}-add-dev 常驻容器并登记）或手动配置"
     return 1
   fi
+  ensure_template1_extensions "${PROJECT_NAME:-add-project}-postgres" "${DATABASE_USER:-admin}"
   prepare_atlas_dev_db
   build_target
   generate_baseline
