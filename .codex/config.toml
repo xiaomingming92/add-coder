@@ -13,3 +13,6 @@ startup_timeout_sec = 30
 
 [mcp_servers.add_coder.env]
 PROJECT_ROOT = "/home/xmm/ai/add-coder"
+
+[mcp_servers.add_coder.tools.get_project_context]
+approval_mode = "approve"
