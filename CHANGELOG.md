@@ -5,6 +5,27 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [0.3.36] - 2026-09-15
+
+> 版本说明：**两条平行发布线合流**。0.3.35 出自 `memory_cache` 线（记忆闭环 / 校验层 / 运行时治理），
+> 0.3.33 / 0.3.34 出自另一条本地线（Stop 弹框频控 + 三项修复）——0.3.35 未包含后者。
+> **0.3.34 → 0.3.35 的升级用户会静默丢失 Stop 弹框频控**，升级到本版即恢复。
+
+### 修复
+
+- **0.3.35 遗漏项回归**：合并两条发布线，带回 Stop 弹框频控（`[protocol.stop]` 规则 + 契约层哨兵计数 + 5 adapter / 6 magicDir 烘焙产物 + 冒烟/隔离脚本）、`check_dps` 五端 spec 引用解析（`shared/dps-spec-ref.ts`）、`check_spec_sync` 附录补 `.toml`、配置入口分发归 sync-magic
+- **自身 `db:ensure` 的 raw 对象缺口（dogfood 缺口）**：0.3.35 的「raw 对象登记 + DROP 守卫」只落在 `templates/core/scripts/db-ensure.sh`，add-coder 自身 `npm run db:ensure` 仍执行旧版脚本 → 实测生成 `DROP INDEX` ×3，把 `AddMemory.topic/content`、`AddMemoryEvidence.excerpt` 的 pg_trgm 索引静默删除（迁移 `20260915103815_sync`）。本次把三件事补进自身脚本：① 期望态并入 raw 对象登记段（向量段按目标库是否具备 pgvector 条件拼接）；② apply 前 DROP 守卫（含 `ADD_DB_ALLOW_DROP=yes` 显式放行口）；③ Atlas dev-url 沙箱库每次 diff 前从 template1 重建（Atlas 清理 dev-url 时会连扩展一起清掉，导致 `gin_trgm_ops` / `vector` 解析失败）
+
+### 变更
+
+- **开发库镜像换为含 pgvector**：`podman-compose.add.yml` 主库与 shadow 均改用 `docker.io/pgvector/pgvector:pg16`（PG 16.15），`template1` 预装 `pg_trgm` + `vector`；自适应向量迁移（`20260913090000_agent_memory_vector`）在扩展就绪后重跑，建出 `add_memory_vector`——记忆检索由此可跑向量/混合通道（此前无扩展，只能 fts-only 降级）
+
+### 文档
+
+- README（中/英）跨轮记忆能力改写为「文档层 + 知识层」，预告表「对话记忆增强」置为 ✅ v0.3.35
+- DEVELOPMENT 增 §十六 文档校验层 / §十七 跨轮记忆闭环 / §十八 运行时治理 + §9.6 期望态登记与 DROP 守卫，目录重建（44 条、0 悬空锚点）
+
+---
 ## [0.3.35] - 2026-09-14
 
 > 版本说明：`package.json` 对齐 npm 实况（latest = 0.3.34，本条目随发布追加为 0.3.35）。
@@ -39,6 +60,26 @@
 
 - **Hybrid `MRR@5` 实测 0.4867 < 0.75 门槛**（FTS-only `MRR@5=0.6551`、`Recall@5=0.9592`）：门槛**不下调**，由排序校准线程以数据校准替代手调，待足够多单元封口后复跑
 - widget 在 Codex `26.908` 不渲染（服务端与对照机 `26.903` 逐字节等价 → 客户端 build 行为）；审批走 markdown 提案 + 实例 HTML + 聊天拍板，结论照常落库/落文档
+
+---
+## [0.3.34] - 2026-08-19（2026-09-15 补记）
+
+> 本条目为补记：0.3.33 / 0.3.34 从本地线发布时未更新 CHANGELOG，导致 0.3.35 条目里看不到这批内容的存在。
+
+### 新增
+
+- **Stop 弹框频控**：`[protocol.stop]` 规则（caijuehub）+ 治理契约层哨兵计数（`stop-router` 按 magicDir 记录，命中频控窗口后降为单次提示）；烘焙分发到 5 adapter / 6 magicDir，配套冒烟、隔离、窗口与产物损坏降级验证脚本（`tests/stop-prompt-limit-*.sh`）
+
+## [0.3.33] - 2026-08-18（2026-09-15 补记）
+
+### 修复
+
+- `check_dps` 支持五端（qoder / claude / add / vscode / codex·trae）spec 引用解析——此前正则只认 4 端，新增 `shared/dps-spec-ref.ts` 作为单一解析入口
+- `check_spec_sync` 附录提取补 `.toml` 扩展名（`sync-magic-rules.toml` 等控制面文件此前不纳入清单）
+
+### 变更
+
+- 配置入口分发归 sync-magic（`settings.json` / `hooks.json` 走 CONFIGS 段声明式分发），`hook-bake` 回归纯烘焙器职责
 
 ---
 ## [0.3.32] - 2026-08-17
