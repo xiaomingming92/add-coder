@@ -1,0 +1,99 @@
+name: contributors-refresh
+
+# 贡献者墙自动刷新：生成区滞后 → 开 / 更新 PR；有未登记提交作者 → 开 / 更新 issue
+# 逻辑仍在 scripts/gen-contributors.ts（生成器）与 tests/contributors-wall.test.ts（不变量），
+# 本 workflow 只做编排与提交通道。
+on:
+  schedule:
+    # 每周一 01:00 UTC（北京时间 09:00）
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["release"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # --audit 需要完整 git 历史
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: 按真源重新生成（写盘）
+        run: pnpm exec tsx scripts/gen-contributors.ts --write
+
+      - name: 生成区滞后 → 开 / 更新 PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- CONTRIBUTING.md docs/ACKNOWLEDGEMENTS.md; then
+            echo "生成区与 docs/contributors.toml 一致，无需 PR"
+            exit 0
+          fi
+          BRANCH="chore/contributors-refresh"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add CONTRIBUTING.md docs/ACKNOWLEDGEMENTS.md
+          git commit -m "chore(contributors): 按真源重新生成贡献者墙"
+          git push -f origin "$BRANCH"
+          {
+            echo "由 contributors-refresh workflow 自动生成：贡献者墙生成区与 docs/contributors.toml 不一致。"
+            echo
+            echo "合入前请确认名单与文案——新增 / 移除贡献者请在真源登记（npm run contributors 写盘）。"
+          } > /tmp/pr-body.md
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number' | head -1)" ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore(contributors): 按真源重新生成贡献者墙" \
+              --body-file /tmp/pr-body.md
+          else
+            echo "PR 已存在，本次已推送更新"
+          fi
+
+      - name: 未登记提交作者审计
+        id: audit
+        shell: bash
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm exec tsx scripts/gen-contributors.ts --check --audit 2>&1 | tee /tmp/audit.txt
+
+      - name: 审计失败 → 开 / 更新「待登记作者」issue
+        if: steps.audit.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TITLE="贡献者墙：有提交作者待登记"
+          NUM="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[].number' | head -1)"
+          {
+            echo "自动审计发现 git 历史中存在未登记的提交作者邮箱。"
+            echo
+            echo '```'
+            cat /tmp/audit.txt
+            echo '```'
+            echo
+            echo '处理：在 `docs/contributors.toml` 登记（新增 `[[person]]` 或补 `emails`），或加入 `ignore_emails`；登记后跑 `npm run contributors` 写盘。'
+          } > /tmp/issue-body.md
+          if [ -n "$NUM" ]; then
+            gh issue comment "$NUM" --body-file /tmp/issue-body.md
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/issue-body.md
+          fi

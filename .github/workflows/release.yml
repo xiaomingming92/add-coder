@@ -52,10 +52,25 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # build 后可能产生 gen-src-hash 文件变更，先提交再 bump
+
+          # 1) 先落盘 build 产物（可能含 gen-src-hash 变更）
           git add templates/.add-coder-src-hash.json pnpm-lock.yaml 2>/dev/null || true
           git diff --cached --quiet || git commit -m "chore(build): auto-generated artifacts"
-          npm version ${{ inputs.bump }} -m "v%s"
+
+          # 2) bump 版本，但**先不打 tag**：tag 必须指向「版本已对齐」的那个提交
+          npm version "${{ inputs.bump }}" --no-git-tag-version
+          VER="$(node -p "require('./package.json').version")"
+
+          # 3) 发布不变量：包版本 == 模板真源版本（templates/.add-coder-src-hash.json._version）
+          #    缺这一步时 tag 指向的提交永远滞后一版（0.3.37 实测：包 0.3.37 / 真源 0.3.36），
+          #    tests/windows-stability.test.ts 的发布不变量断言会红
+          pnpm exec tsx scripts/gen-src-hash.ts
+          node -e "const a=require('./package.json').version,b=require('./templates/.add-coder-src-hash.json')._version;if(a!==b){console.error('发布不变量失败：package.json='+a+' 模板真源='+b);process.exit(1)}"
+
+          # 4) 提交 + 打 tag + 推送（提交与 tag 同源）
+          git add package.json templates/.add-coder-src-hash.json pnpm-lock.yaml
+          git commit -m "v$VER"
+          git tag "v$VER"
           git push
           git push --tags
         env:

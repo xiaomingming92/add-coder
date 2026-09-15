@@ -10,10 +10,12 @@
 ### 修复
 
 - **模板真源版本对齐**：`templates/.add-coder-src-hash.json` 的 `_version` 落在 0.3.36、而包版本已是 0.3.37（发布流程 bump 版本后未重跑 `gen-src-hash`）→ 重新生成对齐；该不一致由 `tests/windows-stability.test.ts` 的发布不变量断言捕获
+- **发布流程补不变量**：`release.yml` 的 bump 步骤改为「bump 版本（先不打 tag）→ 重跑 `gen-src-hash` → 断言包版本 == 模板真源版本 → 提交 → 打 tag → 推送」，tag 指向的提交不再滞后一版；手工发版口径同步写进 [CONTRIBUTING.md](./CONTRIBUTING.md) 与 [docs/npm-publish-guide.md](./docs/npm-publish-guide.md)
 
 ### 新增
 
 - **贡献者墙生成器**（`npm run contributors`）：真源 [docs/contributors.toml](./docs/contributors.toml)（人工登记——生态贡献者 / 维护者 / 文案与排序无法自动判定）→ 生成 CONTRIBUTING.md 的头像墙与 docs/ACKNOWLEDGEMENTS.md 的总览表（各自标记区间内，生成区勿手改）；`npm run contributors:check` 随 `npm test` 跑（生成区与真源不一致即失败）；`npm run contributors:audit` 追加「未登记提交作者」审计（依据真源 emails，默认不联网）
+- **贡献者墙自动刷新 workflow**（`.github/workflows/contributors.yml`）：每周一 01:00 UTC + release 完成后触发——生成区滞后则开 / 更新 PR（`chore/contributors-refresh`）；出现未登记提交作者则开 / 更新「待登记作者」issue。workflow 只做编排，逻辑仍在生成器与测试里
 
 ### 文档
 

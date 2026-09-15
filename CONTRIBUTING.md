@@ -234,6 +234,10 @@ npm version patch   # 或 minor
 git push --follow-tags
 ```
 
+> **发布不变量**：`package.json` 版本必须等于 `templates/.add-coder-src-hash.json._version`（断言在 `tests/windows-stability.test.ts`）。
+> `release.yml` 已内置：bump 版本 → 重跑 `gen-src-hash` → 校验不变量 → 提交 → 打 tag（提交与 tag 同源）。
+> 本地手工发版请照做：`npm version patch --no-git-tag-version` → `npx tsx scripts/gen-src-hash.ts` → `git commit` → `git tag vX.Y.Z`。
+
 ## 常见坑位
 
 | 问题 | 原因 | 解决 |

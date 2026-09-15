@@ -43,6 +43,10 @@ npm version minor   # 0.3.5 → 0.4.0
 git push --follow-tags
 ```
 
+> **发布不变量**：`package.json` 版本 == `templates/.add-coder-src-hash.json._version`。
+> 手工发版请「先 bump → 再 `npx tsx scripts/gen-src-hash.ts` → 一起提交 → 最后打 tag」，否则 tag 指向的提交里真源版本会滞后一版（0.3.37 实测踩过）。
+> `release.yml` 已把这四步内联（bump → 重生成 → 校验 → 提交 + tag），CI 发版无需手工干预。
+
 CI 自动 `npm publish --tag=latest`。
 
 ## 鉴权
