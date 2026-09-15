@@ -18,8 +18,8 @@
 
 ### 变更
 
-- **数据库镜像全面换为含 pgvector**：`add-coder init` 生成模板（`composeContent`）、`podman-compose.example.yml`、README 中/英示例片段、以及 add-coder 自身 `podman-compose.add.yml` 统一改用 `docker.io/pgvector/pgvector:pg16`（PG 16.15）——向量通道开箱可用；目标环境没有 pgvector 时记忆检索仍按 fts-only 合法降级
-- **template1 扩展引导**：`db-ensure.sh`（模板版 + 自身版）在 diff 前幂等补齐 `template1` 的 `pg_trgm` / `vector`，使 Atlas dev 沙箱库每次重建都带扩展（此前依赖人工预装，缺扩展时 diff 直接报 `operator class "gin_trgm_ops" does not exist` 并中止）
+- **数据库镜像全面换为含 pgvector**：`add-coder init` 生成模板（`composeContent`）、**代码起容器路径**（`prisma.strategy` 的 `{project}-add-postgres` 与 `{project}-add-dev`）、`podman-compose.example.yml`、README 中/英示例片段、以及 add-coder 自身 `podman-compose.add.yml` 统一改用 `docker.io/pgvector/pgvector:pg16`（PG 16.15）——向量通道开箱可用；目标环境没有 pgvector 时记忆检索仍按 fts-only 合法降级
+- **template1 扩展引导 + dev 沙箱库探测**：`db-ensure.sh`（模板版 + 自身版）在 diff 前幂等补齐 `template1` 的 `pg_trgm` / `vector`，使 Atlas dev 沙箱库每次重建都带扩展（此前依赖人工预装，缺扩展时 diff 直接报 `operator class "gin_trgm_ops" does not exist` 并中止）；同时模板版补容器（`{project}-add-dev` → 兜底 `{project}-dev`）、超级用户（`ATLAS_DEV_USER` → `postgres` → `DATABASE_USER` → `admin`）与库名（`ATLAS_DEV_URL` 路径段 → `dev`）探测——此前默认值与 `provisionDevUrl` 实际创建的不一致，导致重建与扩展引导静默空转
 - 自适应向量迁移（`20260913090000_agent_memory_vector`）在扩展就绪后重跑，建出 `add_memory_vector`——记忆检索由此可跑向量/混合通道（此前无扩展，只能 fts-only 降级）
 
 ### 文档
