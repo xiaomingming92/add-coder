@@ -59,23 +59,32 @@ These are not "suggestions" — they are **architectural blocks**. A Step cannot
 
 ### ④ Cross-Session Memory, Not Per-Session Amnesia
 
-The fatal flaw of AI conversations: architectural decisions from last session, bugs fixed, agreements reached — all forgotten in the next conversation. add-coder solves this at the architecture level — a **document layer** (an explicit handoff every round) plus a **knowledge layer** (the v0.3.35 memory loop: recallable conclusions go into a governed memory store and are brought back at ADD stage waypoints).
+> **Other tools "remember". add-coder governs memory.** Memory is not a context-engineering problem — it is a governance problem.
 
-**Document layer** (since v0.3.25)
+The fatal flaw of AI conversations: architectural decisions from last session, bugs fixed, agreements reached — all forgotten in the next conversation. Most AI coding tools treat "memory" as **session/repo-level text excerpts plus vector search** — pasting slices of old chats or files back into context. That answers "was it seen", not "does it count, should it be injected, who is accountable when it is wrong". add-coder's memory is a **governed knowledge layer**: every conclusion carries evidence, every recall can be replayed, every revision leaves a trace, every cross-boundary leak can be sampled.
 
-- **Handoff Documents** — Automatically generated structured handoff at the end of each session, auto-loaded by the next session
-- **Plan Index** — All Plans are centrally indexed via `index.md`, supporting fuzzy-match quick lookup
-- **DevLog Timeline** — Every operation is written to the `{YYYY-MM}/{DD}/` timeline, enabling full historical state traceability
+**The gap is structural, not a recall-rate gap**
 
-**Knowledge layer** (shipped in the v0.3.35 memory loop)
+| Dimension | Typical "memory" | add-coder memory loop (since v0.3.35) |
+|-----------|------------------|---------------------------------------|
+| **Write path** | Auto-extract, active immediately | **Candidate-only**: `propose_memory` lands CANDIDATE (dedup + secret scan + conflict detection); it turns ACTIVE only after human adjudication via `resolve_memory`, and `approve` requires ≥1 piece of evidence |
+| **Grounding** | The memory text is its own justification | **Evidence chain**: conclusions and sources are separated; collection is idempotent (`sourceRef=<gate>:<planKeyword>:<runId>`; replays never duplicate); `get_memory` exposes provenance and the supersession chain |
+| **Timing** | Similarity-triggered, can fire anytime | **Deterministic waypoint recall**: fires on ADD stage waypoints only (Plan draft / Spec draft / DPS / RAHS / Handoff), specificity-first word lists; produced synchronously on the Hook side, executed on the MCP side |
+| **Retrieval** | Single-channel vector similarity | **FTS × vector, RRF-fused, then governed rerank** (scope / kind / importance / confidence / mandatory constraints − stale / conflict / redundancy), trimmed to a token budget |
+| **Explainability** | Result only | Every hit carries `whySelected` / `scoreBreakdown` / `recallId`; `rankingVersion` stores the config snapshot — **the same recall can be replayed** |
+| **Degradation** | No explicit contract | Without pgvector / sqlite-vec it runs FTS-only and returns `degradedMode` explicitly — never silently distorted |
+| **Correction** | Delete or overwrite | **Governance state machine**: submit_review / approve / reject / stale / supersede / archive / restore, with scope-compatible supersession — memory can be *falsified*, not merely overwritten |
+| **Boundaries** | No scope isolation | Eight-level scope isolation (ORGANIZATION / REPOSITORY / BRANCH / MODULE / PATH / SYMBOL / PLAN / SPEC) + cross-repo leakage sampling in `get_memory_health` |
+| **Weighting** | Hard-coded weights | Feedback stats (channel × rank × outcome) / cold-start fitting / Kalman online estimation / FFT cadence diagnostics (never direct ranking); **the weight snapshot is the single source of truth for ranking parameters** |
 
-- **Idempotent evidence collection** — whitelisted tool events → `evidence-queue.jsonl` → async consumption → `MetricSnapshot` (`sourceRef=<gate>:<planKeyword>:<runId>`; replays never duplicate)
-- **Deterministic waypoint recall** — hitting an ADD stage waypoint (Plan draft / Spec draft / DPS / RAHS / Handoff) triggers recall; stage word lists are specificity-first, produced synchronously on the Hook side and executed on the MCP side (deterministic hints even from hooks without DB access)
-- **Hybrid recall + governed rerank** — FTS (PG `pg_trgm` / SQLite FTS5) × vector (pgvector / sqlite-vec) fused by RRF, then reranked by scope / kind / importance / confidence / mandatory constraints and trimmed to a token budget; `rankingVersion` stores the config snapshot so recalls are replayable
-- **Capability detection & lawful degradation** — without pgvector / sqlite-vec it runs FTS-only and returns `degradedMode` explicitly, never silently distorted
-- **Candidates never activate directly** — `propose_memory` lands CANDIDATE (dedup + secret scan + conflict detection) → human decision via `resolve_memory` (approve requires ≥1 evidence) → ACTIVE; `feedback_memory` feeds ranking calibration
-- **Switches & honest disclosure** — `ADD_MEMORY_RECALL_MODE=off|shadow|inject` (default `shadow`: recall runs and is audited, but is not injected into context yet), `ADD_MEMORY_MAX_TOKENS` (default 600); measured Hybrid `MRR@5` 0.4867 < the 0.75 threshold (FTS-only 0.6551, Recall@5 0.9592) — the threshold stays put; calibration replaces hand-tuning
+**Two layers**
 
+- **Document layer** (since v0.3.25) — Handoff documents (auto-generated each session end, auto-loaded next session) · Plan index (`index.md`, fuzzy lookup) · DevLog timeline (`{YYYY-MM}/{DD}/`, fully traceable)
+- **Knowledge layer** (the v0.3.35 memory loop) — candidate-only intake → idempotent evidence collection (whitelisted tool events → `evidence-queue.jsonl` → async consumption → `MetricSnapshot`) → waypoint recall → hybrid recall + governed rerank → feedback-driven calibration, every step on the record
+
+**Switches**: `ADD_MEMORY_RECALL_MODE=off|shadow|inject` (default `shadow`: recall runs and is audited, but is not injected yet) · `ADD_MEMORY_MAX_TOKENS` (default 600) · `ADD_MEMORY_EVIDENCE` (default `on`).
+
+> Honest disclosure: measured Hybrid `MRR@5` 0.4867 < the 0.75 threshold (FTS-only 0.6551, Recall@5 0.9592) — the threshold stays put; data-driven calibration replaces hand-tuning. The capability runs, can be inspected and can be adjudicated — no metric inflation.
 > Source layout, tables and dev workflow: [DEVELOPMENT.md](./DEVELOPMENT.md) §十七.
 
 ### ⑤ Policy-Update-Loop: Self-Evolving Governance (the scaffold itself does not include this architectural capability; a DEMO repo will be provided next to better illustrate the Policy-Update-Loop and Report system)
@@ -291,19 +300,12 @@ RAHS (Runtime Architecture Health Score) — 运行时架构健康度，< 90% BL
 
 ### ③ 跨轮记忆，而非每轮失忆
 
-**文档层**（v0.3.25 起）
+> **别的工具在「记」，add-coder 在「治理记忆」。** 记忆不是上下文工程，是治理工程。
 
-- **Handoff 文档** — 每轮 Session 结束时自动生成结构化交接文档
-- **Plan 索引** — 所有 Plan 通过 `index.md` 集中索引
-- **DevLog 时序记录** — 每一步操作写入 `{YYYY-MM}/{DD}/` 时间轴
+多数工具的记忆 = 会话/仓库级文本摘录 + 向量检索（解决「看过」）；add-coder 是**受治理的知识层**：候选制入库（approve 需 ≥1 证据）· 证据链 + 幂等采证 · 位点确定性召回 · FTS×向量 RRF 融合 + 治理重排 · 召回可重放（`recallId` / `rankingVersion`）· 治理状态机可证伪（supersede 强制 scope 兼容）· 八级 scope 隔离 + 越库泄漏抽查 · 权重快照即排序参数单一事实源。
 
-**知识层**（v0.3.35 记忆闭环落地）
-
-- **幂等采证** — 白名单工具事件 → `evidence-queue.jsonl` → 异步消费 → `MetricSnapshot`（`sourceRef=<gate>:<planKeyword>:<runId>`）
-- **位点确定性召回** — ADD 阶段位点（Plan 起草 / Spec 起草 / DPS / RAHS / Handoff）命中即召回；词表按特异性优先
-- **混合召回 + 治理重排** — FTS × 向量双通道 RRF 融合 + 治理重排 + token 预算裁剪；`rankingVersion` 记录配置快照
-- **候选绝不直接生效** — CANDIDATE → 人工裁决 → ACTIVE；`feedback_memory` 回流驱动排序校准
-- **如实登记** — 默认 `shadow`（照跑不注入）；Hybrid `MRR@5` 0.4867 < 0.75 门槛，门槛不下调
+**落地**：文档层（Handoff / Plan 索引 / DevLog 时序）+ 知识层（v0.3.35 记忆闭环，全链条留痕）；开关 `ADD_MEMORY_RECALL_MODE` 默认 `shadow`（召回照跑照审计、暂不注入）。
+**如实登记**：Hybrid `MRR@5` 0.4867 < 0.75 门槛，门槛不下调，由排序校准线程以数据校准替代手调。
 
 ### ④ Policy-Update-Loop：治理自我进化
 ```

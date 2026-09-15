@@ -108,23 +108,32 @@ DPS 全部参数由 caijuehub TOML 驱动——AI 可以跑分→看弱项→调
 
 ### ⑤ 跨轮记忆，而非每轮失忆
 
-AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达成的约定，下轮对话全部遗忘。add-coder 在架构层面解决——**文档层**（每轮显式交接）+ **知识层**（v0.3.35 记忆闭环：可召回的结论进受治理的记忆库，按 ADD 阶段位点自动带回）。
+> **别的工具在「记」，add-coder 在「治理记忆」。** 记忆不是上下文工程，是治理工程。
 
-**文档层**（v0.3.25 起）
+AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达成的约定，下轮对话全部遗忘。多数 AI 编码工具的「记忆」是**会话/仓库级文本摘录 + 向量检索**——把历史对话或文件切片塞回上下文，解决的是「看过」，不解决「算不算数、该不该带、带错了谁负责」。add-coder 的记忆是**受治理的知识层**：每条结论有证据、每次召回可重放、每次修订留痕迹、每次越界可抽查。
 
-- **Handoff 文档** — 每轮 Session 结束时自动生成结构化交接文档，下轮会话自动加载
-- **Plan 索引** — 所有 Plan 通过 `index.md` 集中索引，支持模糊匹配快速定位
-- **DevLog 时序记录** — 每一步操作写入 `{YYYY-MM}/{DD}/` 时间轴，可回溯任意历史状态
+**差距在结构，不在召回率**
 
-**知识层**（v0.3.35 记忆闭环落地）
+| 维度 | 常见「记忆」做法 | add-coder 记忆闭环（v0.3.35 起） |
+|------|------------------|-----------------------------------|
+| **写入** | 自动摘录，直接生效 | **候选制**：`propose_memory` 落 CANDIDATE（去重 + 密钥扫描 + 冲突检测），人工裁决 `resolve_memory` 后才 ACTIVE，approve 需 ≥1 条证据 |
+| **依据** | 记忆文本本身即依据 | **证据链**：结论与来源分离，采证幂等（`sourceRef=<gate>:<planKeyword>:<runId>`，重放不重复入库），`get_memory` 可查 provenance 与 supersession 链 |
+| **时机** | 相似度触发，随时可能召回 | **位点确定性召回**：命中 ADD 阶段位点（Plan 起草 / Spec 起草 / DPS / RAHS / Handoff）才触发，词表按特异性优先；Hook 侧同步产出、MCP 侧执行 |
+| **召回** | 单通道向量相似度 | **FTS × 向量双通道 RRF 融合 + 治理重排**（scope / kind / 重要度 / 置信度 / 强约束 − stale / 冲突 / 冗余），token 预算裁剪后注入 |
+| **可解释** | 只给结果 | 每条结果带 `whySelected` / `scoreBreakdown` / `recallId`，`rankingVersion` 记录配置快照——**同一次召回可以重放** |
+| **降级** | 无显式契约 | 无 pgvector / sqlite-vec 环境按 FTS-only 运行并显式返回 `degradedMode`，不静默失真 |
+| **纠错** | 只能删或覆盖 | **治理状态机**：submit_review / approve / reject / stale / supersede / archive / restore，supersede 强制 scope 兼容——记忆可以「被证伪」，不是只能被覆盖 |
+| **越界** | 无 scope 隔离 | 八级 scope 隔离（ORGANIZATION / REPOSITORY / BRANCH / MODULE / PATH / SYMBOL / PLAN / SPEC）+ `get_memory_health` 越库泄漏抽查 |
+| **调权** | 权重写死 | 反馈统计（通道 × 位次 × outcome）/ 冷启动拟合 / Kalman 在线估计 / FFT 节奏诊断（不直接产出排序）；**权重快照即排序参数单一事实源** |
 
-- **幂等采证** — 白名单工具事件 → `evidence-queue.jsonl` → 异步消费 → `MetricSnapshot`（`sourceRef=<gate>:<planKeyword>:<runId>`，重放不重复入库）
-- **位点确定性召回** — 命中 ADD 阶段位点（Plan 起草 / Spec 起草 / DPS / RAHS / Handoff）即触发召回；阶段词表按特异性优先，Hook 侧同步产出、MCP 侧执行（无 DB 权限的卡位也能给出确定性提示）
-- **混合召回 + 治理重排** — FTS（PG `pg_trgm` / SQLite FTS5）× 向量（pgvector / sqlite-vec）双通道 RRF 融合，再按 scope / kind / 重要度 / 置信度 / 强约束重排，token 预算裁剪后注入；`rankingVersion` 记录配置快照，召回可重放
-- **能力检测与合法降级** — 目标库无 pgvector / sqlite-vec 时按 FTS-only 运行，`degradedMode` 显式返回，不静默失真
-- **候选绝不直接生效** — `propose_memory` 落 CANDIDATE（去重 + 密钥扫描 + 冲突检测）→ 人工裁决 `resolve_memory`（approve 需 ≥1 证据）→ ACTIVE；`feedback_memory` 回流驱动排序校准
-- **开关与如实登记** — `ADD_MEMORY_RECALL_MODE=off|shadow|inject`（默认 `shadow`：召回照跑照审计、暂不注入上下文）、`ADD_MEMORY_MAX_TOKENS`（默认 600）；实测 Hybrid `MRR@5` 0.4867 < 0.75 门槛（FTS-only 0.6551、Recall@5 0.9592）——**门槛不下调**，由排序校准线程以数据校准替代手调
+**两层落地**
 
+- **文档层**（v0.3.25 起）—— Handoff 文档（每轮 Session 结束自动生成、下轮自动加载）· Plan 索引（`index.md` 集中索引 + 模糊匹配）· DevLog 时序（`{YYYY-MM}/{DD}/` 全量可回溯）
+- **知识层**（v0.3.35 记忆闭环）—— 候选制入库 → 幂等采证（白名单工具事件 → `evidence-queue.jsonl` → 异步消费 → `MetricSnapshot`）→ 位点召回 → 混合召回 + 治理重排 → 反馈回流校准，全链条留痕
+
+**开关**：`ADD_MEMORY_RECALL_MODE=off|shadow|inject`（默认 `shadow`：召回照跑照审计、暂不注入上下文）· `ADD_MEMORY_MAX_TOKENS`（默认 600）· `ADD_MEMORY_EVIDENCE`（默认 `on`）。
+
+> 如实登记：Hybrid `MRR@5` 实测 0.4867 < 0.75 门槛（FTS-only 0.6551、Recall@5 0.9592）——**门槛不下调**，由排序校准线程以数据校准替代手调：记忆能力可跑、可查、可裁决，不靠指标注水。
 > 真源落点、表结构、开发流程见 [DEVELOPMENT.md](./DEVELOPMENT.md) §十七。
 
 ### ⑥ Policy-Update-Loop：治理自我进化
