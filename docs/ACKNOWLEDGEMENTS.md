@@ -1,47 +1,17 @@
 # 致谢 · Acknowledgements
 
 > 范式不是一个人的独角戏。这份清单记录那些让 ADD 真正跑起来的人——按贡献形态分类，逐项可在仓库里核对。
-> 返回：[README.md](../README.md) · [CHANGELOG.md](../CHANGELOG.md) · 想上榜：[CONTRIBUTING.md](../CONTRIBUTING.md)
+> 返回：[README.md](../README.md) · [CHANGELOG.md](../CHANGELOG.md)
 
-导航：[贡献者墙](#-贡献者墙) · [核心贡献者](#-核心贡献者) · [问题反馈者](#-问题反馈者) · [如何加入这份清单](#-如何加入这份清单)
+导航：[贡献者墙（头像墙在指南）](../CONTRIBUTING.md#-贡献者墙) · [核心贡献者](#-核心贡献者) · [问题反馈者](#-问题反馈者) · [如何加入这份清单](#-如何加入这份清单)
 
 ---
 
 ## 🧱 贡献者墙
 
-<table>
-  <tr>
-    <td align="center" width="20%">
-      <a href="https://github.com/xiaomingming92"><img src="https://github.com/xiaomingming92.png?size=160" width="88" height="88" alt="@xiaomingming92" /></a><br/>
-      <sub><b>@xiaomingming92</b></sub><br/>
-      <sub>维护者<br/>范式设计 · 发版 · 评审</sub>
-    </td>
-    <td align="center" width="20%">
-      <a href="https://github.com/iopzhu"><img src="https://github.com/iopzhu.png?size=160" width="88" height="88" alt="@iopzhu" /></a><br/>
-      <sub><b>@iopzhu</b></sub><br/>
-      <sub>记忆轮动<br/>48 文件 / +5877 −33</sub>
-    </td>
-    <td align="center" width="20%">
-      <a href="https://github.com/Milkycoffees"><img src="https://github.com/Milkycoffees.png?size=160" width="88" height="88" alt="@Milkycoffees" /></a><br/>
-      <sub><b>@Milkycoffees</b></sub><br/>
-      <sub>生态贡献<br/>add-coder-flash（npm/GitHub）</sub>
-    </td>
-    <td align="center" width="20%">
-      <a href="https://github.com/albertm88"><img src="https://github.com/albertm88.png?size=160" width="88" height="88" alt="@albertm88" /></a><br/>
-      <sub><b>@albertm88</b></sub><br/>
-      <sub>14 条 issue<br/>全部闭环</sub>
-    </td>
-    <td align="center" width="20%">
-      <a href="../CONTRIBUTING.md"><img src="https://img.shields.io/badge/Issue%20%2F%20PR-welcome-2ea44f?style=flat-square" alt="Issue / PR welcome" /></a><br/>
-      <sub><b>你的位置</b></sub><br/>
-      <sub><a href="../CONTRIBUTING.md">按贡献指南来</a></sub>
-    </td>
-  </tr>
-</table>
+**头像墙与上榜标准唯一真源在 → [CONTRIBUTING.md §贡献者墙](../CONTRIBUTING.md#-贡献者墙)**（位于贡献指南的简介与目录之间；新增贡献者只改那一处）。
 
-**上榜标准**（真源在贡献指南）：问题反馈（可复现步骤 + 实测日志 + 平台差异）· 代码贡献（被合并的 PR：模板与守卫 / caijuehub 规则 TOML / 记忆与审计链路 / 跨平台修复）· 生态贡献（独立衍生包 / 独立实现 / 插件）· 长期维护（发版 / 评审 / 答疑）——详见 **[CONTRIBUTING.md §贡献者墙](../CONTRIBUTING.md#贡献者墙)**。
-
-> 墙上按**贡献形态**排位，不按资历：一条把边界条件写清的 issue、一个独立衍生包，和一次被合并的 PR 一样重。
+本页保留下面的**逐项明细**——谁做了什么、证据在哪。墙上四类形态：维护者 · 记忆轮动 · 生态贡献 · 问题反馈。
 
 ---
 
@@ -113,5 +83,5 @@
 - **提 PR**：[caijuehub TOML 规则](https://github.com/xiaomingming92/add-coder/pulls)（改规则不改代码）、模板与守卫、记忆 / 审计链路
 - **参与讨论**：[Discussions](https://github.com/xiaomingming92/add-coder/discussions)
 
-> 流程与规范见 **[CONTRIBUTING.md](../CONTRIBUTING.md)**（环境准备 / 提交规范 / 分支与 PR / [上榜标准](../CONTRIBUTING.md#贡献者墙)）。
+> 流程与规范见 **[CONTRIBUTING.md](../CONTRIBUTING.md)**（环境准备 / 提交规范 / 分支与 PR / [上榜标准](../CONTRIBUTING.md#-贡献者墙)）。
 > 清单随版本更新：本版对应 0.3.36。贡献记录以 git 历史与 issue 列表为准，欢迎补充遗漏。

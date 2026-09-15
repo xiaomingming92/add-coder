@@ -9,7 +9,7 @@
 
 ### 文档
 
-- 新增 [docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md) **致谢清单与贡献者墙**（README 底部入口）：记录 `memory_cache` 分支记忆轮动贡献、生态衍生包 [`add-coder-flash`](https://www.npmjs.com/package/add-coder-flash) 与持续输出 issue 的反馈者，逐项可核对；上榜标准真源在 [CONTRIBUTING.md §贡献者墙](./CONTRIBUTING.md#贡献者墙)，两处互链
+- 新增 **贡献者墙**（头像墙 + 上榜标准，位于 [CONTRIBUTING.md](./CONTRIBUTING.md#-贡献者墙) 简介与目录之间）与 [docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md) **逐项明细**（README 底部入口）：记录 `memory_cache` 分支记忆轮动贡献、生态衍生包 [`add-coder-flash`](https://www.npmjs.com/package/add-coder-flash) 与持续输出 issue 的反馈者，逐项可核对
 
 ---
 ## [0.3.37] - 2026-09-15

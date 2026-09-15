@@ -982,7 +982,7 @@ My hometown
 
 ## 🙏 致谢 / Acknowledgements
 
-范式的价值来自把它用出问题的人。**贡献者墙**与完整清单（逐项可核对）见 **[docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md#-贡献者墙)**。
+范式的价值来自把它用出问题的人。**贡献者墙**见 **[CONTRIBUTING.md §贡献者墙](./CONTRIBUTING.md#-贡献者墙)**，逐项明细与证据见 **[docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md)**。
 
 | 贡献者 | 贡献形态 | 留下了什么 |
 |--------|---------|-----------|
@@ -990,4 +990,4 @@ My hometown
 | [@Milkycoffees](https://github.com/Milkycoffees) | 生态贡献：[`add-coder-flash`](https://www.npmjs.com/package/add-coder-flash)（npm `1.0.4` / 5 个版本 + [GitHub 开源](https://github.com/Milkycoffees/add-coder-flash)） | 零依赖轻量发行版：hooks 纯 `.mjs`、不需要数据库，`npm install` 即铺设；自动生成 `.qoder-cn/mcp.json`，并回吐 QoderCN 加载位置、pnpm `allowBuilds`、MCP 名长度等真实约束 |
 | [@albertm88](https://github.com/albertm88) | 持续输出 issue（#5–#7、#10–#20，14 条全部闭环） | 跨会话记忆、429 并发、Windows 稳定性、Codex 原生适配、端口漂移、非交互挂起、HITL 首次审批……把边界条件替所有人先踩了一遍 |
 
-> 想上墙？上榜标准在 [CONTRIBUTING.md §贡献者墙](./CONTRIBUTING.md#贡献者墙)——提 [Issue](https://github.com/xiaomingming92/add-coder/issues)（可复现的问题、实测日志、平台差异）或 [PR](https://github.com/xiaomingming92/add-coder/pulls) 都算硬贡献。
+> 想上墙？上榜标准在 [CONTRIBUTING.md §贡献者墙](./CONTRIBUTING.md#-贡献者墙)——提 [Issue](https://github.com/xiaomingming92/add-coder/issues)（可复现的问题、实测日志、平台差异）或 [PR](https://github.com/xiaomingming92/add-coder/pulls) 都算硬贡献。

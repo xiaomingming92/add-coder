@@ -308,7 +308,7 @@ npx add-coder init
 
 ## 🙏 Acknowledgements
 
-A paradigm is worth what people make of it — including the problems they find in it. The **contributor wall** and the full list (verifiable item by item, in Chinese) live in **[docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md#-贡献者墙)**.
+A paradigm is worth what people make of it — including the problems they find in it. The **contributor wall** lives in **[CONTRIBUTING.md §贡献者墙](./CONTRIBUTING.md#-贡献者墙)**; the item-by-item detail (in Chinese) lives in **[docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md)**.
 
 | Contributor | Contribution | What it left behind |
 |-------------|--------------|---------------------|
@@ -316,7 +316,7 @@ A paradigm is worth what people make of it — including the problems they find 
 | [@Milkycoffees](https://github.com/Milkycoffees) | Ecosystem work: [`add-coder-flash`](https://www.npmjs.com/package/add-coder-flash) (npm `1.0.4`, 5 releases, plus a [public GitHub repo](https://github.com/Milkycoffees/add-coder-flash)) | A zero-dependency lightweight distribution: pure-`.mjs` hooks, no database required, assets laid down by `npm install`; auto-generates `.qoder-cn/mcp.json` and fed real constraints back (QoderCN config location, pnpm `allowBuilds`, MCP name length) |
 | [@albertm88](https://github.com/albertm88) | Relentless issue reporting (#5–#7, #10–#20 — 14 issues, all closed) | Cross-session memory, 429 storms, Windows stability, native Codex adaptation, port drift, non-interactive hangs, first-run HITL approval… walking the edge cases so nobody else has to |
 
-> Want on the wall? The criteria live in [CONTRIBUTING.md §贡献者墙](./CONTRIBUTING.md#贡献者墙) — file an [issue](https://github.com/xiaomingming92/add-coder/issues) (reproducible problems, real logs, platform differences) or open a [PR](https://github.com/xiaomingming92/add-coder/pulls); both count as hard contribution.
+> Want on the wall? The criteria live in [CONTRIBUTING.md §贡献者墙](./CONTRIBUTING.md#-贡献者墙) — file an [issue](https://github.com/xiaomingming92/add-coder/issues) (reproducible problems, real logs, platform differences) or open a [PR](https://github.com/xiaomingming92/add-coder/pulls); both count as hard contribution.
 
 ---
 <details id="chinese-readme">

@@ -6,6 +6,51 @@
 
 ---
 
+## 🧱 贡献者墙
+
+<table>
+  <tr>
+    <td align="center" width="20%">
+      <a href="https://github.com/xiaomingming92"><img src="https://github.com/xiaomingming92.png?size=160" width="88" height="88" alt="@xiaomingming92" /></a><br/>
+      <sub><b>@xiaomingming92</b></sub><br/>
+      <sub>维护者<br/>范式设计 · 发版 · 评审</sub>
+    </td>
+    <td align="center" width="20%">
+      <a href="https://github.com/iopzhu"><img src="https://github.com/iopzhu.png?size=160" width="88" height="88" alt="@iopzhu" /></a><br/>
+      <sub><b>@iopzhu</b></sub><br/>
+      <sub>记忆轮动<br/>48 文件 / +5877 −33</sub>
+    </td>
+    <td align="center" width="20%">
+      <a href="https://github.com/Milkycoffees"><img src="https://github.com/Milkycoffees.png?size=160" width="88" height="88" alt="@Milkycoffees" /></a><br/>
+      <sub><b>@Milkycoffees</b></sub><br/>
+      <sub>生态贡献<br/>add-coder-flash（npm/GitHub）</sub>
+    </td>
+    <td align="center" width="20%">
+      <a href="https://github.com/albertm88"><img src="https://github.com/albertm88.png?size=160" width="88" height="88" alt="@albertm88" /></a><br/>
+      <sub><b>@albertm88</b></sub><br/>
+      <sub>14 条 issue<br/>全部闭环</sub>
+    </td>
+    <td align="center" width="20%">
+      <a href="https://github.com/xiaomingming92/add-coder/issues"><img src="https://img.shields.io/badge/Issue%20%2F%20PR-welcome-2ea44f?style=flat-square" alt="Issue / PR welcome" /></a><br/>
+      <sub><b>你的位置</b></sub><br/>
+      <sub><a href="#核心开发规范必读">读过规范就能上</a></sub>
+    </td>
+  </tr>
+</table>
+
+**上榜标准**（唯一真源在本节；[docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md) 保留逐项明细与证据）：
+
+| 形态 | 具体是什么 | 进哪一栏 |
+|------|-----------|---------|
+| **问题反馈** | 可复现步骤 + 实测日志 + 平台差异（Windows / macOS / Linux / CI 非交互）——把边界条件替大家先踩一遍 | 问题反馈者 |
+| **代码贡献** | 被合并的 PR：模板与守卫、caijuehub 规则 TOML、记忆与审计链路、跨平台修复 | 核心贡献者 |
+| **生态贡献** | 独立衍生包 / 独立实现 / 插件（如 [`add-coder-flash`](https://www.npmjs.com/package/add-coder-flash)：零依赖轻量发行版，npm + GitHub 开源） | 核心贡献者 |
+| **长期维护** | 持续发版、方案评审、在 Discussions 答疑 | 维护者 |
+
+> 墙上按**贡献形态**排位，不按资历：一条把边界条件写清的 issue、一个独立衍生包，和一次被合并的 PR 一样重。
+
+---
+
 ## 目录
 
 - [环境准备](#环境准备)
@@ -16,7 +61,7 @@
 - [测试](#测试)
 - [提交规范](#提交规范)
 - [分支与 PR](#分支与-pr)
-- [贡献者墙](#贡献者墙)
+- [贡献者墙](#-贡献者墙)
 - [文档约定](#文档约定)
 - [发布](#发布)
 - [常见坑位](#常见坑位)
@@ -162,19 +207,6 @@ docs: 补充 H5 API 契约文档
 - 功能开发在 `feature/xxx` 分支进行，合并到 `main` 前先自测全绿（build + lint + test）
 - PR 描述说明：改动内容、关联 Plan/Spec、测试覆盖、文档回流情况
 - `main` 受保护：版本 bump 与正式发布由 CI 统一完成，不在本地直接打正式 tag 发布
-
-## 贡献者墙
-
-贡献者的名字、头像与贡献形态记录在 [docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md)（含头像墙 + 逐项可核对的证据）。本节的**上榜标准**是唯一真源，墙上只做展示。
-
-| 形态 | 具体是什么 | 进哪一栏 |
-|------|-----------|---------|
-| **问题反馈** | 可复现步骤 + 实测日志 + 平台差异（Windows / macOS / Linux / CI 非交互）——把边界条件替大家先踩一遍 | 问题反馈者 |
-| **代码贡献** | 被合并的 PR：模板与守卫、caijuehub 规则 TOML、记忆与审计链路、跨平台修复 | 核心贡献者 |
-| **生态贡献** | 独立衍生包 / 独立实现 / 插件（如 [`add-coder-flash`](https://www.npmjs.com/package/add-coder-flash)：零依赖轻量发行版，npm + GitHub 开源） | 核心贡献者 |
-| **长期维护** | 持续发版、方案评审、在 Discussions 答疑 | 维护者 |
-
-> 墙上按**贡献形态**排位，不按资历。提 PR 前请先过一遍 [核心开发规范（必读）](#核心开发规范必读) 与 ADD 范式工作流（[AGENTS.md](./AGENTS.md)）。
 
 ## 文档约定
 
