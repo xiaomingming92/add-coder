@@ -95,7 +95,18 @@ ADD 范式 + Qoder:     cache 命中率 99.31%, 每次请求 MISS 仅 2,426 toke
 
 ### ④ 门禁驱动，而非自由对话
 
-传统 AI coding 是「你说我做」，质量完全依赖 LLM 当天状态。add-coder 在架构中嵌入了 **双质量闸门**，不是「建议」，是**架构阻断**：
+> **别的工具靠「再试一次」，add-coder 靠「先过闸门」。** 质量不该取决于模型当天的状态。
+
+传统 AI coding 是「你说我做」，质量完全依赖 LLM 当下的发挥。add-coder 在架构里嵌入**双质量闸门**——不是「建议」，是**架构阻断**：不过闸门，Step 推进不了。
+
+| 维度 | 常见做法 | add-coder 双闸门 |
+|------|---------|------------------|
+| **判据** | 模型自评 / 人工肉眼 | **DPS**：语义（TF-IDF/Jaccard）+ 熵（香农/Deng）+ CPM 关键路径 + 结构完整度四维复合；**RAHS**：范围保真 / 类型安全 / 审计完整 / Spec 合规 / 阶段对称五维 |
+| **强制力** | 提示词里的「请确保…」 | 未过 DPS（`PASS=80`，阈值以 `dps-scoring-rules.toml` 为准）进不了 Step 1；未过 RAHS（≥90）不放行 |
+| **可复现** | 每次问模型答案都不一样 | 同一文档 + 同一参数 = 同一分数；分维分值 + 弱项清单，可解释、可对比、可回归 |
+| **调参** | 改代码、改提示词、重发版 | **caijuehub TOML 声明**：跑分 → 看弱项 → 调参 → 再跑分，改规则不改代码 |
+| **权重** | 手调一次就固化 | **FFT 自适应权重**：随审计数据演进——DPS 参数是数据，不是魔数 |
+| **负反馈** | 只能「再生成一遍」 | 门禁失败直接定位弱项维度；门禁结果幂等采证（Gate → `MetricSnapshot`）进入记忆闭环复盘 |
 
 ```
 DPS (Documentation Precision Score) — TF-IDF/Jaccard 语义 + 香农/Deng 熵 + CPM 关键路径 + 结构完整度
@@ -104,7 +115,7 @@ RAHS (Runtime Architecture Health Score) — 运行时架构健康度
   → 五维判定：范围保真 + 类型安全 + 审计完整 + Spec 合规 + 阶段对称，≥ 90 通过
 ```
 
-DPS 全部参数由 caijuehub TOML 驱动——AI 可以跑分→看弱项→调参→再跑分，全程不改代码。
+> 阈值与参数都是可读的 TOML 真源（`dps-scoring-rules.toml`），不是魔数；`check_dps` 已适配五端 spec 引用解析（qoder / claude / add / vscode / codex·trae，`tests/dps-adapter.test.ts` 覆盖）。
 
 ### ⑤ 跨轮记忆，而非每轮失忆
 
@@ -138,17 +149,20 @@ AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达�
 
 ### ⑥ Policy-Update-Loop：治理自我进化
 
-不是静态模板，而是**闭环自适应系统**：
+> **静态模板会腐化，闭环治理会进化。** 规则不是写死的常量，是能被审计数据推动的参数。
 
 ```
 执行 → 审计 → 边界报告 → 规则调整 → 下一轮执行
 ```
 
-**已落地的闭环环节**：
-
-- **执行 → 审计（✓ 已接入）**：hook 拦截 / 文件写入事件 → jsonl → MCP 常驻消费 → DevOperation 落库（`HOOK_INTERCEPT`，幂等去重）——每个治理动作自动留痕，可回查可追溯
-- **审计 → 规则调整（✓ 已接入）**：caijuehub 规则中心改规则不改代码——DPS 四维评分 **FFT 自适应权重**（随历史数据自动调权）、`check_doc_similarity` 量化复检（形似义异文档自动识别）——审计数据驱动治理规则演进
-- **边界报告（Report 体系）**：Runtime 边界报告闭环待 DEMO 仓库演示——Policy-Update-Loop 与 Report 体系端到端实践
+| 维度 | 静态规则 / 模板 | add-coder Policy-Update-Loop |
+|------|----------------|------------------------------|
+| **规则载体** | 写死在代码与提示词里，改动要发版 | caijuehub TOML 声明式：规则真源 → 生成常量 → 产物内联，**改规则不改代码** |
+| **规则来源** | 拍脑袋定阈值 | 审计数据反哺：DPS 四维 **FFT 自适应权重**随历史调权；`check_doc_similarity` 量化复检形似义异文档 |
+| **反馈回路** | 无 | **执行 → 审计（✓ 已接入）**：hook 拦截 / 文件写入事件 → jsonl → MCP 常驻消费 → DevOperation 落库（`HOOK_INTERCEPT` 幂等去重） |
+| **一致性** | 各端各自实现，行为漂移 | 治理契约层单一实现 + 五端一致性矩阵逐项断言（危险命令拦截 / 敏感文件锚定 / 审计事件面 / 协议形态 / 治理零复制） |
+| **演进证据** | 无留痕 | 每次拦截、每次判分、每次裁决都进审计库——可回查、可统计、可复算 |
+| **尚未闭环** | — | 边界报告（Runtime Report）端到端实践待 [DEMO 仓库](#-预告)演示（如实登记） |
 
 ### ⑦ 多 IDE 的 Hook 即治理层
 
@@ -207,7 +221,16 @@ tasks.md §IDE JSON → TodoWrite → IDE 面板
 
 ### ⑪ Codex MCP 原生接入（v0.3.25）
 
-> **状态区分**："已生成 Codex 模板" ≠ "Codex MCP 端到端已验证"——以下 6 步是**已验证闭环**，不写自定义脚本即可完成接入。
+> **不是给 Codex 外挂一个 MCP，而是把治理原生落进去。** 「已生成模板」≠「端到端已验证」——以下是**实测打通的 6 步**。
+
+| 维度 | 常见接入方式 | add-coder × Codex |
+|------|-------------|-------------------|
+| **接入成本** | 手写启动脚本、自己包装 | 三步 CLI：`init --adapter=codex` → `--print-mcp-config`（不写盘、不初始化项目）→ 粘贴或 `--write-user-config`（先备份 + 防重复） |
+| **治理面** | 只有工具调用，没有生命周期治理 | **原生 hooks**：`.codex/hooks.json` → `.codex/hooks/*.mjs`（14 个入口产物随包预烘焙、`node` 直调；Codex 原生事件可注册 5/16，其余产物已占位，事件扩展后零代码启用） |
+| **审批** | 只能在聊天里问一句 | **HITL 原生**：`create_hitl` 走 MCP Apps 分流（不在 Codex 展开高维 `inputRequired`），面板不可用时回退 markdown 提案 + 实例 HTML，结论照常落库 / 落文档 |
+| **运行态** | 改完产物，不知道跑的是不是新码 | **产物-进程新鲜度四态** + 重启标记 `.mcp-restart-required`：`sync` 后点名告警该重启哪个 server |
+| **多项目** | 配置粘错就连错库且无感 | `env.PROJECT_ROOT` 渲染时注入；错配时 mcp-server 启动即校验退出（进程层契约 §4） |
+| **平台** | 依赖 WSL / 手工改路径 | win32 自动输出 `cmd /c npx.cmd` 原生分支（PowerShell 场景不再绕 WSL） |
 
 ```bash
 # 1. 安装 add-coder（已安装可跳过）
@@ -228,9 +251,9 @@ add-coder init --adapter=codex --write-user-config
 # 6. 验证：Codex 中发现 add_coder MCP Server，完整工具集可调用（29 tools）
 ```
 
-**Windows 分支**：`--print-mcp-config` 在 win32 平台自动输出 `cmd /c npx.cmd` 启动分支（原生 PowerShell 场景，不依赖 WSL）。
+**命名兼容**：MCP Server ID 归一化为 `add_coder`（连字符→下划线，Codex 约束）。
 
-**命名兼容**：MCP Server ID 归一化为 `add_coder`（连字符→下划线，Codex 约束）；`env.PROJECT_ROOT` 由渲染时注入，多项目粘贴错误配置时 mcp-server 启动即校验退出（进程层契约 §4）。
+> 如实登记：Codex 部分 build（实测 `26.908`）不渲染审批 widget，此时审批走 markdown 提案 + 实例 HTML + 聊天拍板——链路可用，结论照常落库 / 落文档。
 
 ---
 

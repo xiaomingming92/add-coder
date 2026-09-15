@@ -48,14 +48,25 @@ ADD paradigm + Qoder:       cache hit rate 99.31%, only 2,426 MISS tokens/req
 
 ### ③ Gateway-Driven, Not Free-Form Conversation
 
-Traditional AI coding is "you say, I do" — quality depends entirely on the LLM's state that day. add-coder embeds **dual quality gateways** into the architecture:
+> **Others retry; add-coder gates.** Quality should not depend on the model's mood that day.
 
-```
-DPS (Design-Process Symmetry)  — Design / Implementation / Docs / Audit, each weighted 25%, < 85% BLOCKED
-RAHS (Runtime Architecture Health Score) — Runtime architecture health, < 90% BLOCKED
+Traditional AI coding is "you say, I do" — quality rests entirely on the LLM's form in the moment. add-coder embeds **dual quality gateways** in the architecture — not "suggestions" but **architectural blocks**: without passing the gate, a Step cannot advance.
+
+| Dimension | Typical practice | add-coder's dual gateways |
+|-----------|------------------|---------------------------|
+| **Basis** | Model self-assessment / human eyeballing | **DPS**: semantics (TF-IDF/Jaccard) + entropy (Shannon/Deng) + CPM critical path + structural completeness; **RAHS**: scope fidelity / type safety / audit completeness / Spec compliance / phase symmetry |
+| **Force** | "Please make sure…" in a prompt | Cannot enter Step 1 without passing DPS (`PASS=80`, threshold sourced from `dps-scoring-rules.toml`); nothing is released without RAHS (≥90) |
+| **Reproducibility** | Ask the model twice, get two answers | Same document + same parameters = same score; per-dimension scores plus a weakness list — explainable, comparable, regression-testable |
+| **Tuning** | Edit code, edit prompts, re-release | **caijuehub TOML declarations**: score → read weaknesses → tune → re-score, without touching code |
+| **Weights** | Hand-tuned once, then frozen | **FFT adaptive weights** that evolve with audit data — DPS parameters are data, not magic numbers |
+| **Negative feedback** | "Just regenerate it" | A failed gate pinpoints the weak dimension; gate results are collected idempotently (Gate → `MetricSnapshot`) into the memory loop for review |
+
+```text
+DPS (Documentation Precision Score) — semantics + entropy + CPM critical path + structural completeness → 4-dimension composite + FFT adaptive weights
+RAHS (Runtime Architecture Health Score) — scope fidelity + type safety + audit completeness + Spec compliance + phase symmetry → ≥ 90 passes
 ```
 
-These are not "suggestions" — they are **architectural blocks**. A Step cannot advance without passing its gateway.
+> Thresholds and parameters live in a readable TOML source of truth (`dps-scoring-rules.toml`), not magic numbers; `check_dps` resolves spec references across five adapters (qoder / claude / add / vscode / codex·trae, covered by `tests/dps-adapter.test.ts`).
 
 ### ④ Cross-Session Memory, Not Per-Session Amnesia
 
@@ -87,15 +98,23 @@ The fatal flaw of AI conversations: architectural decisions from last session, b
 > Honest disclosure: measured Hybrid `MRR@5` 0.4867 < the 0.75 threshold (FTS-only 0.6551, Recall@5 0.9592) — the threshold stays put; data-driven calibration replaces hand-tuning. The capability runs, can be inspected and can be adjudicated — no metric inflation.
 > Source layout, tables and dev workflow: [DEVELOPMENT.md](./DEVELOPMENT.md) §十七.
 
-### ⑤ Policy-Update-Loop: Self-Evolving Governance (the scaffold itself does not include this architectural capability; a DEMO repo will be provided next to better illustrate the Policy-Update-Loop and Report system)
+### ⑤ Policy-Update-Loop: Self-Evolving Governance
 
-Not a static template, but a **closed-loop adaptive system**:
+> **Static templates rot; closed-loop governance evolves.** Rules are not frozen constants — they are parameters that audit data can move.
+> (The scaffold itself does not include the end-to-end boundary-report loop yet; a DEMO repo will illustrate the Policy-Update-Loop and Report system.)
 
-```
+```text
 Execute → Audit → Boundary Report → Rule Adjustment → Next Execution
 ```
 
-Runtime-generated Reports feed back into governance rules, enabling continuous evolution of governance strategies.
+| Dimension | Static rules / templates | add-coder Policy-Update-Loop |
+|-----------|--------------------------|------------------------------|
+| **Where rules live** | Hard-coded in code and prompts; changing them means a release | caijuehub TOML declarations: rule sources → generated constants → inlined into artifacts; **edit rules, not code** |
+| **Where rules come from** | Thresholds picked by intuition | Fed by audit data: DPS **FFT adaptive weights**; `check_doc_similarity` quantitatively re-checks look-alike documents |
+| **Feedback loop** | None | **Execute → Audit (✓ live)**: hook interception / file-write events → jsonl → MCP resident consumer → DevOperation persistence (`HOOK_INTERCEPT`, idempotent dedup) |
+| **Consistency** | Each endpoint implements its own, behaviour drifts | One governance contract layer + a five-endpoint consistency matrix asserting each behaviour (dangerous-command blocking / sensitive-file anchoring / audit event surface / protocol shape / zero governance duplication) |
+| **Evidence of evolution** | No trail | Every interception, score and adjudication lands in the audit store — queryable, countable, reproducible |
+| **Not closed yet** | — | Boundary reports (Runtime Report) end-to-end pending the DEMO repo (disclosed as-is) |
 
 ### ⑥ Multi-IDE Hooks as the Governance Layer
 
@@ -110,13 +129,28 @@ Hooks are not "notification push" — they are the **IDE runtime interception la
 
 Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own hook implementation, but the **governance logic is unified** — the architecture is consistent, only the adapter layer differs.
 
-| IDE | Governance Doc | Events Covered | Hook Config |
+| IDE | Governance Doc | Registrable events | Hook Config (direct node invocation) |
 |---|---|---|---|
-| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
-| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
-| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
-| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
-| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 0 native / 14 (via Claude import) | `.codex/hooks.json` |
+| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 11/16 | `.claude/hooks/*.mjs` (settings.json command) |
+| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 11/16 | `.qoder/hooks/*.mjs` (settings.json command) |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/16 | `.vscode/hooks/*.mjs` (Agent Host dual channel) |
+| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/16 | `hooks.json` → `.trae/hooks/*.mjs` |
+| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 5/16 | `.codex/hooks.json` → `.codex/hooks/*.mjs` |
+
+### ⑦ Codex Native Integration (v0.3.25)
+
+> **Not a bolted-on MCP server, but governance landing natively.** "Templates generated" ≠ "end-to-end verified" — this is a 6-step path that has actually been exercised.
+
+| Dimension | Typical integration | add-coder × Codex |
+|-----------|--------------------|-------------------|
+| **Setup cost** | Hand-written launcher scripts | Three CLI steps: `init --adapter=codex` → `--print-mcp-config` (no writes, no project init) → paste, or `--write-user-config` (backup first, duplicate-safe) |
+| **Governance surface** | Tool calls only, no lifecycle governance | **Native hooks**: `.codex/hooks.json` → `.codex/hooks/*.mjs` (14 entry artifacts pre-baked in the package, invoked by `node`; 5/16 native events registrable today, the rest already placeheld, enabled with zero code once the event model grows) |
+| **Approval** | Ask in chat | **Native HITL**: `create_hitl` takes the MCP Apps branch (no high-dimensional `inputRequired` in Codex); when the panel cannot render, it falls back to a markdown proposal + instance HTML, and verdicts are still persisted |
+| **Runtime state** | No way to tell whether the new artifacts are running | **Four-state artifact/process freshness** + `.mcp-restart-required` marker: `sync` names the server that needs a restart |
+| **Multi-project** | A pasted-wrong config silently connects to the wrong DB | `env.PROJECT_ROOT` injected at render time; a mismatched config makes mcp-server exit on startup (process-layer contract §4) |
+| **Platform** | WSL required / paths patched by hand | win32 automatically emits a native `cmd /c npx.cmd` branch |
+
+> Disclosed as-is: some Codex builds (measured `26.908`) do not render the approval widget; approval then goes through the markdown proposal + instance HTML + a chat verdict — the path works and verdicts are still persisted.
 
 ---
 
@@ -227,7 +261,7 @@ npx add-coder init
 ┌──────┐ ┌──────┐ ┌──────────┐ ┌──────┐ ┌──────┐
 │Claude│ │Qoder │ │ VS Code  │ │ Trae │ │Codex │
 │Hooks │ │Hooks │ │  Config  │ │Hooks │ │Hooks │
-│14/17 │ │10/17 │ │  10/17   │ │ 6/17 │ │ 6/17 │
+│11/16 │ │11/16 │ │  10/16   │ │ 6/16 │ │ 5/16 │
 └──────┘ └──────┘ └──────────┘ └──────┘ └──────┘
                            │
               ┌────────────┘
@@ -292,11 +326,10 @@ npx add-coder init
 | 无关联性 | Plan → Spec → Task → Step → Tool Call，形成完整证据链 |
 
 ### ② 门禁驱动，而非自由对话
-```
-DPS (Design-Process Symmetry)  — 设计/实现/文档/审计 四维各 25%，< 85% BLOCKED
-RAHS (Runtime Architecture Health Score) — 运行时架构健康度，< 90% BLOCKED
-```
-这不是「建议」，是**架构阻断** — 不通过闸门的 Step 无法推进到下一步。
+
+> **别的工具靠「再试一次」，add-coder 靠「先过闸门」。**
+
+DPS（Documentation Precision Score）= 语义 + 熵 + CPM 关键路径 + 结构完整度四维复合 + FFT 自适应权重（`PASS=80`）；RAHS = 范围保真 / 类型安全 / 审计完整 / Spec 合规 / 阶段对称（≥90）。这不是「建议」，是**架构阻断**——不过闸门，Step 推进不了；阈值与权重都是可读 TOML 真源（`dps-scoring-rules.toml`），改规则不改代码。
 
 ### ③ 跨轮记忆，而非每轮失忆
 
@@ -308,19 +341,19 @@ RAHS (Runtime Architecture Health Score) — 运行时架构健康度，< 90% BL
 **如实登记**：Hybrid `MRR@5` 0.4867 < 0.75 门槛，门槛不下调，由排序校准线程以数据校准替代手调。
 
 ### ④ Policy-Update-Loop：治理自我进化
-```
-执行 → 审计 → 边界报告 → 规则调整 → 下一轮执行
-```
-运行时产生的 Report 会反过来更新 governance rules。
+
+> **静态模板会腐化，闭环治理会进化。**
+
+执行 → 审计（✓ 已接入：hook 拦截 / 文件写入 → jsonl → MCP 常驻消费 → DevOperation 幂等落库）→ 规则调整（✓ 已接入：caijuehub 改规则不改代码 · DPS FFT 自适应权重 · `check_doc_similarity` 量化复检）；边界报告（Runtime Report）端到端实践待 DEMO 仓库演示。
 
 ### ⑤ 多 IDE 的 Hook 即治理层
 | IDE | 治理文档 | 覆盖事件 | Hook 配置 |
 |---|---|---|---|
-| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 14/17 | `.claude/hooks/*.sh` |
-| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 10/17 | `.qoder/hooks/*.sh` |
-| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/17 | `.github/hooks/*.json` → `.vscode/hooks/*.sh` |
-| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/17 | `hooks.json` → `.trae/hooks/*.sh` |
-| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 0 (原生) / 14 (导入 Claude) | `.codex/hooks.json` |
+| Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 11/16 | `.claude/hooks/*.mjs`（settings.json command） |
+| Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 11/16 | `.qoder/hooks/*.mjs`（settings.json command） |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/16 | `.vscode/hooks/*.mjs`（Agent Host 双通道） |
+| Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/16 | `hooks.json` → `.trae/hooks/*.mjs` |
+| Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 5/16 | `.codex/hooks.json` → `.codex/hooks/*.mjs` |
 
 ## 快速开始
 ```bash
@@ -344,7 +377,7 @@ npx add-coder init
 |---|---|
 | `record_dev_operation` | 记录开发操作审计 |
 | `query_audit_logs` | 按 planKeyword / targetId 查询审计记录 |
-| `check_dps` | DPS 闸门（< 85% BLOCKED） |
+| `check_dps` | DPS 闸门（`PASS=80`，阈值以 `dps-scoring-rules.toml` 为准） |
 | `check_rahs` | RAHS 闸门（< 90% BLOCKED） |
 
 ## 前置条件
