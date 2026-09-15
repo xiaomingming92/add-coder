@@ -308,14 +308,14 @@ npx add-coder init
 
 ## 🙏 Acknowledgements
 
-A paradigm is worth what people make of it — including the problems they find in it. The full list (verifiable item by item, in Chinese) lives in **[docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md)**.
+A paradigm is worth what people make of it — including the problems they find in it. The **contributor wall** and the full list (verifiable item by item, in Chinese) live in **[docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md#-贡献者墙)**.
 
 | Contributor | Contribution | What it left behind |
 |-------------|--------------|---------------------|
 | [@iopzhu](https://github.com/iopzhu) | Memory rotation on the `memory_cache` branch (`357b215`, 48 files / +5877 −33) | The retrieval and tooling backbone of the memory loop: `retrieval/pipeline`, RRF fusion, governed rerank, dual FTS channels, evidence/snapshot jobs, `tools/memory.ts` (609 lines) plus a 909-line recall evaluation set |
 | [@albertm88](https://github.com/albertm88) | Relentless issue reporting (#5–#7, #10–#20 — 14 issues, all closed) | Cross-session memory, 429 storms, Windows stability, native Codex adaptation, port drift, non-interactive hangs, first-run HITL approval… walking the edge cases so nobody else has to |
 
-> Want in? File an [issue](https://github.com/xiaomingming92/add-coder/issues) (reproducible problems, real logs, platform differences) or open a [PR](https://github.com/xiaomingming92/add-coder/pulls) — both count as hard contribution.
+> Want on the wall? The criteria live in [CONTRIBUTING.md §贡献者墙](./CONTRIBUTING.md#贡献者墙) — file an [issue](https://github.com/xiaomingming92/add-coder/issues) (reproducible problems, real logs, platform differences) or open a [PR](https://github.com/xiaomingming92/add-coder/pulls); both count as hard contribution.
 
 ---
 <details id="chinese-readme">
