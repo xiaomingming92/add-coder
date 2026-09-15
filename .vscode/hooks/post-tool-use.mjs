@@ -173,7 +173,7 @@ function projectHash() {
 var DEV_FLAG = `/tmp/add_dev_${projectHash()}`;
 
 // templates/core/governance/post-tool-router.ts
-import { existsSync as existsSync3, readFileSync as readFileSync2, readdirSync, writeFileSync as writeFileSync2 } from "node:fs";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync2, readdirSync, appendFileSync as appendFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join2, basename, dirname } from "node:path";
 
 // templates/core/governance/notify.ts
@@ -237,6 +237,37 @@ var AuditBridge = class {
     return m ? m[1] : "unknown";
   }
 };
+
+// templates/core/scripts/mcp-server/shared/memory/switches.ts
+function recallMode(env = process.env) {
+  const v = (env.ADD_MEMORY_RECALL_MODE ?? "shadow").toLowerCase();
+  return v === "off" || v === "inject" ? v : "shadow";
+}
+function evidenceEnabled(env = process.env) {
+  return (env.ADD_MEMORY_EVIDENCE ?? "on").toLowerCase() !== "off";
+}
+var MEMORY_DIR_NAME = "memory";
+var EVIDENCE_QUEUE_FILE = "evidence-queue.jsonl";
+var L1_SNAPSHOT_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
+
+// templates/core/scripts/mcp-server/shared/memory/jobs/evidence-collector.ts
+import { createHash as createHash2 } from "node:crypto";
+function classifyEvidenceSource(filePath) {
+  const p = filePath.replace(/\\/g, "/");
+  if (/(^|\/)plans\/[^/]*-plan-v\d+\.md$/.test(p)) return "PLAN";
+  if (/(^|\/)plans\/[^/]*-add-route-v\d+\.md$/.test(p)) return "PLAN";
+  if (/(^|\/)specs\/.+\.md$/.test(p)) return "SPEC";
+  if (/handoff[^/]*\.md$/i.test(p)) return "HANDOFF";
+  if (/(^|\/)reviews\/.+\.md$/.test(p)) return "DEV_OPERATION";
+  return null;
+}
+function buildEvidenceEvent(filePath, excerpt, occurredAt = /* @__PURE__ */ new Date()) {
+  const sourceType = classifyEvidenceSource(filePath);
+  if (!sourceType) throw new Error(`\u975E\u767D\u540D\u5355\u8DEF\u5F84: ${filePath}`);
+  const sourceRef = filePath;
+  const dedupKey = createHash2("sha256").update(`${sourceType}|${sourceRef}|${excerpt}`, "utf8").digest("hex").slice(0, 32);
+  return { dedupKey, sourceType, sourceRef, excerpt: excerpt.slice(0, 500), occurredAt: occurredAt.toISOString() };
+}
 
 // templates/core/governance/post-tool-router.ts
 function extractOutputText(raw) {
@@ -368,6 +399,7 @@ var PostToolRouter = class {
       this.postDocSections(filePath);
       this.emitLine(this.emitAuditReminder(filePath));
       this.emitWriteEvent(filePath);
+      this.emitMemoryEvidence(filePath);
     } else if (toolName2 === "Bash") {
       this.emitLine(this.emitBashDone());
     } else {
@@ -394,6 +426,32 @@ var PostToolRouter = class {
    *  如有端需关闭/改造事件面在此 override——本轮 5 端全接入，无关闭端） */
   emitWriteEvent(filePath) {
     this.auditBridge.emit(filePath);
+  }
+  /**
+   * §2g Memory 采证入队（Spec §10 PostToolUse 白名单，扩展点）:
+   *   白名单路径（plans/specs/reviews/handoff）→ 追加 evidence-queue.jsonl（幂等 dedupKey），
+   *   由 consolidation job 异步落库。ADD_MEMORY_EVIDENCE=off 或 RECALL_MODE=off 时关闭。
+   *   fail-open：任何异常不阻断文件写入主路径（Plan §9.3）。
+   */
+  emitMemoryEvidence(filePath) {
+    try {
+      if (!evidenceEnabled() || recallMode() === "off") return;
+      if (!classifyEvidenceSource(filePath)) return;
+      if (!this.magicDir) return;
+      let excerpt = "";
+      try {
+        excerpt = readFileSync2(filePath, "utf-8").slice(0, 500);
+      } catch {
+        excerpt = basename(filePath);
+      }
+      const ev = buildEvidenceEvent(filePath, excerpt);
+      const dir = join2(this.projectDir, this.magicDir, MEMORY_DIR_NAME);
+      mkdirSync2(dir, { recursive: true });
+      appendFileSync2(join2(dir, EVIDENCE_QUEUE_FILE), JSON.stringify(ev) + "\n", "utf-8");
+      this.emitLine(`[ADD PostToolUse] \u{1F9E0} \u8BB0\u5FC6\u91C7\u8BC1\u5165\u961F: ${filePath}\uFF08consolidation \u65F6\u843D\u5E93\uFF09
+`);
+    } catch {
+    }
   }
   /** §3 Bash 增强（core: lint/tsc；codex 子类: lint/typecheck/test） */
   emitBashDone() {

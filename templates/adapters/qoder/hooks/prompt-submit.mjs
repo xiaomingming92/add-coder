@@ -447,7 +447,45 @@ function writeHookEvent(hook, decision, cmd, reason, plan = "unknown", status = 
   appendFileSync(file, line);
 }
 
+// templates/core/scripts/mcp-server/shared/memory/switches.ts
+function recallMode(env = process.env) {
+  const v = (env.ADD_MEMORY_RECALL_MODE ?? "shadow").toLowerCase();
+  return v === "off" || v === "inject" ? v : "shadow";
+}
+var L1_SNAPSHOT_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
+
+// templates/core/scripts/mcp-server/shared/memory/metrics/stage-words.ts
+var STAGE_LABEL = {
+  "plan-start": "Plan \u8D77\u8349",
+  "spec-start": "Spec \u8D77\u8349",
+  dps: "DPS \u95E8\u7981",
+  rahs: "RAHS \u95E8\u7981",
+  handoff: "Handoff \u4EA4\u63A5"
+};
+var STAGE_PATTERNS = [
+  { stage: "handoff", re: /handoff|交接(手册|文档|说明)?|交接给/i },
+  { stage: "rahs", re: /rahs|注意力漂移|执行健康度/i },
+  { stage: "dps", re: /dps|文档质量闸门|质量闸门|门禁(评分|检查)?/i },
+  { stage: "spec-start", re: /(生成|写|新建|起草|补)\s*(spec|规格|三元组)|specs?\s*三元组|WHEN-?THEN/i },
+  { stage: "plan-start", re: /(生成|写|新建|起草|补)\s*(plan|计划|方案)|plan\s*阶段|规划阶段/i }
+];
+function detectRecallStage(prompt) {
+  if (!prompt) return null;
+  for (const { stage, re } of STAGE_PATTERNS) {
+    if (re.test(prompt)) return stage;
+  }
+  return null;
+}
+function buildStageRecallHint(stage, mode) {
+  if (mode === "off") return null;
+  const label = STAGE_LABEL[stage];
+  const tail = mode === "shadow" ? "\uFF08\u5F53\u524D shadow \u6A21\u5F0F\uFF1AHook \u4E0D\u6CE8\u5165\u4E0A\u4E0B\u6587\uFF0C\u53EC\u56DE\u7ED3\u679C\u9700\u663E\u5F0F\u6D88\u8D39\uFF09" : "\uFF08\u5F53\u524D inject \u6A21\u5F0F\uFF1A\u8C03\u7528\u540E\u4E0A\u4E0B\u6587\u5C06\u88AB\u6CE8\u5165\uFF09";
+  return `[Memory] \u68C0\u6D4B\u5230${label}\u9636\u6BB5 \u2192 \u5EFA\u8BAE\u8C03\u7528 recall_memory({ stage: "${stage}", query: <\u672C\u9636\u6BB5\u610F\u56FE>, planKeyword: <Plan \u5173\u952E\u8BCD> }) \u83B7\u53D6\u53D7\u6CBB\u7406\u7684\u5386\u53F2\u4E0A\u4E0B\u6587\uFF08\u542B\u6765\u6E90\u4E0E\u8BC4\u5206\uFF09\u3002${tail}
+`;
+}
+
 // templates/core/governance/prompt-router.ts
+var MEMORY_RECALL_HINT_RE = /之前|上次|还记得|记得吗|为什么当时|类似问题|历史决策|以前的方案|曾经怎么/i;
 var PromptRouter = class {
   magicDir;
   constructor(magicDir) {
@@ -510,6 +548,38 @@ var PromptRouter = class {
   /** 前置注入（core: 无；qoder: 无条件 "ADD workflow active" JSON） */
   preamble(_input) {
   }
+  /**
+   * 显式记忆回忆提示（Spec §10 / Plan §9.1 补充入口）:
+   * 命中回忆词且 ADD_MEMORY_RECALL_MODE != off → 提示调用 recall_memory。
+   * 不做自动召回（同步 Hook ≤200ms 无 DB）；shadow 模式下提示语明示"仅显式调用"。
+   */
+  maybeMemoryHint(prompt) {
+    try {
+      if (recallMode() === "off") return;
+      if (!MEMORY_RECALL_HINT_RE.test(prompt)) return;
+      const mode = recallMode();
+      const suffix = mode === "shadow" ? "\uFF08\u5F53\u524D shadow \u6A21\u5F0F\uFF1A\u53EC\u56DE\u5C06\u843D\u5BA1\u8BA1\uFF0CHook \u4E0D\u81EA\u52A8\u6CE8\u5165\uFF09" : "";
+      process.stdout.write(
+        `[Memory] \u68C0\u6D4B\u5230\u5386\u53F2\u56DE\u5FC6\u610F\u56FE${suffix}\u3002\u53EF\u8C03\u7528 recall_memory({ query: <\u4F60\u7684\u95EE\u9898>, stage: "prompt" }) \u83B7\u53D6\u53D7\u6CBB\u7406\u7684\u8BB0\u5FC6\u4E0A\u4E0B\u6587\uFF08\u542B\u6765\u6E90\u4E0E\u8BC4\u5206\uFF09\u3002
+`
+      );
+    } catch {
+    }
+  }
+  /**
+   * 阶段确定性召回提示（Spec §2 §DeterministicRecall，Plan §3.1 方案 B1 的 Hook 侧）:
+   * 命中 ADD 阶段词 → 提示到工具侧做确定性召回（plan-start/spec-start/dps/rahs/handoff）。
+   * Hook 同步路径无 DB：只输出提示文本，不召回、不写审计；任何异常 fail-open。
+   */
+  maybeStageHint(prompt) {
+    try {
+      const stage = detectRecallStage(prompt);
+      if (!stage) return;
+      const hint = buildStageRecallHint(stage, recallMode());
+      if (hint) process.stdout.write(hint);
+    } catch {
+    }
+  }
   /** Layer 3 输出形态（core: 纯文本逐行；qoder: hookSpecificOutput JSON 包） */
   layer3Json() {
     return false;
@@ -541,6 +611,8 @@ var PromptRouter = class {
       for (const m of matched) process.stdout.write(m + "\n");
       return 0;
     }
+    this.maybeMemoryHint(prompt);
+    this.maybeStageHint(prompt);
     const devKw = loadDevKeywords();
     if (devKw.length === 0) return 0;
     if (!this.devKwMatched(prompt, devKw)) return 0;

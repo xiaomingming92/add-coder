@@ -138,6 +138,118 @@ export const CollabContractRowSchema = z.looseObject({
   updatedAt: z.date(),
 })
 
+// ===== Agent Memory 行 schema（对齐 prisma/add.prisma，Plan: add-coder-agent-memory-plan-v2） =====
+
+export const MemoryKindSchema = z.enum([
+  "DECISION", "CONSTRAINT", "PITFALL", "FAILURE", "LESSON",
+  "PATTERN", "CONVENTION", "FACT", "HANDOFF_DIGEST", "HYPOTHESIS",
+])
+export const MemoryStatusSchema = z.enum([
+  "CANDIDATE", "PENDING", "ACTIVE", "STALE", "SUPERSEDED", "REJECTED", "ARCHIVED",
+])
+export const MemoryScopeTypeSchema = z.enum([
+  "ORGANIZATION", "REPOSITORY", "BRANCH", "MODULE", "PATH", "SYMBOL", "PLAN", "SPEC",
+])
+export const MemorySourceTypeSchema = z.enum([
+  "PLAN", "SPEC", "DPS_GATE", "DEV_OPERATION", "RAHS_GATE", "HANDOFF", "MANUAL", "IMPORT",
+])
+export const EmbeddingStateSchema = z.enum(["DISABLED", "PENDING", "READY", "FAILED", "STALE"])
+export const RecallOutcomeSchema = z.enum([
+  "UNKNOWN", "USED", "USEFUL", "IRRELEVANT", "OUTDATED", "CONTRADICTED", "HARMFUL",
+])
+
+export const AddMemoryRowSchema = z.looseObject({
+  id: z.string(),
+  kind: MemoryKindSchema,
+  status: MemoryStatusSchema,
+  topic: z.string(),
+  content: z.string(),
+  summary: z.string().nullable(),
+  scopeType: MemoryScopeTypeSchema,
+  scopeValue: z.string(),
+  repositoryRef: z.string(),
+  importance: z.number(),
+  confidence: z.number(),
+  validFrom: z.date(),
+  validUntil: z.date().nullable(),
+  supersededById: z.string().nullable(),
+  contentHash: z.string(),
+  embeddingModel: z.string().nullable(),
+  embeddingDim: z.number().nullable(),
+  embeddingState: EmbeddingStateSchema,
+  createdBy: z.string().nullable(),
+  approvedBy: z.string().nullable(),
+  approvedAt: z.date().nullable(),
+  metadata: z.unknown().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+})
+
+export const AddMemoryEvidenceRowSchema = z.looseObject({
+  id: z.string(),
+  repositoryRef: z.string(),
+  sourceType: MemorySourceTypeSchema,
+  sourceRef: z.string(),
+  planKeyword: z.string().nullable(),
+  excerpt: z.string(),
+  contentHash: z.string(),
+  occurredAt: z.date().nullable(),
+  metadata: z.unknown().nullable(),
+  createdAt: z.date(),
+})
+
+export const AddMemoryEvidenceLinkRowSchema = z.looseObject({
+  memoryId: z.string(),
+  evidenceId: z.string(),
+  relation: z.string().nullable(),
+  createdAt: z.date(),
+})
+
+export const AddMetricSnapshotRowSchema = z.looseObject({
+  id: z.string(),
+  repositoryRef: z.string(),
+  metricType: z.string(),
+  value: z.number(),
+  baseline: z.number().nullable(),
+  delta: z.number().nullable(),
+  unit: z.string().nullable(),
+  planKeyword: z.string().nullable(),
+  specRef: z.string().nullable(),
+  commitSha: z.string().nullable(),
+  sourceRef: z.string(),
+  metadata: z.unknown().nullable(),
+  measuredAt: z.date(),
+})
+
+export const AddMemoryRecallRowSchema = z.looseObject({
+  id: z.string(),
+  repositoryRef: z.string(),
+  query: z.string(),
+  stage: z.string(),
+  consumerRef: z.string().nullable(),
+  scopeContext: z.unknown(),
+  candidateIds: z.unknown(),
+  selectedIds: z.unknown(),
+  scoreBreakdown: z.unknown(),
+  exclusionReasons: z.unknown().nullable(),
+  rankingVersion: z.string(),
+  tokenBudget: z.number(),
+  injectedTokens: z.number(),
+  latencyMs: z.number().nullable(),
+  degradedMode: z.string().nullable(),
+  createdAt: z.date(),
+})
+
+export const AddMemoryRecallItemRowSchema = z.looseObject({
+  recallId: z.string(),
+  memoryId: z.string(),
+  selected: z.boolean(),
+  rank: z.number().nullable(),
+  outcome: RecallOutcomeSchema,
+  feedback: z.string().nullable(),
+  updatedAt: z.date(),
+})
+
 // ===== 类型派生（单一真源：schema → 类型） =====
 
 export type PlanRow = z.infer<typeof PlanRowSchema>
@@ -147,6 +259,12 @@ export type AuditLogRow = z.infer<typeof AuditLogRowSchema>
 export type DevOperationRow = z.infer<typeof DevOperationRowSchema>
 export type AddUserRow = z.infer<typeof AddUserRowSchema>
 export type CollabContractRow = z.infer<typeof CollabContractRowSchema>
+export type AddMemoryRow = z.infer<typeof AddMemoryRowSchema>
+export type AddMemoryEvidenceRow = z.infer<typeof AddMemoryEvidenceRowSchema>
+export type AddMemoryEvidenceLinkRow = z.infer<typeof AddMemoryEvidenceLinkRowSchema>
+export type AddMetricSnapshotRow = z.infer<typeof AddMetricSnapshotRowSchema>
+export type AddMemoryRecallRow = z.infer<typeof AddMemoryRecallRowSchema>
+export type AddMemoryRecallItemRow = z.infer<typeof AddMemoryRecallItemRowSchema>
 
 // ===== 查询参数（Prisma 最常用子集，结构化约束 + 运算符支持） =====
 
@@ -159,6 +277,7 @@ export interface QueryArgs<T> {
   orderBy?: { [K in keyof T]?: OrderDirection }
   take?: number
   skip?: number
+  cursor?: Record<string, unknown>
   include?: Record<string, unknown>
 }
 

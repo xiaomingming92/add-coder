@@ -20,6 +20,14 @@ import {
 import { prisma } from "../../shared/prisma.js";
 import { runCommand } from "../../shared/run-command.js";
 import { getRuntimeContext } from "../../shared/env.js";
+import {
+  buildGateCaptureDetail,
+  createGateWriterDeps,
+  deriveGateRunId,
+  formatGateCaptureSummary,
+  writeGateMetric,
+  GATE_METRIC_TYPE,
+} from "../../shared/memory/metrics/gate-writer.js";
 
 export function registerCheckRahs(server: ToolRegistrar) {
   const runtimeContext = getRuntimeContext();
@@ -50,6 +58,8 @@ export function registerCheckRahs(server: ToolRegistrar) {
         );
         if (!pm)
           return errorResponse(`未找到匹配的 Plan 文件（关键词: ${pp}）`);
+        // Plan 正文在多个维度（Spec 引用解析、采证 seed）共用，提到此处只读一次
+        const planContent = (await readFileSafe(join(plansDir, pm))) || "";
         let scopeScore = 80,
           typeScore = 80,
           auditScore = 80,
@@ -115,7 +125,6 @@ export function registerCheckRahs(server: ToolRegistrar) {
           const rahsCandidates = rahsVersionSuffix
             ? [`${rahsPlanBase}-${rahsVersionSuffix}`, rahsPlanBase]
             : [rahsPlanBase];
-          const planContent = (await readFileSafe(join(plansDir, pm))) || "";
           const rahsSpecRef = planContent.match(/specs\/([^/`\s]+)/);
           if (rahsSpecRef) rahsCandidates.push(rahsSpecRef[1]);
           const sn =
@@ -181,6 +190,36 @@ export function registerCheckRahs(server: ToolRegistrar) {
           `=== RAHS = ${rahs}  ${rahs >= 90 ? "🟢 PASS" : rahs >= 70 ? "🟡 WARN" : "🔴 BLOCKED"} ===`,
         );
         if (rahs < 70) parts.push("  动作: 注意力漂移严重，返工回退");
+
+        // ── Gate 采证（Spec §GateMetric）：与评分解耦，失败旁路不阻塞返回 ──
+        const rahsSeed = `${planContent}\n${scopeScore}|${typeScore}|${auditScore}|${specScore}|${symScore}`;
+        const rahsCaptureInput = {
+          gate: "check_rahs" as const,
+          planKeyword: pp,
+          runId: deriveGateRunId("check_rahs", pp, rahsSeed),
+          metricType: GATE_METRIC_TYPE.check_rahs,
+          score: rahs,
+          repository: runtimeContext.projectKey,
+          dimensionScores: {
+            scope: scopeScore,
+            type: typeScore,
+            audit: auditScore,
+            spec: specScore,
+            symmetry: symScore,
+          },
+          baseline: 90,
+          unit: "score",
+        };
+        const rahsCapture = await writeGateMetric(
+          rahsCaptureInput,
+          createGateWriterDeps((prisma as Record<string, unknown>).addMetricSnapshot),
+        );
+        parts.push(
+          "",
+          "=== Gate 采证（MetricSnapshot）===",
+          `  ${formatGateCaptureSummary(buildGateCaptureDetail(rahsCaptureInput, rahsCapture))}`,
+        );
+
         return textResponse(parts.join("\n"));
       } catch (e) {
         return errorResponse(

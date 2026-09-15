@@ -12,6 +12,40 @@ import {
 } from "./mcp-server/shared/plan-lifecycle-subscriber.js"
 import { PlanRoundSubscriber } from "./mcp-server/shared/plan-round-subscriber.js"
 import { queryPlanRounds, type PlanRoundReadClient } from "./mcp-server/shared/plan-round-store.js"
+import { PROJECT_ROOT, MAGIC_DIR } from "./mcp-server/shared/env.js"
+import { clearRestartRequiredMarker } from "./mcp-server/shared/runtime-freshness.js"
+
+/**
+ * 启动后清掉本 adapter 的"需重启"标记（2026-09-14）：
+ * 该标记的语义是"运行中的 server 早于产物"，本进程刚启动 → 必然晚于现有产物，
+ * 旧标记已失效。不清掉会留下**过期告警**（实测：重启后标记仍在，谁读到都以为还得重启）。
+ */
+function clearOwnStaleMarker(): void {
+  try {
+    clearRestartRequiredMarker(MAGIC_DIR, PROJECT_ROOT)
+  } catch {
+    /* fail-open：标记清理失败不影响启动 */
+  }
+}
+
+/**
+ * 孤儿自退（2026-09-14）：IDE/app 退出时通常只杀直接子进程（`npx`），
+ * `npm exec → sh -c → tsx → node` 这几代会被 reparent 到 systemd 继续存活
+ * （实测同一逻辑 server 5 个进程，旧实例的 server 在 app 重启后仍活 20+ 分钟；
+ * `.codex` 与 `.qoder` 上都反复出现）。
+ * 记录启动时的父 pid，一旦被 reparent 即视为启动者已死 → 自杀退出（stdio 对端本就没了）。
+ */
+function watchLauncher(): void {
+  const launcherPid = process.ppid
+  const timer = setInterval(() => {
+    if (process.ppid !== launcherPid) {
+      console.error(`[ADD-MCP] 启动者已退出（ppid ${launcherPid} → ${process.ppid}），孤儿自退`)
+      clearInterval(timer)
+      process.exit(0)
+    }
+  }, 15_000)
+  timer.unref?.()
+}
 
 async function main() {
   const server = new McpServer(
@@ -21,6 +55,8 @@ async function main() {
   registerAll(server)
   const transport = new StdioServerTransport()
   await server.connect(transport)
+  clearOwnStaleMarker()
+  watchLauncher()
   let lifecycleSubscriber: PlanLifecycleSubscriber | undefined
   let planRoundSubscriber: PlanRoundSubscriber | undefined
   if (/^postgres(ql)?:\/\//.test(DATABASE_URL)) {

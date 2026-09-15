@@ -115,6 +115,24 @@
 
 ---
 
+## 类别 G: 记忆治理（Agent Memory，8 个）
+
+> 本类别词汇**不进**下半部分触发词映射（loadTriggers 仅加载类别 A-F）——
+> 回忆意图是低频补充入口（Plan §9.1），由 prompt-router 内置正则检测，不承担主流程召回。
+
+| 触发词 | LLM 含义 | 优先级 |
+|--------|---------|--------|
+| `propose_memory` / `提记忆` / `记住这个` | MCP 工具：提出 CANDIDATE 候选（绝不直接 ACTIVE），自动去重/密钥扫描/冲突检测 | 🟡 P1 |
+| `recall_memory` / `召回记忆` | MCP 工具：受约束混合召回，返回含 whySelected/scoreBreakdown 的结构化结果 + recallId | 🔴 P0 |
+| `之前` / `上次` / `还记得` / `历史决策` / `类似问题` | 显式回忆意图（补充入口）：建议调用 `recall_memory({ query, stage: "prompt" })` | 🟡 P1 |
+| `review_memory` / `审核记忆` | MCP 工具：查看治理队列（CANDIDATE/PENDING + 证据 + 冲突） | 🟡 P1 |
+| `resolve_memory` / `批准记忆` / `归档记忆` | MCP 工具：状态机迁移（submit_review/approve/reject/stale/supersede/archive/restore） | 🟡 P1 |
+| `ADD_MEMORY_RECALL_MODE` | 发布开关三态：off（全关）/ shadow（召回落审计不注入，默认）/ inject（L1 快照注入） | 🟡 P1 |
+| `consolidation` / `记忆固化` | 异步任务：采证落库 + 去重/冲突队列 + 指标候选 + L1 快照刷新（`scripts/memory/memory-jobs.ts consolidate`） | 🟢 P2 |
+| `L1` / `L2 召回` | 分层注入：L1=session-start repository 级小上下文（预计算快照）；L2=任务级按需召回 | 🟡 P1 |
+
+---
+
 ## Few-Shot 示例
 
 > 以下为 LLM 最容易误解的高频场景，每个场景给出标准输入 → 标准输出映射。

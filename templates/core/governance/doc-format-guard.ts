@@ -11,22 +11,8 @@ import { spawnSync } from "node:child_process"
 import { detectActiveAdd, localIsoSeconds } from "./common.js"
 import { writeHookEvent } from "./notify.js"
 import { doc } from "./rules.js"
-
-interface SchemaSection {
-  id?: string
-  heading?: string
-  required?: boolean
-  anchor?: string
-  within?: string
-  subsections?: Array<{ heading?: string }>
-}
-
-interface SchemaFile {
-  sections: SchemaSection[]
-  placeholders?: string[]
-  forbidden_terms?: string[]
-  groupColumn?: number | string
-}
+// 校验逻辑真源：core 校验层（Plan core-validation-lifecycle 轮 3——守卫不再内联实现）
+import { validateAgainstSchema, type SchemaFile } from "../validation/schema-validator.js"
 
 /** token 规则条目（rules.doc.token_rules 结构） */
 interface TokenRule {
@@ -161,104 +147,35 @@ export class DocFormatGuard {
 
   /** 章节/锚定/占位符/禁词校验，返回 struct 统计 */
   private runSchemaChecks(schema: SchemaFile, templateName: string, content: string, isSearchReplace: boolean): { applied: number; missed: number; anchorHit: boolean } {
-    const templatesDir = join(this.projectDir, this.magicDir, "templates")
-    let applied = 0
-    let missed = 0
-    let anchorHit = true
+    // ★ 校验真源 = core 校验层（Plan core-validation-lifecycle 轮 3：删除内联实现）
+    //   SearchReplace 只传 patch → 标题/锚定类规则不适用，仅保留占位符与结构位禁词
+    const templatePath = join(this.projectDir, this.magicDir, "templates", templateName)
+    const templateContent = existsSync(templatePath) ? readFileSync(templatePath, "utf-8") : ""
+    const all = validateAgainstSchema(content, schema, { templateContent })
+    const relevant = isSearchReplace
+      ? all.filter((i) => i.code === "PLACEHOLDER_LEFT" || i.code === "FORBIDDEN_TERM")
+      : all
 
-    const headings = schema.sections.filter((s) => s.heading).map((s) => s.heading as string)
-    const requiredHeadings = schema.sections.filter((s) => s.required === true && s.heading).map((s) => s.heading as string)
-    const subs = schema.sections.flatMap((s) => s.subsections ?? []).filter((s) => s.heading).map((s) => s.heading as string)
-    const placeholders = schema.placeholders ?? []
-    const terms = schema.forbidden_terms ?? []
+    for (const i of relevant) this.issues.push(`  ${i.detail}`)
 
-    if (!isSearchReplace) {
-      // 锚定校验
-      for (const section of schema.sections) {
-        if (!section.anchor) continue
-        applied++
-        const templateContent = existsSync(join(templatesDir, templateName))
-          ? readFileSync(join(templatesDir, templateName), "utf-8")
-          : ""
-        const refLine = templateContent.split("\n").find((l) => l.includes(section.anchor as string))
-        if (!refLine) {
-          process.stderr.write(`[doc-format-guard] anchor_miss: schema ${section.id} 声明的 anchor '${section.anchor}' 在 ${templateName} 中未定位，跳过该规则（冒烟巡检兑底）\n`)
-          applied--
-          continue
-        }
-        const tokens = [...new Set(refLine.replace(/[#*`|(){]/g, " ").split(/\s+/).filter((t) => t !== "" && !t.includes("{")))]
-        if (tokens.length === 0) {
-          applied--
-          continue
-        }
-        let scope = content
-        if (section.within) {
-          if (content.includes(section.within)) {
-            const startIdx = content.indexOf(section.within)
-            const endIdx = content.indexOf("\n## ", startIdx + 1)
-            scope = content.slice(startIdx, endIdx === -1 ? undefined : endIdx)
-          } else {
-            process.stderr.write(`[doc-format-guard] within_miss: schema ${section.id} 的 within '${section.within}' 在文档中未定位，跳过该规则\n`)
-            applied--
-            continue
-          }
-        }
-        const missTokens = tokens.filter((tok) => !scope.includes(tok))
-        if (missTokens.length > 0) {
-          this.issues.push(`  缺锚点(${section.id}): ${missTokens.join(" ")}`)
-          missed++
-          anchorHit = false
-        }
-      }
-
-      // 必选章节
-      for (const heading of requiredHeadings) {
-        applied++
-        if (!content.includes(heading)) {
-          this.issues.push(`  缺章节: ${heading}`)
-          missed++
-        }
-      }
-      // 子章节
-      for (const sub of subs) {
-        applied++
-        if (!content.includes(sub)) {
-          this.issues.push(`  缺子章节: ${sub}`)
-          missed++
-        }
-      }
+    const missed = relevant.length
+    const declared = this.countDeclaredRules(schema, isSearchReplace)
+    return {
+      applied: Math.max(missed, declared),
+      missed,
+      anchorHit: !relevant.some((i) => i.code === "ANCHOR_MISS"),
     }
+  }
 
-    // 占位符
-    for (const ph of placeholders) {
-      if (content.includes(ph)) {
-        this.issues.push(`  未替换占位符: ${ph}`)
-        missed++
-      }
-    }
-
-    // 结构位禁词（标题行 + groupColumn）
-    let structText = (content.match(/^#{2,}\s.*$/gm) ?? []).join("\n")
-    const col = typeof schema.groupColumn === "number" ? schema.groupColumn : Number(schema.groupColumn)
-    if (!Number.isNaN(col) && col > 0) {
-      const colLines = content
-        .split("\n")
-        .map((l) => {
-          const cells = l.split("|")
-          return cells.length > col ? (cells[col + 1] ?? "").trim() : ""
-        })
-        .filter(Boolean)
-      structText += "\n" + colLines.join("\n")
-    }
-    for (const term of terms) {
-      applied++
-      if (structText.includes(term)) {
-        this.issues.push(`  结构位禁词: ${term}`)
-        missed++
-      }
-    }
-
-    return { applied, missed, anchorHit }
+  /** 已声明规则数（用于 struct_score 分母；口径与原内联实现一致：按规则条数计） */
+  private countDeclaredRules(schema: SchemaFile, isSearchReplace: boolean): number {
+    const placeholders = (schema.placeholders ?? []).length
+    const terms = (schema.forbidden_terms ?? []).length
+    if (isSearchReplace) return placeholders + terms
+    const anchors = schema.sections.filter((s) => s.anchor).length
+    const required = schema.sections.filter((s) => s.required === true && s.heading).length
+    const subs = schema.sections.flatMap((s) => s.subsections ?? []).filter((s) => s.heading).length
+    return anchors + required + subs + placeholders + terms
   }
 
   /** 算法化规则校验（真源: [doc.anti_cheat] + HITL 表非空 + handoff 冲突）

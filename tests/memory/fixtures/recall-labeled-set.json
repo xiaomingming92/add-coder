@@ -1,0 +1,909 @@
+{
+  "version": "v1",
+  "description": "Agent Memory 召回标注集（Plan §12.1）：覆盖 decision/constraint/pitfall/failure/convention/lesson/fact + CJK + 多 scope + supersession + 越界/过期/候选泄漏探针",
+  "repositories": [
+    "eval-repo",
+    "other-repo"
+  ],
+  "memories": [
+    {
+      "id": "m01",
+      "kind": "LESSON",
+      "status": "ACTIVE",
+      "topic": "迁移教训",
+      "content": "涉及 Prisma migration 的多个 Plan 在 SQLite/PostgreSQL 行为差异处重复失败；提交前执行双后端 migration smoke test 可避免该类 RAHS 失败。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.9,
+      "confidence": 0.85
+    },
+    {
+      "id": "m02",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "迁移文档先行",
+      "content": "任何 prisma schema 变更必须先更新文档再改代码（ADD-0.1 文档先行）。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.9,
+      "confidence": 0.95
+    },
+    {
+      "id": "m03",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "迁移回滚演练",
+      "content": "新增 migration 必须在 shadow 库完成回滚演练后才可合入主干。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.9
+    },
+    {
+      "id": "m04",
+      "kind": "DECISION",
+      "status": "ACTIVE",
+      "topic": "Atlas 选型",
+      "content": "迁移引擎从 prisma migrate dev 切换为 Atlas 版本化迁移，baseline 不接管历史。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.8,
+      "confidence": 0.9
+    },
+    {
+      "id": "m05",
+      "kind": "PITFALL",
+      "status": "ACTIVE",
+      "topic": "Atlas 格式陷阱",
+      "content": "Atlas 默认扁平文件格式与 Prisma 子目录迁移格式不兼容，必须使用独立目录加 baseline。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.75,
+      "confidence": 0.85
+    },
+    {
+      "id": "m06",
+      "kind": "CONVENTION",
+      "status": "ACTIVE",
+      "topic": "端口契约",
+      "content": "新增端口必须先查 ports.md 登记表；add-coder 主库 5434，shadow 库 5437。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.8,
+      "confidence": 0.95
+    },
+    {
+      "id": "m07",
+      "kind": "FACT",
+      "status": "ACTIVE",
+      "topic": "邻居端口",
+      "content": "5433 与 5435 端口属于邻居项目 farm-agent 与外部服务，禁止占用。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.7,
+      "confidence": 0.95
+    },
+    {
+      "id": "m08",
+      "kind": "DECISION",
+      "status": "ACTIVE",
+      "topic": "HITL 审批",
+      "content": "Plan 与 Review 必须经 HITL 审批（TONGYI）后才可展开实施。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.9
+    },
+    {
+      "id": "m09",
+      "kind": "LESSON",
+      "status": "ACTIVE",
+      "topic": "弹框降级",
+      "content": "客户端不支持弹框时 create_hitl 返回 input_required，需要加 _fallback 参数重试。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.6,
+      "confidence": 0.8
+    },
+    {
+      "id": "m10",
+      "kind": "FACT",
+      "status": "ACTIVE",
+      "topic": "DPS 阈值",
+      "content": "DPS 大于等于 80 才能进入 Step 1；65 到 79 回退补齐短板；低于 65 重做 Plan。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.95
+    },
+    {
+      "id": "m11",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "RAHS 收敛线",
+      "content": "RAHS 大于等于 90 才允许收敛；低于 70 判定注意力漂移严重，强制返工 Step 3。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.9
+    },
+    {
+      "id": "m12",
+      "kind": "PITFALL",
+      "status": "ACTIVE",
+      "topic": "Deng 熵措辞",
+      "content": "Plan 中的不确定措辞（可能、待定、后续、TBD）会触发 Deng 熵惩罚，拉低 DPS 信息熵维度得分。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.65,
+      "confidence": 0.8
+    },
+    {
+      "id": "m13",
+      "kind": "FACT",
+      "status": "ACTIVE",
+      "topic": "FTS5 trigram",
+      "content": "node:sqlite 内置 FTS5 trigram 分词器，中文按三元组匹配，无需外部分词依赖。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.7,
+      "confidence": 0.9
+    },
+    {
+      "id": "m14",
+      "kind": "PITFALL",
+      "status": "ACTIVE",
+      "topic": "trigram 短查询限制",
+      "content": "trigram 分词器对少于 3 个字符的查询不命中，检索层需要 LIKE 兜底。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.65,
+      "confidence": 0.85
+    },
+    {
+      "id": "m15",
+      "kind": "LESSON",
+      "status": "ACTIVE",
+      "topic": "SQLite 枚举限制",
+      "content": "Prisma 不支持 SQLite 枚举，SQLite 目标库中枚举以 TEXT 存储，由应用层校验取值。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.7,
+      "confidence": 0.9
+    },
+    {
+      "id": "m16",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "Hook 性能预算",
+      "content": "同步 Hook 的记忆路径预算 200ms，embedding 与 consolidation 必须走异步队列。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.9
+    },
+    {
+      "id": "m17",
+      "kind": "PITFALL",
+      "status": "ACTIVE",
+      "topic": "Hook 死锁防护",
+      "content": "记忆子系统故障必须 fail-open，不得导致普通文件写入或 Gate 死锁。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.8,
+      "confidence": 0.9
+    },
+    {
+      "id": "m18",
+      "kind": "DECISION",
+      "status": "ACTIVE",
+      "topic": "L1/L2 分层注入",
+      "content": "session-init 只注入小型 L1 上下文，任务相关 L2 由 recall_memory 按需获得。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.75,
+      "confidence": 0.85
+    },
+    {
+      "id": "m19",
+      "kind": "CONVENTION",
+      "status": "ACTIVE",
+      "topic": "审计三通道",
+      "content": "审计输出必须覆盖 console、file、AuditLog 表三个通道（ADD-4）。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.8,
+      "confidence": 0.95
+    },
+    {
+      "id": "m20",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "失败路径审计",
+      "content": "catch 块审计信息密度不得低于成功路径（ADD-6），必须包含 durationMs 与 stack 前 4 帧。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.9
+    },
+    {
+      "id": "m21",
+      "kind": "DECISION",
+      "status": "ACTIVE",
+      "topic": "可信度先于相似度",
+      "content": "生命周期过滤优先于向量相似度排序，旧决策不得因高相似度被误召回。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.9,
+      "confidence": 0.9,
+      "supersedes": [
+        "m27"
+      ]
+    },
+    {
+      "id": "m22",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "受控成忆",
+      "content": "Hook 自动采证只能创建 Evidence 与 Candidate，任何自动路径不得直接创建 ACTIVE 记忆。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.95,
+      "confidence": 0.95
+    },
+    {
+      "id": "m23",
+      "kind": "FACT",
+      "status": "ACTIVE",
+      "topic": "RRF 融合公式",
+      "content": "候选融合采用 RRF(d) 等于各通道 1/(k+rank) 之和，k 默认 60，配置化并写入 rankingVersion。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.6,
+      "confidence": 0.85
+    },
+    {
+      "id": "m24",
+      "kind": "PATTERN",
+      "status": "ACTIVE",
+      "topic": "降级矩阵",
+      "content": "向量或 embedding 故障（pgvector、sqlite-vec、provider 离线）时降级为 FTS-only，不阻塞 ADD Gate。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.9
+    },
+    {
+      "id": "m25",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "密钥扫描",
+      "content": "Evidence 写入前必须执行密钥与凭证正则扫描，命中即拒写并告警。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.95,
+      "confidence": 0.95
+    },
+    {
+      "id": "m26",
+      "kind": "PITFALL",
+      "status": "ACTIVE",
+      "topic": "注入风险",
+      "content": "恶意 Evidence 中的 prompt injection 文本只作为引用数据呈现，不获得指令权限。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.9
+    },
+    {
+      "id": "m27",
+      "kind": "LESSON",
+      "status": "SUPERSEDED",
+      "topic": "旧版召回策略",
+      "content": "召回按向量相似度排序即可，无需生命周期过滤（已被 m21 替代）。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.5,
+      "confidence": 0.5,
+      "supersededById": "m21"
+    },
+    {
+      "id": "m28",
+      "kind": "LESSON",
+      "status": "REJECTED",
+      "topic": "错误经验",
+      "content": "可以直接跳过 Evidence 审核激活所有候选记忆（审核驳回：违反受控成忆）。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.3,
+      "confidence": 0.2
+    },
+    {
+      "id": "m29",
+      "kind": "FACT",
+      "status": "ARCHIVED",
+      "topic": "历史向量服务",
+      "content": "早期版本曾考虑使用 Chroma 作为独立向量服务（已归档废弃）。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.3,
+      "confidence": 0.6
+    },
+    {
+      "id": "m30",
+      "kind": "LESSON",
+      "status": "ACTIVE",
+      "topic": "邻居仓库迁移教训",
+      "content": "涉及 Prisma migration 的多个 Plan 在双后端行为差异处重复失败（其他仓库的同名经验）。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "other-repo",
+      "repositoryRef": "other-repo",
+      "importance": 0.9,
+      "confidence": 0.85
+    },
+    {
+      "id": "m31",
+      "kind": "LESSON",
+      "status": "CANDIDATE",
+      "topic": "未审核候选",
+      "content": "听说 migration 可以不用测试直接上线（未经审核的候选）。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.4,
+      "confidence": 0.3
+    },
+    {
+      "id": "m32",
+      "kind": "FACT",
+      "status": "ACTIVE",
+      "topic": "临时维护窗口",
+      "content": "本周五凌晨服务器维护窗口，暂停部署（已过期）。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.5,
+      "confidence": 0.9,
+      "validUntil": "2026-08-01T00:00:00.000Z"
+    },
+    {
+      "id": "m33",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "memory 模块鉴权",
+      "content": "memory 模块内所有查询必须先完成 repository 鉴权再检索，越权一律拒绝。",
+      "scopeType": "MODULE",
+      "scopeValue": "src/memory",
+      "repositoryRef": "eval-repo",
+      "importance": 0.9,
+      "confidence": 0.9
+    },
+    {
+      "id": "m34",
+      "kind": "LESSON",
+      "status": "ACTIVE",
+      "topic": "shadow 库用途",
+      "content": "Atlas 的 dev-url 使用常驻 shadow 空库做 diff 基准，避免每次起临时容器。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.6,
+      "confidence": 0.85
+    },
+    {
+      "id": "m35",
+      "kind": "FACT",
+      "status": "ACTIVE",
+      "topic": "主库端口",
+      "content": "add-coder 主库 PostgreSQL 端口 5434，shadow 端口 5437。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.65,
+      "confidence": 0.95
+    },
+    {
+      "id": "m36",
+      "kind": "DECISION",
+      "status": "ACTIVE",
+      "topic": "审计即业务",
+      "content": "审计数据即业务数据（ADD-5），Recall 落库表结构化保存候选与选择，支持事后重放。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.8,
+      "confidence": 0.9
+    },
+    {
+      "id": "m37",
+      "kind": "LESSON",
+      "status": "ACTIVE",
+      "topic": "迁移锁竞争",
+      "content": "db-ensure 使用 PostgreSQL advisory lock 防止多 IDE 并发执行迁移。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.55,
+      "confidence": 0.8
+    },
+    {
+      "id": "m38",
+      "kind": "FACT",
+      "status": "ACTIVE",
+      "topic": "语义模型缓存",
+      "content": "语义评测模型 bge-small-zh 缓存于用户级 huggingface hub 目录。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.4,
+      "confidence": 0.9
+    },
+    {
+      "id": "m39",
+      "kind": "CONVENTION",
+      "status": "ACTIVE",
+      "topic": "Plan 命名规范",
+      "content": "Plan 文件命名为 项目名-功能名-plan-vN.md，按年月日目录归档到 plans 目录。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.6,
+      "confidence": 0.9
+    },
+    {
+      "id": "m40",
+      "kind": "FACT",
+      "status": "ACTIVE",
+      "topic": "门禁工具清单",
+      "content": "MCP 治理面包含 check_dps、check_rahs、check_spec_sync、check_add_route_status 等门禁工具。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.65,
+      "confidence": 0.9
+    },
+    {
+      "id": "m41",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "采证幂等",
+      "content": "Hook 事件必须使用稳定幂等键，重放相同事件不得产生重复 Evidence 或 Candidate。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.9
+    },
+    {
+      "id": "m42",
+      "kind": "FACT",
+      "status": "ACTIVE",
+      "topic": "合规清除",
+      "content": "合规物理删除后，记忆正文、FTS 索引、向量与缓存数据均不可再召回。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.8,
+      "confidence": 0.9
+    },
+    {
+      "id": "m43",
+      "kind": "CONSTRAINT",
+      "status": "ACTIVE",
+      "topic": "预算裁剪",
+      "content": "召回注入必须遵守 maxTokens 预算，超预算时返回被排除项及原因，不静默截断强制约束。",
+      "scopeType": "REPOSITORY",
+      "scopeValue": "eval-repo",
+      "repositoryRef": "eval-repo",
+      "importance": 0.85,
+      "confidence": 0.9
+    }
+  ],
+  "queries": [
+    {
+      "q": "迁移前要注意什么",
+      "relevant": [
+        "m01",
+        "m03"
+      ],
+      "mandatory": [
+        "m03"
+      ]
+    },
+    {
+      "q": "prisma schema 变更流程",
+      "relevant": [
+        "m02"
+      ]
+    },
+    {
+      "q": "migration 为什么反复失败",
+      "relevant": [
+        "m01"
+      ]
+    },
+    {
+      "q": "回滚演练怎么做",
+      "relevant": [
+        "m03"
+      ]
+    },
+    {
+      "q": "Atlas 和 prisma migrate 的区别",
+      "relevant": [
+        "m04",
+        "m05"
+      ]
+    },
+    {
+      "q": "atlas 目录格式不兼容问题",
+      "relevant": [
+        "m05"
+      ]
+    },
+    {
+      "q": "双后端 smoke test 有必要吗",
+      "relevant": [
+        "m01"
+      ]
+    },
+    {
+      "q": "shadow 库是干什么的",
+      "relevant": [
+        "m34"
+      ]
+    },
+    {
+      "q": "并发迁移会不会冲突",
+      "relevant": [
+        "m37"
+      ]
+    },
+    {
+      "q": "新端口怎么申请",
+      "relevant": [
+        "m06"
+      ]
+    },
+    {
+      "q": "5433 端口能不能用",
+      "relevant": [
+        "m07"
+      ]
+    },
+    {
+      "q": "shadow 端口是多少",
+      "relevant": [
+        "m35",
+        "m06"
+      ]
+    },
+    {
+      "q": "端口冲突找哪个文档",
+      "relevant": [
+        "m06"
+      ]
+    },
+    {
+      "q": "Plan 审批流程是什么",
+      "relevant": [
+        "m08"
+      ]
+    },
+    {
+      "q": "create_hitl 弹框没反应怎么办",
+      "relevant": [
+        "m09"
+      ]
+    },
+    {
+      "q": "TONGYI 审批是什么意思",
+      "relevant": [
+        "m08"
+      ]
+    },
+    {
+      "q": "DPS 多少分算通过",
+      "relevant": [
+        "m10"
+      ]
+    },
+    {
+      "q": "RAHS 收敛标准",
+      "relevant": [
+        "m11"
+      ],
+      "mandatory": [
+        "m11"
+      ]
+    },
+    {
+      "q": "为什么 Plan 里写待定会被扣分",
+      "relevant": [
+        "m12"
+      ]
+    },
+    {
+      "q": "信息熵惩罚是什么",
+      "relevant": [
+        "m12"
+      ]
+    },
+    {
+      "q": "check_dps 是干什么的",
+      "relevant": [
+        "m40"
+      ]
+    },
+    {
+      "q": "SQLite 全文检索怎么做",
+      "relevant": [
+        "m13"
+      ]
+    },
+    {
+      "q": "trigram 短查询不命中怎么处理",
+      "relevant": [
+        "m14"
+      ]
+    },
+    {
+      "q": "Prisma 在 SQLite 上支持枚举吗",
+      "relevant": [
+        "m15"
+      ]
+    },
+    {
+      "q": "中文搜索不到结果的原因",
+      "relevant": [
+        "m13",
+        "m14"
+      ]
+    },
+    {
+      "q": "Hook 延迟预算是多少",
+      "relevant": [
+        "m16"
+      ],
+      "mandatory": [
+        "m16"
+      ]
+    },
+    {
+      "q": "记忆系统挂了会不会卡死开发流程",
+      "relevant": [
+        "m17"
+      ]
+    },
+    {
+      "q": "session 启动时注入多少上下文",
+      "relevant": [
+        "m18"
+      ]
+    },
+    {
+      "q": "embedding 为什么不能同步执行",
+      "relevant": [
+        "m16"
+      ]
+    },
+    {
+      "q": "审计日志输出到哪些通道",
+      "relevant": [
+        "m19"
+      ]
+    },
+    {
+      "q": "catch 块的审计有什么要求",
+      "relevant": [
+        "m20"
+      ],
+      "mandatory": [
+        "m20"
+      ]
+    },
+    {
+      "q": "ADD-5 是什么原则",
+      "relevant": [
+        "m36"
+      ]
+    },
+    {
+      "q": "为什么旧决策不应该被召回",
+      "relevant": [
+        "m21"
+      ]
+    },
+    {
+      "q": "Hook 能直接激活记忆吗",
+      "relevant": [
+        "m22"
+      ],
+      "mandatory": [
+        "m22"
+      ]
+    },
+    {
+      "q": "RRF 融合公式是什么",
+      "relevant": [
+        "m23"
+      ]
+    },
+    {
+      "q": "向量服务挂了怎么办",
+      "relevant": [
+        "m24"
+      ]
+    },
+    {
+      "q": "pgvector 不可用会影响 Gate 吗",
+      "relevant": [
+        "m24"
+      ]
+    },
+    {
+      "q": "Evidence 里包含密钥怎么处理",
+      "relevant": [
+        "m25"
+      ],
+      "mandatory": [
+        "m25"
+      ]
+    },
+    {
+      "q": "恶意 prompt injection 怎么防",
+      "relevant": [
+        "m26"
+      ]
+    },
+    {
+      "q": "向量相似度排序就够了吗",
+      "relevant": [
+        "m21"
+      ],
+      "leakProbe": [
+        "m27"
+      ]
+    },
+    {
+      "q": "跳过审核直接激活记忆",
+      "relevant": [],
+      "leakProbe": [
+        "m28"
+      ]
+    },
+    {
+      "q": "Chroma 向量服务怎么用",
+      "relevant": [],
+      "leakProbe": [
+        "m29"
+      ]
+    },
+    {
+      "q": "其他仓库的迁移经验",
+      "relevant": [],
+      "leakProbe": [
+        "m30"
+      ]
+    },
+    {
+      "q": "服务器维护窗口是什么时候",
+      "relevant": [],
+      "leakProbe": [
+        "m32"
+      ]
+    },
+    {
+      "q": "没审核过的候选记忆能用吗",
+      "relevant": [],
+      "leakProbe": [
+        "m31"
+      ]
+    },
+    {
+      "q": "memory 模块的鉴权约束",
+      "relevant": [
+        "m33"
+      ],
+      "paths": [
+        "src/memory/retrieval/pipeline.ts"
+      ],
+      "mandatory": [
+        "m33"
+      ]
+    },
+    {
+      "q": "鉴权约束有哪些",
+      "relevant": [],
+      "paths": [
+        "src/other/main.ts"
+      ],
+      "scopeViolationProbe": [
+        "m33"
+      ]
+    },
+    {
+      "q": "文档先行是什么意思",
+      "relevant": [
+        "m02"
+      ]
+    },
+    {
+      "q": "知识治理的召回原则",
+      "relevant": [
+        "m21"
+      ]
+    },
+    {
+      "q": "可信度和相似度哪个优先",
+      "relevant": [
+        "m21"
+      ]
+    },
+    {
+      "q": "Hook 重放会不会产生重复记录",
+      "relevant": [
+        "m41"
+      ],
+      "mandatory": [
+        "m41"
+      ]
+    },
+    {
+      "q": "数据删除后还能搜到吗",
+      "relevant": [
+        "m42"
+      ]
+    },
+    {
+      "q": "token 预算超了怎么办",
+      "relevant": [
+        "m43"
+      ],
+      "mandatory": [
+        "m43"
+      ]
+    },
+    {
+      "q": "为什么记忆需要人工审核",
+      "relevant": [
+        "m22"
+      ]
+    },
+    {
+      "q": "Plan 文件怎么命名归档",
+      "relevant": [
+        "m39"
+      ]
+    }
+  ]
+}

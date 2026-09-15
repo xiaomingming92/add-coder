@@ -132,6 +132,15 @@ describe("HITL core widget + Codex MCP Apps", () => {
         { name: "UI 协议", content: "MCP Apps" },
       ],
     })
+    /*
+     * 渲染入口必须在**结果**上也带 _meta（2026-09-14 修复"widget 不显示"）：
+     * 客户端读 result._meta["openai/outputTemplate"] / ui.resourceUri 才知道挂哪个 widget；
+     * 只挂声明不挂结果 → 客户端只显示 JSON（此前线上表现）。
+     */
+    expect(result._meta).toMatchObject({
+      ui: { resourceUri: "ui://add-coder/hitl-approval" },
+      "openai/outputTemplate": "ui://add-coder/hitl-approval",
+    })
     expect(prismaMock.hitlRecord.findMany).toHaveBeenCalledTimes(1)
   })
 

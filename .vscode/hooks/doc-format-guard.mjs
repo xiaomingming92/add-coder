@@ -500,6 +500,156 @@ function writeHookEvent(hook, decision, cmd, reason, plan = "unknown", status = 
   appendFileSync(file, line);
 }
 
+// templates/core/validation/schema-validator.ts
+function countOccurrences(haystack, needle) {
+  if (!needle) return 0;
+  const h = normalizeWidth(haystack);
+  const n = normalizeWidth(needle);
+  let count = 0;
+  let idx = h.indexOf(n);
+  while (idx !== -1) {
+    count++;
+    idx = h.indexOf(n, idx + n.length);
+  }
+  return count;
+}
+var FULLWIDTH_START = 65281;
+var FULLWIDTH_END = 65374;
+var FULLWIDTH_TO_HALF = 65248;
+var WIDTH_FOLD_EXTRA = { "\u3000": " " };
+function normalizeWidth(text) {
+  let out = "";
+  for (const ch of text) {
+    const code = ch.codePointAt(0);
+    if (code >= FULLWIDTH_START && code <= FULLWIDTH_END) {
+      out += String.fromCharCode(code - FULLWIDTH_TO_HALF);
+    } else {
+      out += WIDTH_FOLD_EXTRA[ch] ?? ch;
+    }
+  }
+  return out;
+}
+function stripFencedBlocks(content) {
+  return content.replace(/```[\s\S]*?```/g, "\n");
+}
+function structText(content, groupColumn) {
+  let text = (content.match(/^#{2,}\s.*$/gm) ?? []).join("\n");
+  const col = typeof groupColumn === "number" ? groupColumn : Number(groupColumn);
+  if (Number.isFinite(col) && col > 0) {
+    const cells = content.split("\n").map((line) => {
+      const cells2 = line.split("|");
+      return cells2.length > col ? (cells2[col + 1] ?? "").trim() : "";
+    }).filter(Boolean);
+    text += "\n" + cells.join("\n");
+  }
+  return text;
+}
+function validateAnchors(content, schema, templateContent) {
+  const issues = [];
+  const nContent = normalizeWidth(content);
+  for (const section of schema.sections) {
+    if (!section.anchor) continue;
+    const refAnchor = normalizeWidth(section.anchor);
+    const refLine = templateContent.split("\n").find((l) => normalizeWidth(l).includes(refAnchor));
+    if (!refLine) continue;
+    const tokens = [
+      ...new Set(
+        normalizeWidth(refLine).replace(/[#*`|(){]/g, " ").split(/\s+/).filter((t) => t !== "" && !t.includes("{"))
+      )
+    ];
+    if (tokens.length === 0) continue;
+    let scope = nContent;
+    if (section.within) {
+      const startIdx = nContent.indexOf(normalizeWidth(section.within));
+      if (startIdx < 0) continue;
+      const endIdx = nContent.indexOf("\n## ", startIdx + 1);
+      scope = nContent.slice(startIdx, endIdx === -1 ? void 0 : endIdx);
+    }
+    const missTokens = tokens.filter((tok) => !scope.includes(tok));
+    if (missTokens.length > 0) {
+      issues.push({
+        code: "ANCHOR_MISS",
+        detail: `\u7F3A\u951A\u70B9(${section.id}): ${missTokens.join(" ")}`,
+        expected: section.anchor
+      });
+    }
+  }
+  return issues;
+}
+function inferRoundHeading(schema) {
+  const round = schema.sections.find((s) => s.heading?.includes("<\u7B2CN\u8F6E>"));
+  return round?.heading ?? null;
+}
+function countRounds(content, roundHeading) {
+  const heading = normalizeWidth(roundHeading);
+  if (!heading.includes("<\u7B2CN\u8F6E>")) return 0;
+  const pattern = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("<\u7B2CN\u8F6E>", "\u7B2C\\s*\\d+\\s*\u8F6E");
+  const re = new RegExp(`^${pattern}`, "gm");
+  return (normalizeWidth(content).match(re) ?? []).length;
+}
+function validateAgainstSchema(content, schema, opts = {}) {
+  const issues = [];
+  const proseOnly = stripFencedBlocks(content);
+  const contentNormalized = normalizeWidth(content);
+  const roundHeading = opts.roundHeading ?? inferRoundHeading(schema);
+  for (const section of schema.sections) {
+    if (!section.heading) continue;
+    const isRoundSection = roundHeading !== null && section.heading === roundHeading;
+    if (isRoundSection) {
+      const need = opts.expectRounds ?? 1;
+      const found = countRounds(content, roundHeading);
+      if (found < need) {
+        issues.push({
+          code: "ROUND_COUNT_SHORT",
+          detail: `\u8F6E\u6B21\u7AE0\u8282\u4E0D\u8DB3\uFF1A\u671F\u671B ${need} \u8F6E\uFF0C\u5B9E\u9645 ${found} \u8F6E`,
+          expected: roundHeading
+        });
+      }
+      for (const sub of section.subsections ?? []) {
+        if (countOccurrences(content, sub.heading) < need) {
+          issues.push({
+            code: "MISSING_SUBSECTION",
+            detail: `\u8F6E\u6B21\u5B50\u7AE0\u8282\u7F3A\u5931\u6216\u4E0D\u8DB3\uFF08\u9700\u8981 ${need} \u4EFD\uFF09\uFF1A${sub.heading}`,
+            expected: sub.heading
+          });
+        }
+      }
+      continue;
+    }
+    if (section.required && countOccurrences(content, section.heading) === 0) {
+      issues.push({ code: "MISSING_SECTION", detail: `\u7F3A\u5C11\u5FC5\u9700\u7AE0\u8282\uFF1A${section.heading}`, expected: section.heading });
+    }
+    for (const sub of section.subsections ?? []) {
+      const need = isRoundSection ? opts.expectRounds ?? 1 : 1;
+      if (countOccurrences(content, sub.heading) < need) {
+        issues.push({
+          code: "MISSING_SUBSECTION",
+          detail: `\u5B50\u7AE0\u8282\u7F3A\u5931\u6216\u4E0D\u8DB3\uFF08\u9700\u8981 ${need} \u4EFD\uFF09\uFF1A${sub.heading}`,
+          expected: sub.heading
+        });
+      }
+    }
+  }
+  for (const ph of schema.placeholders ?? []) {
+    if (!ph) continue;
+    const nPh = normalizeWidth(ph);
+    const idx = contentNormalized.indexOf(nPh);
+    if (idx === -1) continue;
+    const hit = nPh === ph ? ph : `${content.slice(idx, idx + nPh.length)}\uFF08\u5BBD\u5EA6\u7B49\u4EF7\u4E8E ${ph}\uFF09`;
+    issues.push({ code: "PLACEHOLDER_LEFT", detail: `\u5360\u4F4D\u7B26\u672A\u66FF\u6362\uFF1A${hit}`, expected: ph });
+  }
+  const struct = normalizeWidth(structText(content, schema.groupColumn));
+  for (const term of schema.forbidden_terms ?? []) {
+    if (term && struct.includes(normalizeWidth(term))) {
+      issues.push({ code: "FORBIDDEN_TERM", detail: `\u7ED3\u6784\u4F4D\u7981\u8BCD\uFF1A${term}\uFF08\u4EC5\u6807\u9898\u884C\u4E0E\u6307\u5B9A\u5217\u5224\u5B9A\uFF09`, expected: term });
+    }
+  }
+  if (opts.templateContent) {
+    issues.push(...validateAnchors(content, schema, opts.templateContent));
+  }
+  return issues;
+}
+
 // templates/core/governance/doc-format-guard.ts
 function extractContent(input) {
   const ti = input.tool_input;
@@ -595,90 +745,28 @@ var DocFormatGuard = class {
   }
   /** 章节/锚定/占位符/禁词校验，返回 struct 统计 */
   runSchemaChecks(schema, templateName, content, isSearchReplace) {
-    const templatesDir = join3(this.projectDir, this.magicDir, "templates");
-    let applied = 0;
-    let missed = 0;
-    let anchorHit = true;
-    const headings = schema.sections.filter((s) => s.heading).map((s) => s.heading);
-    const requiredHeadings = schema.sections.filter((s) => s.required === true && s.heading).map((s) => s.heading);
-    const subs = schema.sections.flatMap((s) => s.subsections ?? []).filter((s) => s.heading).map((s) => s.heading);
-    const placeholders = schema.placeholders ?? [];
-    const terms = schema.forbidden_terms ?? [];
-    if (!isSearchReplace) {
-      for (const section of schema.sections) {
-        if (!section.anchor) continue;
-        applied++;
-        const templateContent = existsSync3(join3(templatesDir, templateName)) ? readFileSync2(join3(templatesDir, templateName), "utf-8") : "";
-        const refLine = templateContent.split("\n").find((l) => l.includes(section.anchor));
-        if (!refLine) {
-          process.stderr.write(`[doc-format-guard] anchor_miss: schema ${section.id} \u58F0\u660E\u7684 anchor '${section.anchor}' \u5728 ${templateName} \u4E2D\u672A\u5B9A\u4F4D\uFF0C\u8DF3\u8FC7\u8BE5\u89C4\u5219\uFF08\u5192\u70DF\u5DE1\u68C0\u5151\u5E95\uFF09
-`);
-          applied--;
-          continue;
-        }
-        const tokens = [...new Set(refLine.replace(/[#*`|(){]/g, " ").split(/\s+/).filter((t) => t !== "" && !t.includes("{")))];
-        if (tokens.length === 0) {
-          applied--;
-          continue;
-        }
-        let scope = content;
-        if (section.within) {
-          if (content.includes(section.within)) {
-            const startIdx = content.indexOf(section.within);
-            const endIdx = content.indexOf("\n## ", startIdx + 1);
-            scope = content.slice(startIdx, endIdx === -1 ? void 0 : endIdx);
-          } else {
-            process.stderr.write(`[doc-format-guard] within_miss: schema ${section.id} \u7684 within '${section.within}' \u5728\u6587\u6863\u4E2D\u672A\u5B9A\u4F4D\uFF0C\u8DF3\u8FC7\u8BE5\u89C4\u5219
-`);
-            applied--;
-            continue;
-          }
-        }
-        const missTokens = tokens.filter((tok) => !scope.includes(tok));
-        if (missTokens.length > 0) {
-          this.issues.push(`  \u7F3A\u951A\u70B9(${section.id}): ${missTokens.join(" ")}`);
-          missed++;
-          anchorHit = false;
-        }
-      }
-      for (const heading of requiredHeadings) {
-        applied++;
-        if (!content.includes(heading)) {
-          this.issues.push(`  \u7F3A\u7AE0\u8282: ${heading}`);
-          missed++;
-        }
-      }
-      for (const sub of subs) {
-        applied++;
-        if (!content.includes(sub)) {
-          this.issues.push(`  \u7F3A\u5B50\u7AE0\u8282: ${sub}`);
-          missed++;
-        }
-      }
-    }
-    for (const ph of placeholders) {
-      if (content.includes(ph)) {
-        this.issues.push(`  \u672A\u66FF\u6362\u5360\u4F4D\u7B26: ${ph}`);
-        missed++;
-      }
-    }
-    let structText = (content.match(/^#{2,}\s.*$/gm) ?? []).join("\n");
-    const col = typeof schema.groupColumn === "number" ? schema.groupColumn : Number(schema.groupColumn);
-    if (!Number.isNaN(col) && col > 0) {
-      const colLines = content.split("\n").map((l) => {
-        const cells = l.split("|");
-        return cells.length > col ? (cells[col + 1] ?? "").trim() : "";
-      }).filter(Boolean);
-      structText += "\n" + colLines.join("\n");
-    }
-    for (const term of terms) {
-      applied++;
-      if (structText.includes(term)) {
-        this.issues.push(`  \u7ED3\u6784\u4F4D\u7981\u8BCD: ${term}`);
-        missed++;
-      }
-    }
-    return { applied, missed, anchorHit };
+    const templatePath = join3(this.projectDir, this.magicDir, "templates", templateName);
+    const templateContent = existsSync3(templatePath) ? readFileSync2(templatePath, "utf-8") : "";
+    const all = validateAgainstSchema(content, schema, { templateContent });
+    const relevant = isSearchReplace ? all.filter((i) => i.code === "PLACEHOLDER_LEFT" || i.code === "FORBIDDEN_TERM") : all;
+    for (const i of relevant) this.issues.push(`  ${i.detail}`);
+    const missed = relevant.length;
+    const declared = this.countDeclaredRules(schema, isSearchReplace);
+    return {
+      applied: Math.max(missed, declared),
+      missed,
+      anchorHit: !relevant.some((i) => i.code === "ANCHOR_MISS")
+    };
+  }
+  /** 已声明规则数（用于 struct_score 分母；口径与原内联实现一致：按规则条数计） */
+  countDeclaredRules(schema, isSearchReplace) {
+    const placeholders = (schema.placeholders ?? []).length;
+    const terms = (schema.forbidden_terms ?? []).length;
+    if (isSearchReplace) return placeholders + terms;
+    const anchors = schema.sections.filter((s) => s.anchor).length;
+    const required = schema.sections.filter((s) => s.required === true && s.heading).length;
+    const subs = schema.sections.flatMap((s) => s.subsections ?? []).filter((s) => s.heading).length;
+    return anchors + required + subs + placeholders + terms;
   }
   /** 算法化规则校验（真源: [doc.anti_cheat] + HITL 表非空 + handoff 冲突）
    *  protected: adapter 子类可 override（如 claude 版无算法规则段） */

@@ -1,5 +1,5 @@
 import * as z from "zod/v4"
-import { inputRequired, acceptedContent } from "@modelcontextprotocol/server"
+import { inputRequired, acceptedContent, type ElicitInputParams } from "@modelcontextprotocol/server"
 import type { ToolRegistrar } from "./registrar.js"
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
 import { join, basename, relative } from "path"
@@ -7,6 +7,7 @@ import { textResponse, errorResponse } from "../shared/response.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import { prisma } from "../shared/prisma.js"
 import { HITL_INTERACTION_CONFIG } from "../shared/hitl-interaction.strategy.js"
+import { shouldSkipHitlCreateDialog } from "../shared/hitl-create-policy.js"
 import type { HitlRow } from "../shared/db-types.js"
 import { HitlRowSchema, validatedDelegate } from "../shared/db-types.js"
 import { getRuntimeContext } from "../shared/env.js"
@@ -18,11 +19,32 @@ import {
   createHitlProposalAndPublish,
   type HitlProposalDatabase,
 } from "../shared/hitl-proposal-mutation.js"
+import {
+  buildHitlProposalMarkdown,
+  applyHitlDecisionToProposal,
+} from "../shared/hitl-proposal-content.js"
 import { HITL_APPROVAL_WIDGET_URI } from "../shared/hitl-ui.js"
 
 // 无类型边界单点（zod 托管）：动态加载的 prisma client 在此一次性转为运行期校验的泛型委托
 const db = {
   get hitl() { return validatedDelegate<HitlRow>(prisma.hitlRecord, HitlRowSchema, "HitlRecord") },
+}
+
+/**
+ * 表单式 elicitation 的 `requestedSchema`（2026-09-14：替换 4 处 `as any`）。
+ *
+ * 为什么需要一个函数：属性表是**运行时按维度动态构造**的（`dim_0_content`/`dim_0_decision`…），
+ * 而 SDK 的 `ElicitInputParams["requestedSchema"]` 是静态 JSON Schema 形状 —— 字面量直接赋值
+ * 会因索引签名不匹配而报错。这里把**唯一的窄化点**收在一处，类型取自 SDK 而非 `any`。
+ */
+/** 表单里单个属性的形状（本仓库只用字符串型 + 可选枚举） */
+type ElicitFormProperty = { type: "string"; enum?: string[]; description?: string }
+
+function elicitFormSchema(
+  properties: Record<string, ElicitFormProperty>,
+  required: string[],
+): ElicitInputParams["requestedSchema"] {
+  return { type: "object", properties, required } as ElicitInputParams["requestedSchema"]
 }
 
 export function registerHitlTools(server: ToolRegistrar) {
@@ -123,9 +145,15 @@ export function registerHitlTools(server: ToolRegistrar) {
     filePath: string,
     status: HitlRow["status"],
     dimensions?: { name: string; content?: string }[],
+    reason?: string,
   ): void {
     let proposal = readFileSync(filePath, "utf-8")
-    proposal = proposal.replace(/(状态:\s*)[A-Z_]+/, `$1${status}`)
+    // 状态行 + 「审批结论」行（2026-09-14：原实现只改状态行，裁决结论不回写文档）
+    proposal = applyHitlDecisionToProposal(proposal, {
+      status,
+      at: new Date().toISOString(),
+      reason,
+    })
 
     if (dimensions?.length) {
       const byName = new Map(dimensions.map((d) => [d.name.trim(), d.content ?? ""]))
@@ -187,16 +215,60 @@ export function registerHitlTools(server: ToolRegistrar) {
       if (!dimensions.length) {
         return errorResponse(`HITL 提案缺少可渲染维度: ${proposalPath ?? planName}`)
       }
+      // 产物-进程新鲜度（覆盖全 adapter；判定不确定 → "unknown"，不误报"需重启"）
+      const { computeFreshness } = await import("../shared/runtime-freshness.js")
+      const { writeHitlInstanceHtml } = await import("../shared/hitl-widget-instance.js")
+      const stale = computeFreshness(MAGIC_DIR, PROJECT_ROOT)
+      // 确定性降级入口：markdown 提案 + 已落盘实例 HTML（无 UI 能力/进程陈旧时仍可完成审批）
+      const toRel = (abs: string): string => abs.replace(`${PROJECT_ROOT}/`, "")
+      const markdownPath = proposalPath ? toRel(proposalPath) : ""
+      let htmlPath = ""
+      try {
+        htmlPath = toRel(
+          writeHitlInstanceHtml({
+            projectRoot: PROJECT_ROOT,
+            magicDir: MAGIC_DIR,
+            planName,
+            type,
+            round: current.round,
+            status: current.status,
+            dimensions,
+          }).htmlPath,
+        )
+      } catch {
+        htmlPath = "" // 模板缺失等 → 仍保留 markdown 降级路径（fail-open）
+      }
       const output = {
         planName,
         type,
         round: current.round,
         status: current.status,
         dimensions,
+        stale,
+        // 服务端无法得知客户端是否真的渲染了 widget —— 如实标注 unknown，不谎报
+        ui: { resourceUri: HITL_APPROVAL_WIDGET_URI, rendered: "unknown" as const },
+        fallback: { markdownPath, htmlPath },
       }
+      const fallbackHint = markdownPath || htmlPath
+      const text =
+        stale.stale === true
+          ? `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。⚠️ 当前 server 进程早于产物更新（需重启）；widget 若未显示，降级入口：${fallbackHint}`
+          : `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。widget 若未显示，降级入口：${fallbackHint}`
       return {
-        content: [{ type: "text" as const, text: `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。请在 widget 中拍板。` }],
+        content: [{ type: "text" as const, text }],
         structuredContent: output,
+        /*
+         * 结果侧 `_meta`（Apps SDK 兼容补位，2026-09-14）：
+         * 宿主实际读的是**工具定义**的 `_meta.ui.resourceUri`（`tools/list` 时解析，
+         * 实测 `thread_items` 里已带 `mcpAppResourceUri`，而 `result._meta` 仍为 null 也照常绑定）；
+         * 这里补一份结果侧 `_meta` 不改变行为，只为兼容同时读结果位的客户端。
+         * 真正的渲染前提是：客户端 MCP Apps 能力开关（Codex: `/experimental` 的 enable_mcp_apps）
+         * + 资源 mimeType 为 `text/html;profile=mcp-app` + 资源存在 + dimensions 非空。
+         */
+        _meta: {
+          ui: { resourceUri: HITL_APPROVAL_WIDGET_URI },
+          "openai/outputTemplate": HITL_APPROVAL_WIDGET_URI,
+        },
       }
     } catch (e) {
       return errorResponse(`render_hitl_approval 失败: ${e instanceof Error ? e.message : String(e)}`)
@@ -208,9 +280,11 @@ export function registerHitlTools(server: ToolRegistrar) {
     description: "HITL 审批：创建提案。写入 HitlRecord（status=DRAFT，自动递增 round），并生成 hitl.md 提案文件供人工审核。\n" +
       "交互模式按安装环境自动裁决（caijuehub: hitl-interaction-rules.toml）：\n" +
       "- genui 模式环境（如 Qoder，客户端未声明 elicitation capability）：MUST 直接走 genui 流程——先用 genui show_widget 渲染逐项决策表单，用户拍板后以 _use_genui=true + 最终 dimensions 调用本工具。不带模式参数调用会返回 genui 引导而非弹框。\n" +
+      "- MCP Apps 模式环境（如 Codex）：MUST NOT 展开高维 inputRequired——创建阶段直接落 DRAFT，审批走 render_hitl_approval 打开的 core widget（其回调以 update_hitl(_use_widget=true) 落库）。不带模式参数时按环境自动走该路径；也可用 _mcp_apps=true 强制。\n" +
       "- 支持 elicitation 的客户端（2026-07-28+ 协议）：inputRequired 弹框，含逐项决策（LLM 传 dimensions）或简单弹框两种模式。\n" +
       "降级模式（_fallback=true）：genui 与弹框均不可用时兜底，跳过弹框直接以传入的 dimensions 创建，人工审核 hitl.md。\n" +
       "_use_genui=true：genui widget 回调后使用，跳过所有弹框，直接以传入的 dimensions 创建 DB+文件。\n" +
+      "_mcp_apps=true：强制 MCP Apps 流程（落 DRAFT 不弹框，审批走 core widget）。\n" +
       "planName 示例: add-coder-hitl-mcp-hook-plan-v1\n" +
       "type: PLAN=计划审批, PLAN_REVIEW=方案评审",
     inputSchema: z.object({
@@ -222,10 +296,11 @@ export function registerHitlTools(server: ToolRegistrar) {
       })).optional().describe("决策维度列表（LLM 根据对话生成）。不传则按模板默认 8 维度"),
       _fallback: z.boolean().optional().default(false).describe("降级模式：跳过 inputRequired，按原始代码行为直接创建 DB 记录+hitl.md"),
       _use_genui: z.boolean().optional().default(false).describe("genui 模式：genui widget 回调后使用，跳过所有弹框直接创建（dimensions 需传最终确认值）"),
+      _mcp_apps: z.boolean().optional().default(false).describe("Codex MCP Apps 强制模式：落 DRAFT 不弹 inputRequired，审批走 render_hitl_approval core widget（update_hitl(_use_widget=true)）"),
     }),
   }, async (args: Record<string, unknown>, ctx: Record<string, unknown>) => {
     try {
-      const { planName, type, dimensions, _fallback, _use_genui } = args as { planName: string; type: string; dimensions?: { name: string; content?: string }[]; _fallback?: boolean; _use_genui?: boolean }
+      const { planName, type, dimensions, _fallback, _use_genui, _mcp_apps } = args as { planName: string; type: string; dimensions?: { name: string; content?: string }[]; _fallback?: boolean; _use_genui?: boolean; _mcp_apps?: boolean }
 
       // ── planName 入口强校验（弱模型友好：不合规返回可照抄修正调用，而非让错误漂移） ──
       const _pnValid = /-(plan|collab-contract)-v\d+$/.test(planName)
@@ -243,13 +318,14 @@ export function registerHitlTools(server: ToolRegistrar) {
       // ── 最终维度内容（从弹框结果合并） ──
       let finalDims: { name: string; content: string }[] = []
 
-      // ── genui/降级模式：无弹框环节，直接采用传入的 dimensions（降级丢维度会退化成默认空模板） ──
-      if (_use_genui || _fallback) {
+      // ── genui/降级/mcpApps 模式：无弹框环节，直接采用传入的 dimensions（降级丢维度会退化成默认空模板） ──
+      const skipDialog = shouldSkipHitlCreateDialog(_interaction.mode, { fallback: _fallback, useGenui: _use_genui, mcpApps: _mcp_apps })
+      if (skipDialog) {
         finalDims = (dimensions || []).map(d => ({ name: d.name, content: d.content || "" }))
       }
 
       // ── 交互式确认（非降级模式且非 genui 模式） ──
-      if (!_fallback && !_use_genui) {
+      if (!skipDialog) {
         // 环境裁决：genui 模式下不发起注定失败的 elicitation，引导 LLM 走 widget 流程
         if (_interaction.mode === "genui") {
           const dimDesc = (dimensions || []).map((d, i) => `${i + 1}. ${d.name}: ${d.content || ""}`).join("\n")
@@ -266,7 +342,7 @@ export function registerHitlTools(server: ToolRegistrar) {
 
           if (!decResp) {
             // 首次调用 — 构建扁平逐项弹框
-            const props: Record<string, unknown> = {
+            const props: Record<string, ElicitFormProperty> = {
               globalAction: {
                 type: "string", enum: ["", "同意全部", "驳回全部"],
                 description: "同意全部=通过所有(含已调整行); 驳回全部=驳回提案; 留空=逐项"
@@ -290,7 +366,7 @@ export function registerHitlTools(server: ToolRegistrar) {
               inputRequests: {
                 confirm: inputRequired.elicit({
                   message: `确认创建 HITL 提案\n\nplan: ${planName}\ntype: ${type}\n\n共 ${dimensions.length} 个决策维度：\n${dimDesc}`,
-                  requestedSchema: { type: "object", properties: props, required: requiredKeys } as any
+                  requestedSchema: elicitFormSchema(props, requiredKeys),
                 })
               }
             })
@@ -322,7 +398,10 @@ export function registerHitlTools(server: ToolRegistrar) {
               inputRequests: {
                 confirm: inputRequired.elicit({
                   message: `确认创建 HITL 提案？\n\nplan: ${planName}\ntype: ${type}`,
-                  requestedSchema: { type: "object", properties: { action: { type: "string", enum: ["同意", "取消"], description: "同意=确认创建提案, 取消=取消操作" } }, required: ["action"] } as any
+                  requestedSchema: elicitFormSchema(
+                    { action: { type: "string", enum: ["同意", "取消"], description: "同意=确认创建提案, 取消=取消操作" } },
+                    ["action"],
+                  ),
                 })
               }
             })
@@ -361,34 +440,14 @@ export function registerHitlTools(server: ToolRegistrar) {
       // 生成 hitl.md
       const isoNow = now.toISOString()
 
-      // 动态生成维度表格行
-      const tableRows = finalDims.length > 0
-        ? finalDims.map((d, i) => `| ${i + 1} | ${d.name} | ${d.content} | 同意/驳回 |`).join("\n")
-        : [
-            "| 1 | 实施主体 | | 同意/驳回 |",
-            "| 2 | 数据模型 | | 同意/驳回 |",
-            "| 3 | MCP 工具 | | 同意/驳回 |",
-            "| 4 | 文件命名 | | 同意/驳回 |",
-            "| 5 | 模板 + schema | | 同意/驳回 |",
-            "| 6 | 新增依赖 | | 同意/驳回 |",
-            "| 7 | 预计文件数 | | 同意/驳回 |",
-            "| 8 | 预计轮次 | | 同意/驳回 |",
-          ].join("\n")
-
-      const tpl = [
-        `# ${planName} — HITL 提案 (round ${round})`,
-        "",
-        `> 创建: ${isoNow}  |  类型: ${type}  |  状态: DRAFT`,
-        "",
-        "## HITL 计划总览",
-        "",
-        "请填写以下决策维度，人工审核后点击 update_hitl 弹框选择「同意/驳回」完成审批：",
-        "",
-        "| # | 维度 | 方案内容 | 决策 |",
-        "|---|------|----------|:----:|",
-        tableRows,
-        "",
-      ].join("\n")
+      // 生成提案文档（真源 hitl-template.md：HITL 计划总览 + 审批结论 两章节齐备）
+      const tpl = buildHitlProposalMarkdown({
+        planName: String(planName),
+        round,
+        type: String(type),
+        createdAt: isoNow,
+        dimensions: finalDims,
+      })
       mkdirSync(plansDir, { recursive: true })
       writeFileSync(proposalPath, tpl, "utf-8")
 
@@ -406,6 +465,10 @@ export function registerHitlTools(server: ToolRegistrar) {
       if (finalDims.length > 0) lines.push(`dimensions: ${finalDims.length} 项`)
       if (proposal.planProvisioned) lines.push(`PlanRecord: 自动预置（占位行，Plan 文件写出后 plan_track 回刷真实路径）`)
       if (_fallback) lines.push(`mode:     _fallback (跳过 dialog，原始代码降级)`)
+      if ((_interaction.mode === "mcpApps" || _mcp_apps) && !_fallback) {
+        lines.push(`mode:     mcpApps (Codex：不展开 inputRequired${_mcp_apps ? "，_mcp_apps 显式强制" : ""})`)
+        lines.push(``, `➡️ 下一步：调用 render_hitl_approval({ planName: "${planName}", type: "${type}" }) 打开审批 widget，由用户拍板。`)
+      }
       return textResponse(lines.join("\n"))
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -489,7 +552,7 @@ export function registerHitlTools(server: ToolRegistrar) {
           const decResp = _parseDecisions(ctx)
 
           if (!decResp) {
-            const props: Record<string, unknown> = {
+            const props: Record<string, ElicitFormProperty> = {
               globalAction: {
                 type: "string", enum: ["", "同意全部", "驳回全部"],
                 description: "同意全部=通过所有维度; 驳回全部=驳回提案; 留空=逐项"
@@ -512,7 +575,7 @@ export function registerHitlTools(server: ToolRegistrar) {
               inputRequests: {
                 confirm: inputRequired.elicit({
                   message: `HITL 审批决策\n\nplan: ${planName}\ntype: ${type}\n\n逐项决策以下 ${dims.length} 个维度：\n${dimDesc}`,
-                  requestedSchema: { type: "object", properties: props, required: requiredKeys } as any
+                  requestedSchema: elicitFormSchema(props, requiredKeys),
                 })
               }
             })
@@ -536,7 +599,10 @@ export function registerHitlTools(server: ToolRegistrar) {
               inputRequests: {
                 confirm: inputRequired.elicit({
                   message: `HITL 审批决策\n\nplan: ${planName}\ntype: ${type}`,
-                  requestedSchema: { type: "object", properties: { action: { type: "string", enum: ["同意", "驳回", "取消"], description: "同意=通过审批, 驳回=驳回重做, 取消=暂不操作" } }, required: ["action"] } as any
+                  requestedSchema: elicitFormSchema(
+                    { action: { type: "string", enum: ["同意", "驳回", "取消"], description: "同意=通过审批, 驳回=驳回重做, 取消=暂不操作" } },
+                    ["action"],
+                  ),
                 })
               }
             })
@@ -585,7 +651,7 @@ export function registerHitlTools(server: ToolRegistrar) {
       // P3 #6：回写 .hitl.md 提案文件状态（DRAFT → TONGYI/BOHUI），保证双通道校验一致
       const proposalPath = findHitlFile(String(planName))
       if (proposalPath) {
-        updateHitlProposal(proposalPath, s, (_use_widget || _use_genui) ? dimensions : undefined)
+        updateHitlProposal(proposalPath, s, (_use_widget || _use_genui) ? dimensions : undefined, reason)
       }
       // 响应
       const lines = [

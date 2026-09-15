@@ -1,3 +1,6 @@
-h1:BWpNi5w7T2TrPEjl5qSuGWF2K4nfUkmdLlP/yvKuFQ4=
+h1:mCSvUGUEeN+mWsXzHy/nX0XHRmIhaPRsiNRsPLXuKMc=
 20260810061840_baseline.sql h1:wmdLy+svFtDYSbX9tJAvE3HAlfMrGYNrRBqV/+0cuog=
 20260813133000_runtime_scope_lifecycle.sql h1:Hff2iioVF8n7TaV/FfbXH2Q1NuqqVubxn3ehcgmgFYg=
+20260819071538_add_agent_memory.sql h1:M2oq6pzXWIFOsevsk6h8m3KBppNgHoIh0AYDVO+mPsk=
+20260819080000_add_agent_memory_fts.sql h1:q3x39WUbYrXzRCgnvmQA29Vps2Q3h+SHcF5gVaAaSX8=
+20260913090000_agent_memory_vector.sql h1:V+1Q3aplUVTn7WO4pylayUSvHEW2IcejbIhuwVI9AA8=

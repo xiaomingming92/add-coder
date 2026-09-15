@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest"
 import { existsSync, readFileSync, unlinkSync } from "node:fs"
 import { join } from "node:path"
-import { spawnSync } from "node:child_process"
+import { execFileSync, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { projectRoot } from "../src/shared/paths.js"
 
@@ -46,6 +46,34 @@ function runHook(end: End, hook: string, stdin: string, env: Record<string, stri
 }
 
 describe("五端一致性矩阵（契约红线）", () => {
+  it("校验结论一致性：≥2 端守卫入口对同一文档同判定（core 校验层单一入口）", () => {
+    // 用真实文档驱动两端守卫（codex / qoder），断言"需阻断/放行"判定一致。
+    // 该维度由 add-coder-core-validation-lifecycle 引入：校验真源统一到 core/validation。
+    const doc = join(process.cwd(), ".codex", "plans", "2026-09", "13", "add-coder-hitl-widget-runtime-gap-handoff-v1.md")
+    if (!existsSync(doc)) return // 文档不在则跳过（不制造假绿）
+    const payload = JSON.stringify({
+      tool_name: "Write",
+      tool_input: { file_path: doc, file_content: readFileSync(doc, "utf-8") },
+    })
+    const run = (adapter: string): number => {
+      try {
+        execFileSync("npx", ["tsx", `templates/adapters/${adapter}/hooks/doc-format-guard.ts`], {
+          input: payload,
+          cwd: process.cwd(),
+          encoding: "utf-8",
+          env: { ...process.env, PROJECT_DIR: process.cwd(), MAGIC_DIR: ".codex" },
+          stdio: ["pipe", "pipe", "pipe"],
+        })
+        return 0
+      } catch (error) {
+        return (error as { status?: number }).status ?? -1
+      }
+    }
+    const codex = run("codex")
+    const qoder = run("qoder")
+    expect(codex).toBe(qoder)
+  }, 120_000)
+
   // ── ① 生命周期裁决 fail-closed（Q0：DB 不可用 → 阻断，不吞成无 Plan）──
   it("Q0 fail-closed：MAGIC_DIR 无效（bridge 缺失）→ exit 2 阻断而非放行", () => {
     // 无效 magicDir → queryPlanStatus 返回 STATUS_UNAVAILABLE → Q0 exit 2（fail-closed 契约）

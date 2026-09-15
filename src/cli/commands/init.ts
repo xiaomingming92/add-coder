@@ -590,7 +590,14 @@ function finalize(ctx: InitContext, result: { created: number; skipped: number; 
         const installArgs = pm === "pnpm" ? ["add", ...peerNames] : ["install", ...peerNames];
         try {
             const ir = runCommand(pm, installArgs, { cwd: projectRoot });
-            if (ir.status !== 0) console.warn(`⚠️ peer 依赖安装失败（退出码: ${ir.status}），后续 MCP 启动可能报错`);
+            if (ir.status !== 0) {
+                // 失败原因必须带出（2026-09-14：原先只报退出码，"为什么失败"不可见——
+                // 实测真因是 @huggingface/transformers → onnxruntime-node 联网下载预编译产物被 302 阻断）
+                const why = (ir.stderr || "").trim().split("\n").slice(0, 3).join(" | ");
+                console.warn(`⚠️ peer 依赖安装失败（退出码: ${ir.status}），后续 MCP 启动可能报错`);
+                if (why) console.warn(`   原因: ${why}`);
+                else console.warn(`   原因: 无 stderr 输出（可手工执行 ${pm} ${installArgs.join(" ")} 复现）`);
+            }
         } catch (e) { console.warn(`⚠️ peer 依赖安装失败: ${e instanceof Error ? e.message : String(e)}`); }
     }
     if (db.engine !== "manual" && (db.engine !== "postgresql" || db.container !== "manual")) {
