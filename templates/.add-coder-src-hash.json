@@ -1,5 +1,5 @@
 {
-  "_version": "0.3.35",
+  "_version": "0.3.36",
   "adapters/claude/hooks/doc-format-guard.mjs": "b21350a0",
   "adapters/claude/hooks/doc-format-guard.ts": "2abf8013",
   "adapters/claude/hooks/lib/claude-env.ts": "170b40ca",
