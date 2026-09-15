@@ -147,8 +147,27 @@ ensure_template1_extensions() {
 
 # dev 沙箱库准备：DROP + CREATE TEMPLATE template1（template1 内已装 pg_trgm/vector）
 prepare_atlas_dev_db() {
-  local c="${PROJECT_NAME:-add-project}-dev" u="${ATLAS_DEV_USER:-admin}" d="${ATLAS_DEV_DB:-add-project-dev}"
-  podman exec "$c" true >/dev/null 2>&1 || { echo ">>> [dev-url] 容器 $c 不可达，跳过重建（依赖现有 dev 库）"; return 0; }
+  # 容器 / 超级用户 / 库名探测：provisionDevUrl 实际建的是 `{project}-add-dev`（用户 postgres、库 dev），
+  # 历史环境可能是 `{project}-dev` / admin / `{project}-add-dev` 库——依次探测取第一个可用，
+  # 否则 DROP/CREATE DATABASE 与扩展引导会静默空转（沙箱库拿不到 pg_trgm / vector）。
+  local c="${PROJECT_NAME:-add-project}-add-dev" u="" d="${ATLAS_DEV_DB:-}"
+  podman exec "$c" true >/dev/null 2>&1 || c="${PROJECT_NAME:-add-project}-dev"
+  podman exec "$c" true >/dev/null 2>&1 || { echo ">>> [dev-url] 容器不可达，跳过重建（依赖现有 dev 库）"; return 0; }
+  for cand in "${ATLAS_DEV_USER:-postgres}" postgres "${DATABASE_USER:-admin}" admin; do
+    if [ -n "$cand" ] && podman exec "$c" psql -U "$cand" -d postgres -tAc "SELECT 1;" >/dev/null 2>&1; then
+      u="$cand"
+      break
+    fi
+  done
+  if [ -z "$u" ]; then
+    echo ">>> [dev-url] 未能确定 $c 的超级用户，跳过重建（沿用现有 dev 库）"
+    return 0
+  fi
+  if [ -z "$d" ]; then
+    # 库名优先取 ATLAS_DEV_URL 的路径段（dev），取不到再退回 add-project-dev
+    d="$(printf '%s' "${ATLAS_DEV_URL:-}" | sed -E 's/[?].*$//; s#.*/##')"
+    [ -n "$d" ] || d="add-project-dev"
+  fi
   ensure_template1_extensions "$c" "$u"
   if [ "${ADD_DB_KEEP_DEV:-}" = "yes" ]; then
     echo ">>> [dev-url] ADD_DB_KEEP_DEV=yes：沿用现有 dev 库"

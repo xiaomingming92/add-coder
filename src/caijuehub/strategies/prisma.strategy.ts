@@ -82,7 +82,7 @@ export async function ensureSplitDb(projectRoot: string, opts: { force?: boolean
     console.log(`启动独立 ADD 库容器 ${container}（端口 ${port}）...`);
     const r = runCommand("podman", ["run", "-d", "--name", container, "--restart", "unless-stopped",
         "-e", `POSTGRES_USER=${dbUser}`, "-e", `POSTGRES_PASSWORD=${dbPass}`, "-e", `POSTGRES_DB=${dbName}`,
-        "-p", `127.0.0.1:${port}:5432`, "docker.io/postgres:16-alpine"], { timeout: 60000 });
+        "-p", `127.0.0.1:${port}:5432`, "docker.io/pgvector/pgvector:pg16"], { timeout: 60000 });
     if (r.status !== 0) {
         throw new Error(`独立 ADD 库容器启动失败（退出码 ${r.status}）: ${r.stderr.trim().slice(0, 200)}`);
     }
@@ -137,7 +137,7 @@ async function provisionDevUrl(projectRoot: string): Promise<string | null> {
     const port = ports.dev;
     const r = runCommand("podman", ["run", "-d", "--name", container, "--restart", "unless-stopped",
         "-e", "POSTGRES_USER=postgres", "-e", "POSTGRES_PASSWORD=postgres", "-e", "POSTGRES_DB=dev",
-        "-p", `127.0.0.1:${port}:5432`, "docker.io/postgres:16-alpine"], { timeout: 60000 });
+        "-p", `127.0.0.1:${port}:5432`, "docker.io/pgvector/pgvector:pg16"], { timeout: 60000 });
     if (r.status !== 0) return null;
     const url = `postgresql://postgres:postgres@127.0.0.1:${port}/dev?schema=public`;
     appendEnvValue(projectRoot, "ATLAS_DEV_URL", url);
