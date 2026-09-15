@@ -635,7 +635,7 @@ sed -n '/# ════ Atlas 声明式同步模块/,/^fi$/p' \
 | **期望态登记** | `prisma/raw-objects.sql`（pg_trgm GIN 索引）/ `prisma/raw-objects-vector.sql`（向量表 + 索引） | `db-ensure.sh` 生成 baseline（期望态）时追加登记段 → diff 不再产出删除语句；向量段**条件拼接**（仅当目标库 `pg_available_extensions` 含 `vector`） |
 | **DROP 守卫** | `templates/core/scripts/db-ensure.sh` apply 前 | diff 含 `DROP INDEX/TABLE/COLUMN/CONSTRAINT/TYPE/SCHEMA` → 一律拒绝，需人工确认后才 apply |
 
-**约定**：新增任何「schema 表达不了的 DB 对象」都必须登记到 `raw-objects*.sql`；**扩展本身**（`CREATE EXTENSION pg_trgm` / `vector`）不写进登记段——Atlas 免费版拒绝期望态里的 `CREATE EXTENSION`，扩由迁移 + 开发库环境初始化保证（见 `docs/knowledge/02-规范/Agent Memory 退化与能力矩阵.md` §四）。
+**约定**：新增任何「schema 表达不了的 DB 对象」都必须登记到 `raw-objects*.sql`；**扩展本身**（`CREATE EXTENSION pg_trgm` / `vector`）不写进登记段——Atlas 免费版拒绝期望态里的 `CREATE EXTENSION`，扩展由迁移 + 开发库环境初始化保证（见 `docs/knowledge/02-规范/《Agent Memory 退化与能力矩阵》.md` §四）。
 
 ---
 
@@ -1066,7 +1066,7 @@ validate({ type, path, hook, mode?, expectRounds?, projectRoot, magicDir }): Val
 ## 十七、跨轮记忆闭环（Memory 子系统）
 
 > v0.3.35 新增。真源 `templates/core/scripts/mcp-server/shared/memory/`，工具面 `templates/core/scripts/mcp-server/tools/{memory,memory-compat}.ts`，运维脚本 `scripts/memory/`，表结构 `prisma/atlas-migrations/*agent_memory*`。
-> 规范：[Agent Memory 知识治理层架构设计](./docs/knowledge/01-架构/Agent%20Memory%20知识治理层架构设计.md) · [Agent Memory 退化与能力矩阵](./docs/knowledge/02-规范/Agent%20Memory%20退化与能力矩阵.md)。
+> 规范：[Agent Memory 知识治理层架构设计](./docs/knowledge/01-架构/《Agent%20Memory%20知识治理层架构设计》.md) · [Agent Memory 退化与能力矩阵](./docs/knowledge/02-规范/《Agent%20Memory%20退化与能力矩阵》.md)。
 
 ### 17.1 开关与目录
 
