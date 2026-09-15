@@ -108,11 +108,24 @@ DPS 全部参数由 caijuehub TOML 驱动——AI 可以跑分→看弱项→调
 
 ### ⑤ 跨轮记忆，而非每轮失忆
 
-AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达成的约定，下轮对话全部遗忘。add-coder 在架构层面解决：
+AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达成的约定，下轮对话全部遗忘。add-coder 在架构层面解决——**文档层**（每轮显式交接）+ **知识层**（v0.3.35 记忆闭环：可召回的结论进受治理的记忆库，按 ADD 阶段位点自动带回）。
+
+**文档层**（v0.3.25 起）
 
 - **Handoff 文档** — 每轮 Session 结束时自动生成结构化交接文档，下轮会话自动加载
 - **Plan 索引** — 所有 Plan 通过 `index.md` 集中索引，支持模糊匹配快速定位
 - **DevLog 时序记录** — 每一步操作写入 `{YYYY-MM}/{DD}/` 时间轴，可回溯任意历史状态
+
+**知识层**（v0.3.35 记忆闭环落地）
+
+- **幂等采证** — 白名单工具事件 → `evidence-queue.jsonl` → 异步消费 → `MetricSnapshot`（`sourceRef=<gate>:<planKeyword>:<runId>`，重放不重复入库）
+- **位点确定性召回** — 命中 ADD 阶段位点（Plan 起草 / Spec 起草 / DPS / RAHS / Handoff）即触发召回；阶段词表按特异性优先，Hook 侧同步产出、MCP 侧执行（无 DB 权限的卡位也能给出确定性提示）
+- **混合召回 + 治理重排** — FTS（PG `pg_trgm` / SQLite FTS5）× 向量（pgvector / sqlite-vec）双通道 RRF 融合，再按 scope / kind / 重要度 / 置信度 / 强约束重排，token 预算裁剪后注入；`rankingVersion` 记录配置快照，召回可重放
+- **能力检测与合法降级** — 目标库无 pgvector / sqlite-vec 时按 FTS-only 运行，`degradedMode` 显式返回，不静默失真
+- **候选绝不直接生效** — `propose_memory` 落 CANDIDATE（去重 + 密钥扫描 + 冲突检测）→ 人工裁决 `resolve_memory`（approve 需 ≥1 证据）→ ACTIVE；`feedback_memory` 回流驱动排序校准
+- **开关与如实登记** — `ADD_MEMORY_RECALL_MODE=off|shadow|inject`（默认 `shadow`：召回照跑照审计、暂不注入上下文）、`ADD_MEMORY_MAX_TOKENS`（默认 600）；实测 Hybrid `MRR@5` 0.4867 < 0.75 门槛（FTS-only 0.6551、Recall@5 0.9592）——**门槛不下调**，由排序校准线程以数据校准替代手调
+
+> 真源落点、表结构、开发流程见 [DEVELOPMENT.md](./DEVELOPMENT.md) §十七。
 
 ### ⑥ Policy-Update-Loop：治理自我进化
 
@@ -457,7 +470,7 @@ Tasks (实验性)     双向              ✅ 已实现      长任务持久化 
 | MCP 能力重构 | ✅ v0.2.9 MCP 工具链架构升级，提升审计与门禁工具的可扩展性和独立部署能力 | 2026-07/23/add-coder-mcp-restructure-plan-v1.md |
 | Hook 通知升级 | ✅ v0.2.9 Hook 拦截事件 jsonl → fs.watch → record_dev_operation 落库 + Notification + 治理信号 | 2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md |
 | ide插件 | 解耦ADD范式代码和被治理项目的代码 |在做了,大家拭目以待吧,让编程更有趣,我的目标其实不在于IDE,我的工作顺手的事情 |
-| 对话记忆增强 | 长期项目知识记忆和plan级别的稀疏记忆 |--|
+| 对话记忆增强 | ✅ **v0.3.35 记忆闭环落地**：幂等采证 + 位点确定性召回 + FTS×向量混合召回（RRF 融合 + 治理重排）+ Handoff Digest 候选 + 排序权重校准基座；默认 `shadow` 模式（召回照跑照审计、暂不注入） | 门槛未下调：Hybrid MRR@5 0.4867 < 0.75，由校准线程以数据逼近 |
 
 ---
 

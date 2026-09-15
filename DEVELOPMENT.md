@@ -22,6 +22,7 @@
   - [9.3 关键约束（真实环境验证）](#93-关键约束真实环境验证)
   - [9.4 宿主脚本合入指南（三步法）](#94-宿主脚本合入指南三步法避免痛苦)
   - [9.5 宿主业务表 diff 推荐做法](#95-宿主业务表-diff-推荐做法推荐-atlas不强求)
+  - [9.6 期望态登记（raw 对象）与 DROP 守卫](#96-期望态登记raw-对象与-drop-守卫)
 - [十、端口契约联动](#十端口契约联动)
   - [10.1 真源与同步](#101-真源与同步)
   - [10.2 生成行为契约](#102-生成行为契约)
@@ -35,6 +36,21 @@
   - [15.1 数据库生命周期拆分](#151-数据库生命周期拆分)
   - [15.2 连接模型与并发兜底](#152-连接模型与并发兜底)
   - [15.3 与协作层契约的关系](#153-与协作层契约的关系)
+- [十六、文档校验层（core/validation）](#十六文档校验层corevalidation)
+  - [16.1 为什么需要集中校验层](#161-为什么需要集中校验层)
+  - [16.2 单一入口与注册表](#162-单一入口与注册表)
+  - [16.3 卡位口径与规则适用性](#163-卡位口径与规则适用性)
+  - [16.4 调用方与改动约定](#164-调用方与改动约定)
+- [十七、跨轮记忆闭环（Memory 子系统）](#十七跨轮记忆闭环memory-子系统)
+  - [17.1 开关与目录](#171-开关与目录)
+  - [17.2 采证链路（写入侧）](#172-采证链路写入侧)
+  - [17.3 召回链路（读取侧）](#173-召回链路读取侧)
+  - [17.4 治理状态机与工具面](#174-治理状态机与工具面)
+  - [17.5 校准与评测（开发流程）](#175-校准与评测开发流程)
+- [十八、运行时治理（产物-进程新鲜度 + 孤儿族回收）](#十八运行时治理产物-进程新鲜度--孤儿族回收)
+  - [18.1 产物-进程新鲜度四态](#181-产物-进程新鲜度四态)
+  - [18.2 孤儿族识别与回收](#182-孤儿族识别与回收)
+  - [18.3 开发侧约定](#183-开发侧约定)
 - [关联文档](#关联文档)
 
 ---
@@ -60,25 +76,26 @@ add-coder 有两个名字相同但用途完全不同的 `sync`：
 ```
 add-coder/
 ├── templates/                     ← ★ 唯一真源（所有产出的根）
-│   ├── core/                      ← 跨 IDE 共享核心（162 个文件）
-│   │   ├── hooks/                 ←   通用 hooks 脚本（14 个 .sh + lib/）
-│   │   │   └── lib/               ←     hooks 共享库（8 文件）
-│   │   ├── templates/             ←   文档模板（44 文件含 schema）
+│   ├── core/                      ← 跨 IDE 共享核心（234 个文件）
+│   │   ├── hooks/                 ←   通用 hooks 入口（14 个 .ts → 烘焙 .mjs；bash 已退役）
+│   │   ├── governance/            ←   治理契约层（23 文件：16 卡位判定收敛为模板方法基类）
+│   │   ├── validation/            ←   文档校验层（15 文件：schema 判定 + 17 类注册表 + 卡位策略）
+│   │   ├── templates/             ←   文档模板 + schema 真源（44 文件，*.schema.json 为形式判定真源）
 │   │   ├── agents/                ←   子代理模板
 │   │   ├── skills/                ←   SKILL 定义
-│   │   ├── scripts/               ←   db-ensure.sh 等基础设施脚本（69 文件）
+│   │   ├── scripts/               ←   db-ensure.sh / mcp-server 等基础设施（111 文件，含 mcp-server/shared/memory/）
 │   │   ├── plans/specs/reports/reviews/ ← 治理产物模板
-│   │   ├── docs/                  ←   知识库模板（01-架构 等）
+│   │   ├── docs/                  ←   ADD-governance-*.md 治理文档（5 文件）
 │   │   ├── rules/                 ←   治理规则模板
 │   │   ├── vocabulary/            ←   触发词语汇表
 │   │   ├── tools/                 ←   MCP 工具定义
 │   │   └── prisma/                ←   Prisma schema 片段
 │   └── adapters/                  ← 各 IDE 专属适配层
-│       ├── claude/hooks/          ←   Claude Code hooks（16 文件 + lib/，含 permission-denied/stop-failure 特有）
-│       ├── qoder/hooks/           ←   Qoder hooks（14 文件 + lib/）
-│       ├── vscode/hooks/          ←   VS Code hooks（14 文件 + lib/，含 doc-format-guard）
-│       ├── trae/hooks/            ←   Trae hooks（从 core 派生，14 文件 + lib/）
-│       └── codex/hooks/           ←   Codex 原生 hooks（14 文件 + lib/ 的完整独立真源）
+│       ├── claude/hooks/          ←   Claude Code hooks（16 .ts 入口 + lib/claude-env.ts，含 permission-denied/stop-failure 特有）
+│       ├── qoder/hooks/           ←   Qoder hooks（14 入口 + lib/ 3 文件）
+│       ├── vscode/hooks/          ←   VS Code hooks（14 入口，含 doc-format-guard）
+│       ├── trae/hooks/            ←   Trae hooks（从 core 派生，14 入口）
+│       └── codex/hooks/           ←   Codex 原生 hooks（14 入口的完整独立真源）
 │
 ├── .add/                          ← 运行时：ADD 标准落地目录（从 core 同步）
 │   ├── hooks/                     ←   从 core/hooks/ 同步（含 lib/）
@@ -107,7 +124,10 @@ add-coder/
 │   └── config.toml                ←   Codex MCP 配置，不同步
 │
 ├── scripts/
-│   └── sync-magic.ts              ← ★ 自举同步脚本（SYNC_MAGIC_CONFIG 驱动）
+│   ├── sync-magic.ts              ← ★ 自举同步脚本（SYNC_MAGIC_CONFIG 驱动）
+│   ├── mcp-restart-notice.ts      ←   sync 末尾运行态告警 + 孤儿族回收（§十八）
+│   ├── validate-docs.ts           ←   文档批量校验命令（与 hook 卡位共用校验层入口，§十六）
+│   └── memory/                    ←   Memory 运维脚本（gate-runner / memory-jobs / reindex / recall-eval，§十七）
 │
 ├── src/                           ← TypeScript 源码
 │   ├── cli/commands/              ←   init / sync / status CLI 命令
@@ -602,6 +622,21 @@ sed -n '/# ════ Atlas 声明式同步模块/,/^fi$/p' \
 
 **不强求**：宿主业务表完全保持 migrate dev/deploy（现状）也完全 OK——add-coder 只保证 ADD 治理模型同步，不干预宿主业务 schema 决策。
 
+### 9.6 期望态登记（raw 对象）与 DROP 守卫
+
+> v0.3.35 新增（runtime review 发现 #2 的闭环）。
+
+**问题**：`pg_trgm` 的 GIN 索引、`pgvector` 的向量表与索引**无法被 Prisma schema 表达**；声明式 diff 会把它们判成「多余对象」并生成 `DROP INDEX`（实测：三个索引被静默删除）。
+
+**两层防护**：
+
+| 防护 | 落点 | 行为 |
+|------|------|------|
+| **期望态登记** | `prisma/raw-objects.sql`（pg_trgm GIN 索引）/ `prisma/raw-objects-vector.sql`（向量表 + 索引） | `db-ensure.sh` 生成 baseline（期望态）时追加登记段 → diff 不再产出删除语句；向量段**条件拼接**（仅当目标库 `pg_available_extensions` 含 `vector`） |
+| **DROP 守卫** | `templates/core/scripts/db-ensure.sh` apply 前 | diff 含 `DROP INDEX/TABLE/COLUMN/CONSTRAINT/TYPE/SCHEMA` → 一律拒绝，需人工确认后才 apply |
+
+**约定**：新增任何「schema 表达不了的 DB 对象」都必须登记到 `raw-objects*.sql`；**扩展本身**（`CREATE EXTENSION pg_trgm` / `vector`）不写进登记段——Atlas 免费版拒绝期望态里的 `CREATE EXTENSION`，扩由迁移 + 开发库环境初始化保证（见 `docs/knowledge/02-规范/Agent Memory 退化与能力矩阵.md` §四）。
+
 ---
 
 ## 十、端口契约联动
@@ -936,7 +971,7 @@ export npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-
 
 ## 十五、多 IDE 并发契约联动
 
-> 完整契约定义见 [docs/multi-ide-concurrency-contract.md](./multi-ide-concurrency-contract.md)（进程层 v2）。本节是开发侧联动说明。
+> 完整契约定义见 [docs/multi-ide-concurrency-contract.md](./docs/multi-ide-concurrency-contract.md)（进程层 v2）。本节是开发侧联动说明。
 
 ### 15.1 数据库生命周期拆分
 
@@ -963,3 +998,188 @@ export npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-
 | 进程层 v2 | 本文档（v0.3.25） | MCP Server 并发行为承诺 | `docs/multi-ide-concurrency-contract.md` + 节流/脱敏/锁 |
 
 **衔接点**：协作层的"文件边界 + 审计分桶"能成立，依赖进程层的"幂等写入 + 防串线"保证。
+
+---
+
+## 十六、文档校验层（core/validation）
+
+> v0.3.35 新增。真源 `templates/core/validation/`（15 文件），批量命令 `scripts/validate-docs.ts`，规范 [校验层与生命周期联动](./docs/knowledge/02-规范/校验层与生命周期联动.md)。
+
+### 16.1 为什么需要集中校验层
+
+文档守卫原先散落在各端 hook 与收尾脚本里，同一份文档在不同卡位得到不同结论——根因是缺少「形式判定真源」。校验层把形式判定收敛为一处，并把三件事显式分开：
+
+| 维度 | 由谁决定 | 落点 |
+|------|---------|------|
+| **what**（判什么） | schema 真源 `templates/core/templates/*.schema.json` | `schema-validator.ts` |
+| **where**（在哪算缺陷） | 卡位 × 规则适用性 | `policy.ts` |
+| **how**（严重度） | 卡位默认口径 + 显式 override | `decidePolicy()` |
+| **类型特有规则** | 类型 validator | `validators/*.ts` |
+
+**抽层时实测的坑**：规则集中到 core 会放大适用范围——锚定规则原为「写入时防劣化」，搬进 core 后会在收尾批量校验里把**历史文档**判成缺陷（把噪音当违规）。所以 what 与 where 必须分开。
+
+### 16.2 单一入口与注册表
+
+所有调用方（hook 卡位 / 收尾 / 批量命令 / 封口判定）只走一个入口：
+
+```ts
+validate({ type, path, hook, mode?, expectRounds?, projectRoot, magicDir }): ValidateOutcome
+// → { ok, mode, basis, schemaPath, issues, diagnostics }
+```
+
+- **未注册类型即抛**（`UnknownValidatorTypeError`），不回落「通用校验」——漏一个类型不会被静默掩盖
+- **schema 缺失 = 无法判定 = 显式失败**（禁止静默放行）
+- **schema 查找顺序**：`{magicDir}/templates/` 副本优先 → `templates/core/templates/` 真源
+- 结果分两栏：`issues`（该卡位算缺陷，参与 `ok` 判定）与 `diagnostics`（可见但不判缺陷）——规则适用性过滤的产物
+
+`registry.ts` 的 `VALIDATOR_REGISTRY` 登记 **17 类**文档：`plan.standard` / `plan.simple` / `spec` / `tasks` / `checklist` / `add-route` / `handoff.single` / `handoff.multi` / `review` / `review.implementation` / `review.runtime` / `hitl` / `report` / `runtime-report` / `collab-contract` / `fix-verification` / `prd`；多轮文档（`handoff.multi`）要求调用方给出 `expectRounds`（不由校验层猜）。
+
+### 16.3 卡位口径与规则适用性
+
+卡位默认口径（`policy.ts`）：
+
+| 卡位 | 口径 | 依据 |
+|------|------|------|
+| PreToolUse | blocking | ④ 写入前置守卫：预检阻断，避免写出不合规文档 |
+| PostToolUse | advisory | ⑤ 文档守卫：写后复检不阻断，转告警 + 留痕 |
+| Stop / SubagentStop | blocking | ⑦ 验收检查 / ⑪ 子代理结果校验 |
+| SessionEnd / manual | advisory | ② 审计结算 / 批量巡检 |
+| 未声明卡位 | advisory | 保守：不阻断 |
+
+规则适用性 `DEFAULT_RULE_APPLICABILITY`：`ANCHOR_MISS` 仅 `PreToolUse` / `SubagentStop`（写入时防劣化）；`EVIDENCE_PLACEHOLDER_LEFT`（checklist 证据占位）仅 `Stop` / `SessionEnd` / `manual`；`MISSING_SECTION` / `MISSING_SUBSECTION` / `ROUND_COUNT_SHORT` / `PLACEHOLDER_LEFT` / `FORBIDDEN_TERM` 全卡位。**未登记适用性的规则默认全卡位适用**（新规则不会因漏登记而静默失效）。
+
+### 16.4 调用方与改动约定
+
+| 场景 | 落点 | 口径 |
+|------|------|------|
+| 写入前 | `doc-format-guard` / `pre-tool-use` 卡位 | blocking |
+| 写后 | `post-tool-use` | advisory + AuditBridge 留痕 |
+| 收尾 / 封口 | `stop-check` / `review-checklist` | blocking（handoff 因子从「存在」改为「存在 ∧ 合规」） |
+| 批量巡检 | `npx tsx scripts/validate-docs.ts [--json] [--strict] [--hook <Hook>] [--file <path>] [--dir <magicDir>]` | 默认 `hook=manual`（advisory，退出码恒 0）；`--strict` 存在缺陷才退出 1；`--hook PreToolUse` 可复现写入时口径 |
+
+- **改判定口径改 `policy.ts`，不改调用方**；新增文档类型 = 注册表 + schema + validator 三件齐（缺一即"未注册"）
+- 批量命令与 hook 卡位**共用同一入口**——「同一文档从 hook 与从命令得到完全相同结论」就是联动的可测定义（`tests/validation/*`）
+- 结果落 `{magicDir}/reports/hook-events.jsonl`（与守卫同通道，幂等去重由消费端负责）
+
+---
+
+## 十七、跨轮记忆闭环（Memory 子系统）
+
+> v0.3.35 新增。真源 `templates/core/scripts/mcp-server/shared/memory/`，工具面 `templates/core/scripts/mcp-server/tools/{memory,memory-compat}.ts`，运维脚本 `scripts/memory/`，表结构 `prisma/atlas-migrations/*agent_memory*`。
+> 规范：[Agent Memory 知识治理层架构设计](./docs/knowledge/01-架构/Agent%20Memory%20知识治理层架构设计.md) · [Agent Memory 退化与能力矩阵](./docs/knowledge/02-规范/Agent%20Memory%20退化与能力矩阵.md)。
+
+### 17.1 开关与目录
+
+| 开关 | 取值 | 默认 | 作用 |
+|------|------|------|------|
+| `ADD_MEMORY_RECALL_MODE` | `off` / `shadow` / `inject` | `shadow` | 召回可执行并落审计，但 Hook **不注入**上下文 |
+| `ADD_MEMORY_MAX_TOKENS` | 正整数 | `600` | L1 注入 token 预算 |
+| `ADD_MEMORY_EVIDENCE` | `on` / `off` | `on` | PostToolUse 白名单采证入队 |
+
+工作目录 `{magicDir}/memory/`：`l1-context.md`（当轮注入快照，超 7 天不注入）/ `l2-context.md` / `evidence-queue.jsonl`（append-only）/ `evidence-queue.offset`（消费进度）。
+
+**约束**：`switches.ts` 必须是同步、纯环境变量读取（零 IO / 零 DB）——它同时被 governance Hook（同步 spawn，≤200ms 预算）与异步 jobs 使用。
+
+### 17.2 采证链路（写入侧）
+
+```
+PostToolUse 白名单事件 → evidence-queue.jsonl → consolidation job
+                                                 ├→ AddMemoryEvidence（证据链）
+                                                 └→ MetricSnapshot（幂等：sourceRef=<gate>:<planKeyword>:<runId>，runId 内容派生）
+```
+
+证据是「结论可验证」的前提：`resolve_memory approve` 要求 ≥1 条证据，Handoff Digest 候选也必须带来源引用（`handoffRef`）。
+
+### 17.3 召回链路（读取侧）
+
+```
+阶段位点命中（plan-start / spec-start / dps / rahs / handoff，词表按特异性优先）
+  → 查询词项抽取（拉丁词 ≥2 字符 + CJK 滑动二元组，上限 24 项）
+  → FTS（PG pg_trgm / SQLite FTS5）× 向量（pgvector / sqlite-vec，带能力检测）
+  → RRF 融合（×1000 缩放：让相关性主导、治理项做同分位微调）
+  → 治理重排（scope / kind / importance / confidence / 强约束 boost − stale / 冲突 / 冗余 penalty）
+  → token 预算裁剪 → 快照（L1/L2）→ Hook 注入
+```
+
+- **为什么阶段词表放 core 且是纯函数**：Hook 侧（无 DB 权限）要用它产出确定性提示，MCP 侧用它执行召回——共用一份白名单才不会漂移
+- **降级合法**：无向量能力时 FTS-only，`degradedMode` 显式返回（不静默失真）
+- **可重放**：`Recall` 记录 `rankingVersion` 配置快照（`memory-rank-v1` lexical / `memory-rank-v2` hybrid），权重变更即版本变更
+- **权重是参数不是常量**：默认权重经评测校准，未评测前不作为不可变产品规则
+
+### 17.4 治理状态机与工具面
+
+| 工具 | 职责 |
+|------|------|
+| `propose_memory` | 落 CANDIDATE（**绝不直接 ACTIVE**）：去重（幂等键 `repositoryRef+contentHash+scope`）+ 密钥扫描（命中拒写）+ 同 scope 冲突检测（返回 `conflicts` 交人工裁决） |
+| `recall_memory` | 受约束混合召回（FTS-first + RRF + 治理重排 + token 裁剪），返回 `whySelected` / `scoreBreakdown` / `recallId`（可重放）/ `degradedMode` |
+| `get_memory` / `list_memories` | 单条详情（证据链 + supersession 链 + 最近召回使用）/ 状态·scope·kind 列表（cursor 分页） |
+| `review_memory` / `resolve_memory` | 待审队列（候选 + 证据 + 重复项 + 疑似冲突）/ 状态迁移（`submit_review`·`approve`·`reject`·`stale`·`supersede`·`archive`·`restore`；approve 需 ≥1 证据 + actor，supersede 需新记忆 id 且 scope 兼容） |
+| `feedback_memory` | 召回结果反馈（`USED` / `USEFUL` / `IRRELEVANT` / `OUTDATED` / `CONTRADICTED` / `HARMFUL` / `UNKNOWN`，幂等 upsert） |
+| `get_memory_health` | backlog（CANDIDATE/PENDING）/ leakage 抽查（近 20 次召回越库计数）/ embedding provider / FTS 索引健康度 |
+
+- **v1 兼容门面**（`memory-compat.ts`）：`append_memory`→`propose_memory`、`search_memory`→`recall_memory`、`read_memory`→`get_memory`、`link_memory`→`get_memory`、`memory_stats`→`get_memory_health`；只返回 `deprecated + mappedTo + 迁移指引`，**不转发执行**（避免与 v2 双源漂移）
+- **Handoff Digest 候选**：HANDOFF 证据 → 候选提案（幂等 `dedupKey` 由来源引用 + 摘要内容派生；`excerpt` 为空时显式标注「摘要待人工补充」），仍走人工裁决
+
+### 17.5 校准与评测（开发流程）
+
+| 脚本 | 用途 |
+|------|------|
+| `scripts/memory/memory-jobs.ts <refresh-l1 \| drain-evidence \| consolidate>` | 快照刷新 / 采证队列消费 / 整合（Post-Handoff、Gate 通过后触发） |
+| `scripts/memory/reindex.ts` | 索引探针与重建 |
+| `scripts/memory/recall-eval.ts` | 召回评测（MRR / Recall@5；标注集 `tests/memory/fixtures/recall-labeled-set.json`） |
+| `scripts/memory/probe-sqlite-fts5.ts` | SQLite FTS5 能力探测 |
+| `scripts/memory/gate-runner.ts` | MCP 未挂载时的门禁工具降级执行器（ADD 降级模式） |
+
+校准基座：`feedback-stats`（通道 × 位次 × outcome）/ `batch-fit`（冷启动拟合，n<5 门控）/ `unit-state`（权重快照）/ Kalman 在线估计 / FFT 节奏诊断（**不直接产出排序**）。
+
+**未达标项如实挂账**：Hybrid `MRR@5` 实测 0.4867 < 0.75 门槛（FTS-only 0.6551、Recall@5 0.9592）——门槛**不下调**，由排序校准线程以数据校准替代手调，待足够多单元封口后复跑。
+
+---
+
+## 十八、运行时治理（产物-进程新鲜度 + 孤儿族回收）
+
+> v0.3.35 新增。真源 `templates/core/scripts/mcp-server/shared/runtime-freshness.ts`，触发点 `scripts/mcp-restart-notice.ts`（由 `npm run sync` 末尾调用：`sync-magic.ts && mcp-restart-notice.ts`），规范 [孤儿进程识别与回收](./docs/knowledge/02-规范/孤儿进程识别与回收.md)。
+
+### 18.1 产物-进程新鲜度四态
+
+`npm run sync` 会重写 `{magicDir}/scripts/mcp-server.ts` 等产物，但**不会重启正在运行的 server** → 出现「产物是新的、跑的是旧代码」的静默陈旧（实测：进程 09-12 11:49 vs 产物 09-13 09:47）。
+
+| 判定 | 含义 | 动作 |
+|------|------|------|
+| `stale=true` | 产物比进程新 | 点名告警 + 写 `{magicDir}/.mcp-restart-required` 标记 |
+| `stale=false` | 进程不落后 | 无 |
+| `stale="unknown"` | 判定不确定（无 mtime / 解析失败 / 无运行进程） | **按 unknown 处理，宁可漏报也不误报「需重启」** |
+| 标记已存在 | 上次遗留的待重启提示 | server 启动自愈：清理标记 |
+
+检测覆盖 6 个 magic 目录（`.codex` / `.add` / `.qoder` / `.claude` / `.vscode` / `.trae`），不限于当前端。
+
+### 18.2 孤儿族识别与回收
+
+**成因**：IDE/app 退出通常只杀直接子进程（`npx`），`npm exec → sh -c → tsx → node` 被 reparent 到 init/systemd 继续存活（同一逻辑 server 5 个进程；旧实例在 app 重启后仍活了 20+ 分钟）。这类进程 stdio 对端已消失，属可回收垃圾，也不应参与新鲜度判定。
+
+- **识别**：`ppid` 落在 init/systemd（或父进程已消失）→ `orphan: true`，整族标记
+- **回收**：`npm run sync` 末尾两段式——先 `SIGTERM` 整族，1.5s 后仍存活者 `SIGKILL`；**只动孤儿**，运行中的正常 server 不碰；服务端另有孤儿自退看门狗
+- **告警脚本永不失败**（fail-open，退出码恒 0）——告警是提示，不是门禁
+
+### 18.3 开发侧约定
+
+- 改了 `templates/core/scripts/**`、hook 产物或 MCP 工具：`npm run sync` 后**按告警重启 MCP Server**，否则跑的是旧代码（判据是新鲜度四态，不是"我刚 sync 过"）
+- 新增「schema 表达不了的 DB 对象」（trgm 索引 / 向量表等）→ 登记 `prisma/raw-objects*.sql`（见 §9.6），否则声明式 diff 会生成 DROP
+
+---
+
+## 关联文档
+
+| 文档 | 用途 |
+|------|------|
+| [README.md](./README.md) | 用户使用文档（能力全景 / 命令 / 快速开始） |
+| [GUIDE.md](./GUIDE.md) | 从零上手实操（触发词速查 / 需求转 Plan / 链路演练） |
+| [CHANGELOG.md](./CHANGELOG.md) | 版本变更历史（与 README 版本号联动） |
+| [docs/multi-ide-concurrency-contract.md](./docs/multi-ide-concurrency-contract.md) | 多 IDE 进程并发契约（进程层 v2，§十五 的上游契约） |
+| [docs/capabilities-and-debugging.md](./docs/capabilities-and-debugging.md) | 能力清单 & 调试手册 |
+| [docs/caijuehub.md](./docs/caijuehub.md) | 集中裁决层（TOML 声明 → 转录 → 策略消费） |
+| [docs/interaction-spec.md](./docs/interaction-spec.md) | 交互规范 |
+| [docs/ports.md](./docs/ports.md) | 端口契约登记表（统一端口分配器自动维护，§十） |
+| [docs/DEPENDENCIES.md](./docs/DEPENDENCIES.md) | 依赖治理记录（§十四 的底账） |
+| [docs/跨平台兼容开发规范.md](./docs/跨平台兼容开发规范.md) | 跨平台约束（§8.7 的上游规范） |
+| [docs/knowledge/](./docs/knowledge/) | 规范与架构（校验层 / Agent Memory / 孤儿进程，§十六–§十八 的上游规范） |

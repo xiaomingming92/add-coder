@@ -59,11 +59,24 @@ These are not "suggestions" — they are **architectural blocks**. A Step cannot
 
 ### ④ Cross-Session Memory, Not Per-Session Amnesia
 
-The fatal flaw of AI conversations: architectural decisions from last session, bugs fixed, agreements reached — all forgotten in the next conversation. add-coder solves this at the architecture level:
+The fatal flaw of AI conversations: architectural decisions from last session, bugs fixed, agreements reached — all forgotten in the next conversation. add-coder solves this at the architecture level — a **document layer** (an explicit handoff every round) plus a **knowledge layer** (the v0.3.35 memory loop: recallable conclusions go into a governed memory store and are brought back at ADD stage waypoints).
+
+**Document layer** (since v0.3.25)
 
 - **Handoff Documents** — Automatically generated structured handoff at the end of each session, auto-loaded by the next session
 - **Plan Index** — All Plans are centrally indexed via `index.md`, supporting fuzzy-match quick lookup
 - **DevLog Timeline** — Every operation is written to the `{YYYY-MM}/{DD}/` timeline, enabling full historical state traceability
+
+**Knowledge layer** (shipped in the v0.3.35 memory loop)
+
+- **Idempotent evidence collection** — whitelisted tool events → `evidence-queue.jsonl` → async consumption → `MetricSnapshot` (`sourceRef=<gate>:<planKeyword>:<runId>`; replays never duplicate)
+- **Deterministic waypoint recall** — hitting an ADD stage waypoint (Plan draft / Spec draft / DPS / RAHS / Handoff) triggers recall; stage word lists are specificity-first, produced synchronously on the Hook side and executed on the MCP side (deterministic hints even from hooks without DB access)
+- **Hybrid recall + governed rerank** — FTS (PG `pg_trgm` / SQLite FTS5) × vector (pgvector / sqlite-vec) fused by RRF, then reranked by scope / kind / importance / confidence / mandatory constraints and trimmed to a token budget; `rankingVersion` stores the config snapshot so recalls are replayable
+- **Capability detection & lawful degradation** — without pgvector / sqlite-vec it runs FTS-only and returns `degradedMode` explicitly, never silently distorted
+- **Candidates never activate directly** — `propose_memory` lands CANDIDATE (dedup + secret scan + conflict detection) → human decision via `resolve_memory` (approve requires ≥1 evidence) → ACTIVE; `feedback_memory` feeds ranking calibration
+- **Switches & honest disclosure** — `ADD_MEMORY_RECALL_MODE=off|shadow|inject` (default `shadow`: recall runs and is audited, but is not injected into context yet), `ADD_MEMORY_MAX_TOKENS` (default 600); measured Hybrid `MRR@5` 0.4867 < the 0.75 threshold (FTS-only 0.6551, Recall@5 0.9592) — the threshold stays put; calibration replaces hand-tuning
+
+> Source layout, tables and dev workflow: [DEVELOPMENT.md](./DEVELOPMENT.md) §十七.
 
 ### ⑤ Policy-Update-Loop: Self-Evolving Governance (the scaffold itself does not include this architectural capability; a DEMO repo will be provided next to better illustrate the Policy-Update-Loop and Report system)
 
@@ -246,7 +259,7 @@ npx add-coder init
 |------|-------------|
 | Demo Repo | A full example repository showcasing end-to-end closed-loop practice of Policy-Update-Loop and the Report system |
 | MCP Restructure | MCP toolchain architecture upgrade, improving audit and gateway tool extensibility and standalone deployment capability |
-| Memory Enhancement | Long-term project knowledge memory and plan-level sparse memory |
+| Memory Enhancement | ✅ **Delivered in v0.3.35**: idempotent evidence collection + deterministic waypoint recall + hybrid FTS×vector recall (RRF fusion + governed rerank) + Handoff Digest candidates + a ranking calibration foundation; defaults to `shadow` mode (recall runs and is audited, not injected yet) |
 
 ---
 <details id="chinese-readme">
@@ -277,9 +290,20 @@ RAHS (Runtime Architecture Health Score) — 运行时架构健康度，< 90% BL
 这不是「建议」，是**架构阻断** — 不通过闸门的 Step 无法推进到下一步。
 
 ### ③ 跨轮记忆，而非每轮失忆
+
+**文档层**（v0.3.25 起）
+
 - **Handoff 文档** — 每轮 Session 结束时自动生成结构化交接文档
 - **Plan 索引** — 所有 Plan 通过 `index.md` 集中索引
 - **DevLog 时序记录** — 每一步操作写入 `{YYYY-MM}/{DD}/` 时间轴
+
+**知识层**（v0.3.35 记忆闭环落地）
+
+- **幂等采证** — 白名单工具事件 → `evidence-queue.jsonl` → 异步消费 → `MetricSnapshot`（`sourceRef=<gate>:<planKeyword>:<runId>`）
+- **位点确定性召回** — ADD 阶段位点（Plan 起草 / Spec 起草 / DPS / RAHS / Handoff）命中即召回；词表按特异性优先
+- **混合召回 + 治理重排** — FTS × 向量双通道 RRF 融合 + 治理重排 + token 预算裁剪；`rankingVersion` 记录配置快照
+- **候选绝不直接生效** — CANDIDATE → 人工裁决 → ACTIVE；`feedback_memory` 回流驱动排序校准
+- **如实登记** — 默认 `shadow`（照跑不注入）；Hybrid `MRR@5` 0.4867 < 0.75 门槛，门槛不下调
 
 ### ④ Policy-Update-Loop：治理自我进化
 ```
@@ -329,7 +353,7 @@ npx add-coder init
 |---|---|
 | Demo 仓库演示 | Policy-Update-Loop 与 Report 体系端到端闭环实践 |
 | MCP 能力重构 | MCP 工具链架构升级 |
-| 对话记忆增强 | 长期项目知识记忆和 plan 级别的稀疏记忆 |
+| 对话记忆增强 | ✅ **v0.3.35 记忆闭环落地**：幂等采证 + 位点确定性召回 + FTS×向量混合召回 + Handoff Digest 候选 + 排序校准基座；默认 `shadow` 模式 |
 
 > 📦 [更新日志](./CHANGELOG.md)
 </details>
