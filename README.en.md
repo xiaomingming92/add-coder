@@ -240,7 +240,7 @@ npx add-coder init
 > **Recommended**: Run PostgreSQL via Podman/Docker, reference config:
 > ```yaml
 > postgres:
->   image: docker.io/postgres:16-alpine
+>   image: docker.io/pgvector/pgvector:pg16
 >   ports: ["127.0.0.1:5433:5432"]
 >   environment:
 >     POSTGRES_DB: mydb

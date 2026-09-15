@@ -4,10 +4,16 @@
 #   DATABASE_PASSWORD=<DATABASE_PASSWORD>
 #   DATABASE_PORT=<DATABASE_PORT>
 #   PROJECT_NAME=<PROJECT_NAME>
+#
+# 镜像选择：pgvector/pgvector:pg16 自带 pg_trgm + vector——
+#   ① 记忆子系统的向量通道（add_memory_vector / prisma/raw-objects-vector.sql）需要 vector 扩展；
+#   ② Atlas dev 沙箱库从 template1 重建，template1 缺扩展会导致期望态里的
+#      gin_trgm_ops / vector 无法解析（db-ensure 每次 diff 前会幂等补齐 template1 扩展）。
+#   若目标环境没有 pgvector，记忆检索按 fts-only 合法降级（degradedMode 明示），不是硬失败。
 
 services:
   postgres:
-    image: docker.io/postgres:16-alpine
+    image: docker.io/pgvector/pgvector:pg16
     container_name: ${PROJECT_NAME:-add-project}-postgres
     restart: unless-stopped
     ports:
@@ -30,7 +36,7 @@ services:
       retries: 5
 
   shadow-postgres:
-    image: docker.io/postgres:16-alpine
+    image: docker.io/pgvector/pgvector:pg16
     container_name: ${PROJECT_NAME:-add-project}-shadow
     restart: unless-stopped
     ports:
