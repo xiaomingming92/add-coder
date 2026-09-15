@@ -11,22 +11,27 @@
 
 <table>
   <tr>
-    <td align="center" width="25%">
+    <td align="center" width="20%">
       <a href="https://github.com/xiaomingming92"><img src="https://github.com/xiaomingming92.png?size=160" width="88" height="88" alt="@xiaomingming92" /></a><br/>
       <sub><b>@xiaomingming92</b></sub><br/>
       <sub>维护者<br/>范式设计 · 发版 · 评审</sub>
     </td>
-    <td align="center" width="25%">
+    <td align="center" width="20%">
       <a href="https://github.com/iopzhu"><img src="https://github.com/iopzhu.png?size=160" width="88" height="88" alt="@iopzhu" /></a><br/>
       <sub><b>@iopzhu</b></sub><br/>
       <sub>记忆轮动<br/>48 文件 / +5877 −33</sub>
     </td>
-    <td align="center" width="25%">
+    <td align="center" width="20%">
+      <a href="https://github.com/Milkycoffees"><img src="https://github.com/Milkycoffees.png?size=160" width="88" height="88" alt="@Milkycoffees" /></a><br/>
+      <sub><b>@Milkycoffees</b></sub><br/>
+      <sub>生态贡献<br/>add-coder-flash（npm/GitHub）</sub>
+    </td>
+    <td align="center" width="20%">
       <a href="https://github.com/albertm88"><img src="https://github.com/albertm88.png?size=160" width="88" height="88" alt="@albertm88" /></a><br/>
       <sub><b>@albertm88</b></sub><br/>
       <sub>14 条 issue<br/>全部闭环</sub>
     </td>
-    <td align="center" width="25%">
+    <td align="center" width="20%">
       <a href="../CONTRIBUTING.md"><img src="https://img.shields.io/badge/Issue%20%2F%20PR-welcome-2ea44f?style=flat-square" alt="Issue / PR welcome" /></a><br/>
       <sub><b>你的位置</b></sub><br/>
       <sub><a href="../CONTRIBUTING.md">按贡献指南来</a></sub>
@@ -34,9 +39,9 @@
   </tr>
 </table>
 
-**上榜标准**（真源在贡献指南）：问题反馈（可复现步骤 + 实测日志 + 平台差异）· 代码贡献（被合并的 PR：模板与守卫 / caijuehub 规则 TOML / 记忆与审计链路 / 跨平台修复）· 长期维护（发版 / 评审 / 答疑）——详见 **[CONTRIBUTING.md §贡献者墙](../CONTRIBUTING.md#贡献者墙)**。
+**上榜标准**（真源在贡献指南）：问题反馈（可复现步骤 + 实测日志 + 平台差异）· 代码贡献（被合并的 PR：模板与守卫 / caijuehub 规则 TOML / 记忆与审计链路 / 跨平台修复）· 生态贡献（独立衍生包 / 独立实现 / 插件）· 长期维护（发版 / 评审 / 答疑）——详见 **[CONTRIBUTING.md §贡献者墙](../CONTRIBUTING.md#贡献者墙)**。
 
-> 墙上按**贡献形态**排位，不按资历：一条把边界条件写清的 issue，和一次被合并的 PR 一样重。
+> 墙上按**贡献形态**排位，不按资历：一条把边界条件写清的 issue、一个独立衍生包，和一次被合并的 PR 一样重。
 
 ---
 
@@ -58,6 +63,20 @@
 | **测试** | `tests/memory/{domain,retrieval,tools-memory,hooks-memory,fts-pg.integration,sqlite-fts}` 共 6 套 |
 
 > 这批代码是 0.3.35「记忆闭环」的直接前置：今天 README §⑤ 里写的位点确定性召回、FTS × 向量双通道融合、治理重排、幂等采证与快照，**检索骨架与工具骨架都源自这次提交**。
+
+### [@Milkycoffees](https://github.com/Milkycoffees) — 生态贡献：add-coder-flash
+
+**贡献**：把 ADD 范式做成**零依赖轻量发行版**——[`add-coder-flash`](https://www.npmjs.com/package/add-coder-flash)（npm，latest `1.0.4`，5 个版本，首次发布 2026-08-11）＋ [GitHub 开源](https://github.com/Milkycoffees/add-coder-flash)（2026-08-18）。
+
+| 维度 | 内容 |
+|------|------|
+| **定位** | 超级轻量的 ADD 脚手架：核心工作流零依赖（hooks 为纯 node `.mjs`，**不需要数据库**），`npm install` 即铺设（postinstall 钩子） |
+| **交付物** | 一条命令把 hooks / templates / rules / skills / agents / vocabulary / tools / scripts / settings.json 铺到 `<目标项目>/.qoder/`，并自动渲染 `mcp.json` 里的 `{{projectRoot}}` |
+| **独到之处** | 自动生成 `.qoder-cn/mcp.json`（QoderCN 只读项目内配置，写入即被 IDE 加载）；内置 MCP server 与无 DB 桥接方案；MCP server 名按项目名自动生成（≤15 字符，按完整单词 / 拼音边界截取，不在词中间切断） |
+| **适合场景** | 前端项目与全栈项目——无数据库开箱即用，有数据库亦可平滑衔接 |
+| **对主库的价值** | 用另一条路径验证了范式的**可移植性**：同一套 hooks / templates / rules 在零 DB 环境下同样成立；并回吐了 QoderCN 的 MCP 加载位置、pnpm `allowBuilds` 放行、MCP 名长度约束等真实约束 |
+
+> 生态贡献（独立衍生包 / 独立实现 / 插件）与入库 PR 同等计入核心贡献者。
 
 ---
 
