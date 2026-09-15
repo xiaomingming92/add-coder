@@ -18,7 +18,9 @@
 
 ### 变更
 
-- **开发库镜像换为含 pgvector**：`podman-compose.add.yml` 主库与 shadow 均改用 `docker.io/pgvector/pgvector:pg16`（PG 16.15），`template1` 预装 `pg_trgm` + `vector`；自适应向量迁移（`20260913090000_agent_memory_vector`）在扩展就绪后重跑，建出 `add_memory_vector`——记忆检索由此可跑向量/混合通道（此前无扩展，只能 fts-only 降级）
+- **数据库镜像全面换为含 pgvector**：`add-coder init` 生成模板（`composeContent`）、`podman-compose.example.yml`、README 中/英示例片段、以及 add-coder 自身 `podman-compose.add.yml` 统一改用 `docker.io/pgvector/pgvector:pg16`（PG 16.15）——向量通道开箱可用；目标环境没有 pgvector 时记忆检索仍按 fts-only 合法降级
+- **template1 扩展引导**：`db-ensure.sh`（模板版 + 自身版）在 diff 前幂等补齐 `template1` 的 `pg_trgm` / `vector`，使 Atlas dev 沙箱库每次重建都带扩展（此前依赖人工预装，缺扩展时 diff 直接报 `operator class "gin_trgm_ops" does not exist` 并中止）
+- 自适应向量迁移（`20260913090000_agent_memory_vector`）在扩展就绪后重跑，建出 `add_memory_vector`——记忆检索由此可跑向量/混合通道（此前无扩展，只能 fts-only 降级）
 
 ### 文档
 
