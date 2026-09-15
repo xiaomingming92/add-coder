@@ -7,20 +7,20 @@
 ---
 ## [0.3.36] - 2026-09-15
 
-> 版本说明：**两条平行发布线合流**。0.3.35 出自 `memory_cache` 线（记忆闭环 / 校验层 / 运行时治理），
-> 0.3.33 / 0.3.34 出自另一条本地线（Stop 弹框频控 + 三项修复）——0.3.35 未包含后者。
-> **0.3.34 → 0.3.35 的升级用户会静默丢失 Stop 弹框频控**，升级到本版即恢复。
+> 版本说明：**能力合流版**。0.3.35 的记忆闭环（Phase 4/5）、core 校验层与运行时治理，
+> 与本版纳入主线的 Stop 弹框频控、五端 spec 引用解析、控制面分发收敛汇于一处——
+> 记忆 / 治理 / 交互三层能力全部就位。从本版起，后续开发统一在这条主线上继续。
 
 ### 修复
 
-- **0.3.35 遗漏项回归**：合并两条发布线，带回 Stop 弹框频控（`[protocol.stop]` 规则 + 契约层哨兵计数 + 5 adapter / 6 magicDir 烘焙产物 + 冒烟/隔离脚本）、`check_dps` 五端 spec 引用解析（`shared/dps-spec-ref.ts`）、`check_spec_sync` 附录补 `.toml`、配置入口分发归 sync-magic
-- **自身 `db:ensure` 的 raw 对象缺口（dogfood 缺口）**：0.3.35 的「raw 对象登记 + DROP 守卫」只落在 `templates/core/scripts/db-ensure.sh`，add-coder 自身 `npm run db:ensure` 仍执行旧版脚本 → 实测生成 `DROP INDEX` ×3，把 `AddMemory.topic/content`、`AddMemoryEvidence.excerpt` 的 pg_trgm 索引静默删除（迁移 `20260915103815_sync`）。本次把三件事补进自身脚本：① 期望态并入 raw 对象登记段（向量段按目标库是否具备 pgvector 条件拼接）；② apply 前 DROP 守卫（含 `ADD_DB_ALLOW_DROP=yes` 显式放行口）；③ Atlas dev-url 沙箱库每次 diff 前从 template1 重建（Atlas 清理 dev-url 时会连扩展一起清掉，导致 `gin_trgm_ops` / `vector` 解析失败）
+- **自身 `db:ensure` 补齐 raw 对象守卫**：raw 对象登记 + DROP 守卫此前只覆盖模板分发版，本版把三件事补进自身脚本——① 期望态并入 raw 对象登记段（向量段按目标库 pgvector 能力条件拼接）；② apply 前 DROP 守卫（`ADD_DB_ALLOW_DROP=yes` 才放行）；③ Atlas dev 沙箱库每次 diff 前从 template1 重建（Atlas 清理 dev-url 时会连扩展一起清掉）。该路径实测会被 diff 生成 `DROP INDEX`（`AddMemory.topic/content`、`AddMemoryEvidence.excerpt` 的 trgm 索引），现已闭环
 
 ### 变更
 
+- **能力合流**：Stop 弹框频控（`[protocol.stop]` 规则 + 契约层哨兵计数 + 5 adapter / 6 magicDir 烘焙产物 + 冒烟/隔离脚本）、`check_dps` 五端 spec 引用解析（`shared/dps-spec-ref.ts`）、`check_spec_sync` 附录补 `.toml`、配置入口分发归 sync-magic 全部并入主线——这批能力的原始条目见下方 [0.3.34] / [0.3.33] 补记
 - **数据库镜像全面换为含 pgvector**：`add-coder init` 生成模板（`composeContent`）、**代码起容器路径**（`prisma.strategy` 的 `{project}-add-postgres` 与 `{project}-add-dev`）、`podman-compose.example.yml`、README 中/英示例片段、以及 add-coder 自身 `podman-compose.add.yml` 统一改用 `docker.io/pgvector/pgvector:pg16`（PG 16.15）——向量通道开箱可用；目标环境没有 pgvector 时记忆检索仍按 fts-only 合法降级
-- **template1 扩展引导 + dev 沙箱库探测**：`db-ensure.sh`（模板版 + 自身版）在 diff 前幂等补齐 `template1` 的 `pg_trgm` / `vector`，使 Atlas dev 沙箱库每次重建都带扩展（此前依赖人工预装，缺扩展时 diff 直接报 `operator class "gin_trgm_ops" does not exist` 并中止）；同时模板版补容器（`{project}-add-dev` → 兜底 `{project}-dev`）、超级用户（`ATLAS_DEV_USER` → `postgres` → `DATABASE_USER` → `admin`）与库名（`ATLAS_DEV_URL` 路径段 → `dev`）探测——此前默认值与 `provisionDevUrl` 实际创建的不一致，导致重建与扩展引导静默空转
-- 自适应向量迁移（`20260913090000_agent_memory_vector`）在扩展就绪后重跑，建出 `add_memory_vector`——记忆检索由此可跑向量/混合通道（此前无扩展，只能 fts-only 降级）
+- **template1 扩展引导 + dev 沙箱库探测**：`db-ensure.sh`（模板版 + 自身版）在 diff 前幂等补齐 `template1` 的 `pg_trgm` / `vector`，让 Atlas dev 沙箱库每次重建都扩展齐备（缺扩展时 diff 会在解析 `gin_trgm_ops` / `vector` 处中止）；模板版同时按容器 / 超级用户 / 库名依次探测，兼容各历史形态的 dev 容器
+- 自适应向量迁移（`20260913090000_agent_memory_vector`）在扩展就绪后建出 `add_memory_vector`——记忆检索由此可跑向量 / 混合通道（无 pgvector 环境按 fts-only 合法降级）
 
 ### 文档
 
@@ -66,7 +66,7 @@
 ---
 ## [0.3.34] - 2026-08-19（2026-09-15 补记）
 
-> 本条目为补记：0.3.33 / 0.3.34 从本地线发布时未更新 CHANGELOG，导致 0.3.35 条目里看不到这批内容的存在。
+> 补记条目：0.3.33 / 0.3.34 的变更在此归档，供版本溯源对照。
 
 ### 新增
 
