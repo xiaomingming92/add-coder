@@ -7,9 +7,17 @@
 ---
 ## [未发布] - 待下个版本
 
+### 修复
+
+- **模板真源版本对齐**：`templates/.add-coder-src-hash.json` 的 `_version` 落在 0.3.36、而包版本已是 0.3.37（发布流程 bump 版本后未重跑 `gen-src-hash`）→ 重新生成对齐；该不一致由 `tests/windows-stability.test.ts` 的发布不变量断言捕获
+
+### 新增
+
+- **贡献者墙生成器**（`npm run contributors`）：真源 [docs/contributors.toml](./docs/contributors.toml)（人工登记——生态贡献者 / 维护者 / 文案与排序无法自动判定）→ 生成 CONTRIBUTING.md 的头像墙与 docs/ACKNOWLEDGEMENTS.md 的总览表（各自标记区间内，生成区勿手改）；`npm run contributors:check` 随 `npm test` 跑（生成区与真源不一致即失败）；`npm run contributors:audit` 追加「未登记提交作者」审计（依据真源 emails，默认不联网）
+
 ### 文档
 
-- 新增 **贡献者墙**（头像墙 + 上榜标准，位于 [CONTRIBUTING.md](./CONTRIBUTING.md#-贡献者墙) 简介与目录之间）与 [docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md) **逐项明细**（README 底部入口）：记录 `memory_cache` 分支记忆轮动贡献、生态衍生包 [`add-coder-flash`](https://www.npmjs.com/package/add-coder-flash) 与持续输出 issue 的反馈者，逐项可核对
+- **贡献者墙**（头像墙 + 上榜标准）位于 [CONTRIBUTING.md](./CONTRIBUTING.md#-贡献者墙) 简介与目录之间；**逐项明细**在 [docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md)（README 底部入口）：记录 `memory_cache` 分支记忆轮动贡献、生态衍生包 [`add-coder-flash`](https://www.npmjs.com/package/add-coder-flash) 与持续输出 issue 的反馈者，逐项可核对
 
 ---
 ## [0.3.37] - 2026-09-15

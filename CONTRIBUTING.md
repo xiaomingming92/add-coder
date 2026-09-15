@@ -8,6 +8,9 @@
 
 ## 🧱 贡献者墙
 
+> 名单真源 [docs/contributors.toml](./docs/contributors.toml)：改真源 → `npm run contributors` 写盘；`npm run contributors:check` 校验（已随 `npm test` 跑）。下方生成区（标记之间）勿手改。
+
+<!-- CONTRIBUTORS:WALL:START -->
 <table>
   <tr>
     <td align="center" width="20%">
@@ -37,6 +40,7 @@
     </td>
   </tr>
 </table>
+<!-- CONTRIBUTORS:WALL:END -->
 
 **上榜标准**（唯一真源在本节；[docs/ACKNOWLEDGEMENTS.md](./docs/ACKNOWLEDGEMENTS.md) 保留逐项明细与证据）：
 

@@ -9,9 +9,20 @@
 
 ## 🧱 贡献者墙
 
-**头像墙与上榜标准唯一真源在 → [CONTRIBUTING.md §贡献者墙](../CONTRIBUTING.md#-贡献者墙)**（位于贡献指南的简介与目录之间；新增贡献者只改那一处）。
+**头像墙在 → [CONTRIBUTING.md §贡献者墙](../CONTRIBUTING.md#-贡献者墙)**（位于贡献指南的简介与目录之间）。
 
-本页保留下面的**逐项明细**——谁做了什么、证据在哪。墙上四类形态：维护者 · 记忆轮动 · 生态贡献 · 问题反馈。
+名单与文案的唯一真源是 **[contributors.toml](./contributors.toml)**：改真源 → `npm run contributors` 写盘；`npm run contributors:check` 校验（已随 `npm test` 跑）。下方生成区勿手改。
+
+<!-- CONTRIBUTORS:TABLE:START -->
+| 贡献者 | 形态 | 明细 |
+|--------|------|------|
+| [@xiaomingming92](https://github.com/xiaomingming92) | 维护者 | 范式设计 · 发版 · 评审 |
+| [@iopzhu](https://github.com/iopzhu) | 核心贡献者 | 记忆轮动：记忆闭环的检索层与工具层主体（48 文件 / +5877 −33） |
+| [@Milkycoffees](https://github.com/Milkycoffees) | 核心贡献者 | 生态贡献：add-coder-flash —— 零依赖轻量发行版（npm `1.0.4` / 5 个版本；GitHub 开源） |
+| [@albertm88](https://github.com/albertm88) | 问题反馈者 | 问题反馈：14 条 issue（#5–#7、#10–#20）全部闭环 |
+<!-- CONTRIBUTORS:TABLE:END -->
+
+本页余下部分保留**逐项明细**——谁做了什么、证据在哪；上榜标准见 [CONTRIBUTING.md §贡献者墙](../CONTRIBUTING.md#-贡献者墙)。
 
 ---
 

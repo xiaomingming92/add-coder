@@ -1,0 +1,53 @@
+# 贡献者真源（唯一事实源）——贡献者墙与总览表由 scripts/gen-contributors.ts 生成，生成区勿手改
+#
+# 流程：改本文件 → npm run contributors（写盘）→ npm run contributors:check（校验，已随 npm test 跑）
+# 形态 form：maintainer（维护者）· code（代码贡献）· ecosystem（生态贡献）· reporter（问题反馈）
+# 字段：
+#   login     GitHub 用户名（头像与主页链接由此派生：github.com/<login>.png）
+#   role      进哪一栏（维护者 / 核心贡献者 / 问题反馈者）
+#   cell      墙上头像格里的两行短文案（可用 <br/> 换行）
+#   summary   致谢明细表里的一句话说明
+#   emails    该人的 git 提交邮箱（用于「未登记作者」审计；生态贡献者可省略）
+#   evidence  证据引用（commit:<sha> / issues:<n,n> / npm:<pkg> / repo:<owner/repo>）
+#   hidden    true 表示不参与生成（例如本人要求不被列出）
+#   sort      墙上排序（小 → 大；按形态排位，不按资历）
+
+# 机器人 / 无人格作者邮箱：不参与「未登记作者」审计
+ignore_emails = ["github-actions[bot]@users.noreply.github.com"]
+
+[[person]]
+login = "xiaomingming92"
+form = "maintainer"
+role = "维护者"
+cell = "维护者<br/>范式设计 · 发版 · 评审"
+summary = "范式设计 · 发版 · 评审"
+emails = ["wujixmm@gmail.com"]
+sort = 10
+
+[[person]]
+login = "iopzhu"
+form = "code"
+role = "核心贡献者"
+cell = "记忆轮动<br/>48 文件 / +5877 −33"
+summary = "记忆轮动：记忆闭环的检索层与工具层主体（48 文件 / +5877 −33）"
+emails = ["iopzhu@qq.com"]
+evidence = ["commit:357b215"]
+sort = 20
+
+[[person]]
+login = "Milkycoffees"
+form = "ecosystem"
+role = "核心贡献者"
+cell = "生态贡献<br/>add-coder-flash（npm/GitHub）"
+summary = "生态贡献：add-coder-flash —— 零依赖轻量发行版（npm `1.0.4` / 5 个版本；GitHub 开源）"
+evidence = ["npm:add-coder-flash", "repo:Milkycoffees/add-coder-flash"]
+sort = 30
+
+[[person]]
+login = "albertm88"
+form = "reporter"
+role = "问题反馈者"
+cell = "14 条 issue<br/>全部闭环"
+summary = "问题反馈：14 条 issue（#5–#7、#10–#20）全部闭环"
+evidence = ["issues:5,6,7,10,11,12,13,14,15,16,17,18,19,20"]
+sort = 40
