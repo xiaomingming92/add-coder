@@ -154,7 +154,8 @@ export function registerCheckRahs(server: ToolRegistrar) {
               arContent.match(/`[^`]+\.(ts|js|sh|md|tsx|json|yml|yaml)`/g) ||
               []
             ).map((f: string) => f.replace(/`/g, "").toLowerCase());
-            const diff = runCommand("git", ["diff", "--name-only"], {
+            // core.quotepath=false：避免非 ASCII 路径被八进制转义后与附录清单比不中（与 check_spec_sync 同修）
+            const diff = runCommand("git", ["-c", "core.quotepath=false", "diff", "--name-only"], {
               cwd: PROJECT_ROOT,
               timeout: 5000,
             });

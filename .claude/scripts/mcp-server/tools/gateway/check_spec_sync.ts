@@ -77,14 +77,18 @@ export function registerCheckSpecSync(server: ToolRegistrar) {
           lines.push(`add-route: ${arFile}`);
           const arContent = (await readFileSafe(join(plansDir, arFile))) || "";
           // 提取 add-route 附录文件清单（toml 纳入：sync-magic-rules.toml 等控制面文件，2026-08-18 修复）
-          const appendixFiles = (arContent.match(/`[^`]+\.(ts|js|sh|md|tsx|json|yml|yaml|toml)`/g) || [])
+          // sql/prisma 纳入（2026-09-16 修复）：原生 DDL 与 schema 是常见交付物，此前不在白名单 →
+          // 附录里明明登记了 `.../sqlite-fts5.sql` 仍被判"不在附录中"（假告警）。
+          const appendixFiles = (arContent.match(/`[^`]+\.(ts|tsx|js|jsx|sh|sql|prisma|md|json|yml|yaml|toml)`/g) || [])
             .map((f: string) => f.replace(/`/g, ""));
           lines.push(`附录文件: ${appendixFiles.length} 个`);
 
           // git diff 变更文件（win32 下 git 为 .cmd → runCommand 自动解析，issue #10 跨端修复）
           let diffFiles: string[] = [];
           try {
-            const diff = runCommand("git", ["diff", "--name-only"], {
+            // core.quotepath=false：默认 git 会把非 ASCII 路径转成 "\346\236..." 八进制转义 →
+            // 与附录里的真实中文路径永远比不中（2026-09-16 修复：架构文档类路径的假告警）。
+            const diff = runCommand("git", ["-c", "core.quotepath=false", "diff", "--name-only"], {
               cwd: PROJECT_ROOT,
               timeout: 5000,
             });

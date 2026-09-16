@@ -37,8 +37,24 @@ EOF
   echo ">>> 已创建 .env.development"
 fi
 
-# ── SQLite：无需容器 ──
-if [ "$ENGINE" = "sqlite" ]; then exit 0; fi
+# ── SQLite：无需容器；但 FTS5 原生层不在 Prisma schema 内，必须显式应用期望态 ──
+#   背景（Plan add-coder-sqlite-memory-flow §3.2）：`prisma db push` 只建 Prisma 表，
+#   `add_memory_fts` 虚表 + 3 个同步触发器是原生 DDL → 此前 sqlite 项目 recall_memory 直接
+#   `no such table`。此处与 init.ts（src/lib/memory-expected-state.ts）消费**同一份** SQL 真源。
+#   失败语义：仅告警不阻断（exit 0 语义不变）——记忆检索是能力项，不该让环境准备硬失败。
+if [ "$ENGINE" = "sqlite" ]; then
+  MAGIC_DIR="${MAGIC_DIR:-.codex}"
+  FTS_SQL="$MAGIC_DIR/scripts/mcp-server/shared/memory/retrieval/fts/sqlite-fts5.sql"
+  if [ -f "$PROJECT_DIR/$FTS_SQL" ]; then
+    echo ">>> 应用记忆 FTS5 期望态（$FTS_SQL）..."
+    # Prisma 7：db execute 的 datasource 由项目 prisma.config.ts 提供，`--schema` 已移除（带=unknown option）
+    (cd "$PROJECT_DIR" && npm exec prisma -- db execute --file "$PROJECT_DIR/$FTS_SQL") \
+      || echo "!!! 记忆 FTS5 期望态应用失败（不阻断）：recall_memory 将按 fts-only 降级；修复入口 add-coder memory:reindex --apply"
+  else
+    echo ">>> 未找到 $FTS_SQL（跳过，不阻断）——请先执行 add-coder sync"
+  fi
+  exit 0
+fi
 
 # ── 自行管理 PostgreSQL ──
 if [ "$CONTAINER" = "none" ] || [ "$CONTAINER" = "manual" ]; then
