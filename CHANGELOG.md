@@ -9,11 +9,16 @@
 
 ### 修复
 
+- **SQLite 记忆 FTS5 期望态无人创建**（`add-coder-sqlite-memory-flow-plan-v1`）：`prisma db push` 只建 Prisma 表，`add_memory_fts` 虚表 + 3 个同步触发器是原生 DDL → sqlite 项目 `recall_memory` 直接 `no such table`。现在 `init --engine sqlite` 与 `db-ensure.sh sqlite` 都会应用期望态（幂等、失败告警不阻断），并新增自助入口 `add-coder memory:reindex [--probe|--apply] [--backend postgres|sqlite] [--json]`（双后端同一条编排；退出码 0=探测成功/重建收敛、1=重建后仍缺失、2=基础设施失败）
+- **Prisma 7 契约漂移（三处调用点）**：`db execute` 已移除 `--schema`（实测 7.9.1 报 unknown option；datasource 由项目 `prisma.config.ts` 提供），init 路径、`db-ensure.sh`、`memory:reindex` 三处统一去参；pnpm 分支由 `dlx` 改为 `exec`，避免自动拉取最新版 Prisma（实测会解析到 8.0-rc）造成版本漂移
+- **打包产物与源码行为不一致**：tsup/esbuild 按 `target=node20` 的内置模块表把 `import("node:sqlite")` 改写成裸包名 `sqlite`，dist 产物运行时报 `Cannot find package 'sqlite'`（单测全绿但功能等于没交付）→ 改走 `createRequire`；构建产物冒烟已纳入验证步骤
+- **`check_spec_sync` / `check_rahs` 的 git diff 口径缺陷**：附录路径白名单漏 `.sql`/`.prisma`、`git diff --name-only` 对非 ASCII 路径做八进制转义 → 已登记的 `.sql` 与中文架构文档被误报"不在附录中"；补白名单 + `core.quotepath=false`（六端同步分发）
 - **模板真源版本对齐**：`templates/.add-coder-src-hash.json` 的 `_version` 落在 0.3.36、而包版本已是 0.3.37（发布流程 bump 版本后未重跑 `gen-src-hash`）→ 重新生成对齐；该不一致由 `tests/windows-stability.test.ts` 的发布不变量断言捕获
 - **发布流程补不变量**：`release.yml` 的 bump 步骤改为「bump 版本（先不打 tag）→ 重跑 `gen-src-hash` → 断言包版本 == 模板真源版本 → 提交 → 打 tag → 推送」，tag 指向的提交不再滞后一版；手工发版口径同步写进 [CONTRIBUTING.md](./CONTRIBUTING.md) 与 [docs/npm-publish-guide.md](./docs/npm-publish-guide.md)
 
 ### 新增
 
+- **记忆 FTS 期望态单一真源 + 生成物**：清单落库层 `src/lib/memory-fts-objects.ts`，`retrieval/fts/sqlite-fts5.sql` 降级为生成物（`scripts/memory/gen-sqlite-fts-sql.ts`，支持 `--check` 防漂移），生成物与真源逐字一致性由用例守护——三入口（init / db-ensure / CLI）共用同一实现，不再出现"TS 与 .sql 各写一份"
 - **贡献者墙生成器**（`npm run contributors`）：真源 [docs/contributors.toml](./docs/contributors.toml)（人工登记——生态贡献者 / 维护者 / 文案与排序无法自动判定）→ 生成 CONTRIBUTING.md 的头像墙与 docs/ACKNOWLEDGEMENTS.md 的总览表（各自标记区间内，生成区勿手改）；`npm run contributors:check` 随 `npm test` 跑（生成区与真源不一致即失败）；`npm run contributors:audit` 追加「未登记提交作者」审计（依据真源 emails，默认不联网）
 - **贡献者墙自动刷新 workflow**（`.github/workflows/contributors.yml`）：每周一 01:00 UTC + release 完成后触发——生成区滞后则开 / 更新 PR（`chore/contributors-refresh`）；出现未登记提交作者则开 / 更新「待登记作者」issue。workflow 只做编排，逻辑仍在生成器与测试里
 

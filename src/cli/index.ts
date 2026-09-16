@@ -6,6 +6,7 @@ import { syncCommand } from "./commands/sync";
 import { statusCommand } from "./commands/status";
 import { stackCommand } from "./commands/stack";
 import { ensureEmbeddingModel } from "../lib/model-predownload";
+import { memoryReindexCommand } from "./commands/memory-reindex";
 
 const { version } = JSON.parse(
     readFileSync(new URL("../package.json", import.meta.url), "utf-8"),
@@ -79,5 +80,23 @@ program
     .description("预下载 embedding 模型（首次 DPS 调用会自动下载，本命令提前拉取）")
     .option("--force", "强制重新下载（即使缓存已存在）")
     .action(modelDownloadCommand);
+
+program
+    .command("memory:reindex")
+    .description("记忆 FTS 期望态探测/重建（自助修复入口：缺对象则补齐，双后端 postgres/sqlite）")
+    .option("--probe", "只读探测缺失对象（默认行为）")
+    .option("--apply", "应用缺失对象并复探（仍有缺失则退出码 1）")
+    .option("--backend <type>", "后端: postgres | sqlite（缺省按项目 Prisma datasource 自动判定）")
+    .option("--json", "以 JSON 输出报告（供自动化消费）")
+    .action(async (options: { probe?: boolean; apply?: boolean; backend?: string; json?: boolean }) => {
+        const backend = options.backend === "postgres" || options.backend === "sqlite" ? options.backend : undefined;
+        if (options.backend && !backend) {
+            console.error(`未知 backend: ${options.backend}（可选 postgres | sqlite）`);
+            process.exitCode = 2;
+            return;
+        }
+        // 退出码语义：0 探测成功/重建收敛；1 重建后仍缺失；2 无法探测（详见命令层注释）
+        process.exitCode = await memoryReindexCommand({ ...options, backend });
+    });
 
 program.parse();

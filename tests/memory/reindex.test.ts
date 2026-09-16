@@ -8,13 +8,18 @@
  *  - DDL 幂等性：全部 IF NOT EXISTS
  */
 import { describe, expect, it } from "vitest"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import {
   PG_FTS_OBJECTS,
   SQLITE_FTS_OBJECTS,
+  applyObjects,
   detectBackend,
   objectsFor,
   probeFts,
   reindex,
+  renderSqliteFtsSql,
+  resolveFtsObjects,
 } from "../../scripts/memory/reindex.js"
 import type { RawQuerier } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/types.js"
 
@@ -122,5 +127,42 @@ describe("reindex 重建与可重放", () => {
     expect(report.rebuilt).toEqual([])
     expect(report.progress).toBe(100)
     expect(executed.filter((s) => /^CREATE/i.test(s))).toHaveLength(0)
+  })
+})
+
+/*
+ * 单一真源防漂移（Plan Task 1.1/1.2 / Spec §1）：
+ * `retrieval/fts/sqlite-fts5.sql` 是**生成物**，真源为 SQLITE_FTS_OBJECTS。
+ * 该用例把"两份拷贝"钉成"一份真源 + 生成物"——手工改 .sql 会让本条失败。
+ */
+describe("sqlite-fts5.sql 由真源生成（防双源漂移）", () => {
+  const sqlPath = resolve(
+    import.meta.dirname,
+    "../../templates/core/scripts/mcp-server/shared/memory/retrieval/fts/sqlite-fts5.sql",
+  )
+
+  it("committed .sql 与 renderSqliteFtsSql() 逐字一致", () => {
+    expect(readFileSync(sqlPath, "utf-8")).toBe(renderSqliteFtsSql())
+  })
+
+  it("生成物包含全部 SQLite 期望态对象（表 + 3 触发器）", () => {
+    const sql = renderSqliteFtsSql()
+    for (const spec of SQLITE_FTS_OBJECTS) expect(sql).toContain(spec.name)
+  })
+
+  it("applyObjects 只对缺失对象执行 DDL，且返回 missing/applied", async () => {
+    const executed: string[] = []
+    const existing = new Set(["add_memory_fts"]) // 表已在，触发器缺
+    const r = await applyObjects("sqlite", async (ddl) => { executed.push(ddl) }, existing)
+    expect(r.missing).toEqual(["add_memory_fts_ai", "add_memory_fts_au", "add_memory_fts_ad"])
+    expect(r.applied).toEqual(r.missing)
+    expect(executed).toHaveLength(3)
+    expect(executed.every((s) => /IF NOT EXISTS/.test(s))).toBe(true)
+  })
+
+  it("resolveFtsObjects 与兼容别名 objectsFor 同一实现", () => {
+    expect(objectsFor).toBe(resolveFtsObjects)
+    expect(resolveFtsObjects("sqlite")).toBe(SQLITE_FTS_OBJECTS)
+    expect(resolveFtsObjects("postgres")).toBe(PG_FTS_OBJECTS)
   })
 })

@@ -2,8 +2,9 @@
 
 > 对应 Plan：`.codex/plans/2026-08/19/add-coder-agent-memory-plan-v2.md`
 > 关联 Plan（本分支）：`add-coder-agent-memory-closure-plan-v1`（闭包）、`add-coder-memory-rank-calibration-plan-v1`（排序校准）、
-> `add-coder-core-validation-lifecycle-plan-v1`（校验层接线）、`add-coder-hitl-widget-runtime-gap-plan-v1`（运行时可见性）
-> 版本：v2 · 日期：2026-09-14 · 状态：**实施后回填（as-built）** — v1 为 2026-08-19 实施前基线，§8 起为落地后的现状与新增子系统
+> `add-coder-core-validation-lifecycle-plan-v1`（校验层接线）、`add-coder-hitl-widget-runtime-gap-plan-v1`（运行时可见性）、
+> `add-coder-sqlite-memory-flow-plan-v1`（SQLite 原生层期望态接线与自助修复入口）
+> 版本：v2 · 日期：2026-09-16 · 状态：**实施后回填（as-built）** — v1 为 2026-08-19 实施前基线，§8 起为落地后的现状与新增子系统
 
 ---
 
@@ -98,7 +99,7 @@ Hook 侧约束：同步路径只读快照/写队列（无 DB），任何记忆�
 
 ---
 
-## 8. 实施现状（as-built，2026-09-14 回填）
+## 8. 实施现状（as-built，2026-09-16 回填）
 
 v1 的 §1–§7 是**设计基线**；下表是落地后与基线的对应关系（差异处已注明实测）。
 
@@ -111,6 +112,8 @@ v1 的 §1–§7 是**设计基线**；下表是落地后与基线的对应关�
 | §3.8 Embedding 首版 none | ⬆️ 已推进到 Phase 5（双 provider） | 同上；`ADD_MEMORY_VECTOR_MODE=off|auto|required` |
 | Handoff Digest（v1 未列） | ✅ 新增：候选态生成，不进 ACTIVE | `memory/domain/handoff-digest.ts`；`memory-compat.ts` 提供 v1 门面（`deprecated+mappedTo`，**不转发执行**） |
 | 排序参数（v1 硬编码） | ⬆️ 改为**由观测校准**（权重快照为单一事实源） | `calibration/*`（反馈统计 / 批量拟合 / 快照 / Kalman / FFT 诊断）+ `scripts/memory/*`；`rankingVersion` → v3（快照哈希） |
+| SQLite 原生层（FTS5 虚表 + 3 触发器） | ✅ 期望态三入口接线 + 自助修复 | 清单真源 `src/lib/memory-fts-objects.ts` → 生成物 `<magicDir>/scripts/mcp-server/shared/memory/retrieval/fts/sqlite-fts5.sql`（`gen-sqlite-fts-sql.ts` 生成，用例断言逐字一致）；消费方：init（`src/lib/memory-expected-state.ts`，失败告警不阻断）、`db-ensure.sh` sqlite 段（同语义 exit 0）、`add-coder memory:reindex --probe/--apply`（双后端，`src/lib/memory-fts-runtime.ts` + `src/cli/commands/memory-reindex.ts`） |
+| Prisma 7 `db execute` 口径 | ⚠️ 已校正（`--schema` 移除） | 实测 7.9.1：`--schema` 报 unknown option；datasource 由项目 `prisma.config.ts` 提供（官方文档同口径）→ 三处调用统一 `--file` 且用 `exec`（不用 `dlx`，避免拉取 8.0-rc 造成版本漂移） |
 
 **实测指标（门槛不下调，如实登记）**：FTS-only `Recall@5 = 0.9592`（≥ 0.9188 ✅）、`MRR@5 = 0.6551`；
 Hybrid 融合把 `MRR@5` 从 0.2612 抬到 **0.4867 后收敛，仍 < 0.75 门槛 ❌** —— 瓶颈是 top-5 内的排序判别力，

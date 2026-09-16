@@ -27,6 +27,8 @@ import { createConnection } from "net";
 import { runCommand, commandExists } from "../../lib/run-command";
 import { ensureEmbeddingModel } from "../../lib/model-predownload";
 import { ensurePortsContract } from "../../lib/ports-contract";
+// 期望态应用属库层能力（init / db-ensure / memory:reindex 三处共用）；命令层只编排出输出
+import { applyMemoryExpectedState } from "../../lib/memory-expected-state.js";
 
 interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; stack?: string; skipModel?: boolean; printMcpConfig?: boolean; writeUserConfig?: boolean; }
 interface DbChoice { engine: "postgresql" | "sqlite" | "manual"; container?: "podman" | "docker" | "manual"; user?: string; password?: string; port?: string; reuseExisting?: boolean; }
@@ -541,6 +543,16 @@ async function deployDatabase(ctx: InitContext): Promise<string | null> {
         injectDbExportScript(projectRoot, false);
         try {
             await injectPrisma(projectRoot, { force: !!options.force, datasource: "sqlite" });
+            // Plan Task 1.3 / Spec §2：Prisma 只建 Prisma 表；FTS5 虚表 + 触发器是原生 DDL，
+            // 此前无任何入口创建（sqlite 项目 recall_memory 直接 no such table）→ 此处补应用（幂等、失败不阻断）
+            const expected = applyMemoryExpectedState({ projectRoot, magicDir, engine: db.engine });
+            if (expected.applicable && !expected.ok) {
+                console.warn(`⚠️  记忆 FTS5 期望态应用失败（不阻断 init）：${expected.detail ?? "未知原因"}`);
+                console.warn(`   后续 recall_memory 会报 sqlite-fts 不可用；手工恢复: ${expected.manualCmd}`);
+                console.warn(`   或运行: add-coder memory:reindex --apply`);
+            } else if (expected.applicable) {
+                console.log(`✅ 记忆 FTS5 期望态已应用（${expected.relSql}）`);
+            }
         } catch (e) { fail = `SQLite 同步失败: ${e instanceof Error ? e.message : String(e)}`; }
     }
 
