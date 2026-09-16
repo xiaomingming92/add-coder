@@ -33,6 +33,13 @@ jobs:
           cache: pnpm
 
       - run: pnpm install
+
+      # 发版前置校验（2026-09-15 跳号事故复盘：0.3.35 → 0.3.37 跳掉 0.3.36）
+      # 根因是"手工预 bump + CI 再 bump"的双重 bump；原有不变量只比对仓库内部，挡不住仓库↔registry 漂移。
+      # 此处硬拦：仓库版本必须等于 registry latest（同时拦手工 bump 与手工 publish），且上一版 tag 必须存在。
+      - name: 发版前置校验（CI 是唯一 bump 入口）
+        run: pnpm exec tsx scripts/release-preflight.ts
+
       - run: pnpm build
       - run: pnpm lint --max-warnings 0
 

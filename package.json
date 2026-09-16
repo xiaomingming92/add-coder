@@ -44,7 +44,8 @@
     "podman-add-coder-up": "podman-compose --env-file .env.development -f podman-compose.add.yml up -d",
     "podman-add-coder-down": "podman-compose --env-file .env.development -f podman-compose.add.yml down",
     "test": "vitest run",
-    "generate:check": "tsx scripts/generate-idempotency-check.ts"
+    "generate:check": "tsx scripts/generate-idempotency-check.ts",
+    "release:preflight": "tsx scripts/release-preflight.ts"
   },
   "keywords": [
     "add",

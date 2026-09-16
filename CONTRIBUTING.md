@@ -220,23 +220,28 @@ docs: 补充 H5 API 契约文档
 
 ## 发布
 
-发布流程（preview 分支 / 正式 main tag 触发 CI）详见 [docs/npm-publish-guide.md](./docs/npm-publish-guide.md)。要点：
+发布流程详见 [docs/npm-publish-guide.md](./docs/npm-publish-guide.md)。要点：
 
 ```bash
-# preview（当前分支）
+# preview（feature 分支，本地）
 pnpm run build
 npm version prerelease --no-git-tag-version
 npm publish --tag=preview --no-git-checks
 
-# 正式（main，tag 触发 CI）
-git checkout main && git merge feature/xxx
-npm version patch   # 或 minor
-git push --follow-tags
+# 正式版：**只在 GitHub Actions 触发 release workflow**（bump 选项 patch/minor/major）
+#   Actions → release → Run workflow → 选 main + bump 类型
+#   CI 内部：发版前置校验 → bump → 重生成 src-hash → 校验不变量 → 提交 + tag → npm publish → GitHub Release
 ```
 
-> **发布不变量**：`package.json` 版本必须等于 `templates/.add-coder-src-hash.json._version`（断言在 `tests/windows-stability.test.ts`）。
-> `release.yml` 已内置：bump 版本 → 重跑 `gen-src-hash` → 校验不变量 → 提交 → 打 tag（提交与 tag 同源）。
-> 本地手工发版请照做：`npm version patch --no-git-tag-version` → `npx tsx scripts/gen-src-hash.ts` → `git commit` → `git tag vX.Y.Z`。
+> **禁止手工 bump / 手工 publish（正式版）**。原因有实例：2026-09-15 仓库被手工预 bump 到 `0.3.36`，随后 CI 又按 patch 规则 bump → 直接发布 `0.3.37`，
+> **0.3.36 被跳过、从未上 npm**（双重 bump）。CI 是唯一 bump 入口，本地只负责写代码 + 合并。
+
+> **两道不变量**（任一不过即拒绝发版，`scripts/release-preflight.ts` 为单一真源，CI 与本地共用）：
+> ① **跨端**：仓库 `package.json` 版本 == registry `latest` —— 双向拦截手工 bump（仓库领先）与手工 publish（registry 领先）；
+> ② **仓库内**：`package.json` 版本 == `templates/.add-coder-src-hash.json._version`（另有 `tests/windows-stability.test.ts` 兜底断言）；
+> ③ 上一版 tag `v<版本>` 必须存在（证明上一版经 CI 发布）。
+>
+> 发版前可本地自检：`npm run release:preflight`（加 `-- --worktree` 同时校验工作区干净）。
 
 ## 常见坑位
 

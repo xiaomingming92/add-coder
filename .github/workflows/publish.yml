@@ -27,6 +27,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      # registry 幂等（2026-09-16 补）：tag push 也可由重推 tag / 重复 dispatch 触发，
+      # 只按"Release 是否存在"去重不够——版本若已在 npm 上，publish 必然 E403 失败（红一条无用流水线）。
+      # 故先查 registry：已存在 → 跳过 publish，仅按需补 GitHub Release。
+      - name: Check version on registry (idempotent publish)
+        id: npmpub
+        if: steps.check.outputs.skipped != 'true'
+        run: |
+          VER="$(node -p "require('./package.json').version")"
+          if npm view "add-coder@$VER" version > /dev/null 2>&1; then
+            echo "publish=false" >> $GITHUB_OUTPUT
+            echo "⏭️  npm 已有 add-coder@$VER，跳过 publish（仅补 GitHub Release）"
+          else
+            echo "publish=true" >> $GITHUB_OUTPUT
+          fi
+
       - uses: pnpm/action-setup@v4
         if: steps.check.outputs.skipped != 'true'
 
@@ -45,7 +60,7 @@ jobs:
         if: steps.check.outputs.skipped != 'true'
 
       - run: pnpm publish --no-git-checks --tag latest
-        if: steps.check.outputs.skipped != 'true'
+        if: steps.check.outputs.skipped != 'true' && steps.npmpub.outputs.publish == 'true'
 
       - name: Collect changes since last tag
         if: steps.check.outputs.skipped != 'true'

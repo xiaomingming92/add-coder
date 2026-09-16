@@ -9,6 +9,8 @@
 
 ### 修复
 
+- **发版跳号根治（0.3.35 → 0.3.37 跳过 0.3.36）**：根因是**双重 bump**——仓库被手工预 bump 到 0.3.36，`release.yml` 又按 patch 规则 bump 一次（0.3.36 → 0.3.37），而原"发布不变量"只比对仓库内部（package.json vs src-hash），挡不住仓库↔registry 漂移。新增 `scripts/release-preflight.ts`（CI 与本地共用的单一真源）作为**发版硬门禁**：① 仓库版本 == registry `latest`（双向拦手工 bump 与手工 publish）；② package.json == src-hash `_version`；③ 上一版 tag `v<版本>` 存在。任一不过 → workflow 在 bump 之前失败，不污染 registry
+- **`publish.yml` 发布幂等**：tag push 也可能来自历史 tag 补打/重推，"Release 是否存在"去重不足（版本已在 npm 时会 E403 红一条无用流水线）→ 先查 registry，已存在则跳过 `publish`、仅按需补 GitHub Release
 - **SQLite 记忆 FTS5 期望态无人创建**（`add-coder-sqlite-memory-flow-plan-v1`）：`prisma db push` 只建 Prisma 表，`add_memory_fts` 虚表 + 3 个同步触发器是原生 DDL → sqlite 项目 `recall_memory` 直接 `no such table`。现在 `init --engine sqlite` 与 `db-ensure.sh sqlite` 都会应用期望态（幂等、失败告警不阻断），并新增自助入口 `add-coder memory:reindex [--probe|--apply] [--backend postgres|sqlite] [--json]`（双后端同一条编排；退出码 0=探测成功/重建收敛、1=重建后仍缺失、2=基础设施失败）
 - **Prisma 7 契约漂移（三处调用点）**：`db execute` 已移除 `--schema`（实测 7.9.1 报 unknown option；datasource 由项目 `prisma.config.ts` 提供），init 路径、`db-ensure.sh`、`memory:reindex` 三处统一去参；pnpm 分支由 `dlx` 改为 `exec`，避免自动拉取最新版 Prisma（实测会解析到 8.0-rc）造成版本漂移
 - **打包产物与源码行为不一致**：tsup/esbuild 按 `target=node20` 的内置模块表把 `import("node:sqlite")` 改写成裸包名 `sqlite`，dist 产物运行时报 `Cannot find package 'sqlite'`（单测全绿但功能等于没交付）→ 改走 `createRequire`；构建产物冒烟已纳入验证步骤

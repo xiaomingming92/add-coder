@@ -28,24 +28,30 @@ npm publish --tag=preview --no-git-checks
 
 用户安装：`npm install add-coder@preview`
 
-### 正式版本（main 分支，tag 触发）
+### 正式版本（main 分支，**只能走 CI**）
 
 ```bash
 # 1. 合并到 main
 git checkout main && git merge feature/xxx
 
-# 2. 打正式 tag
-npm version patch   # 0.3.5 → 0.3.6
-# 或
-npm version minor   # 0.3.5 → 0.4.0
-
-# 3. 推送 tag 触发 CI
-git push --follow-tags
+# 2. 打开 GitHub Actions → release → Run workflow
+#    - 分支：main
+#    - bump：patch / minor / major（0.3.37 → patch = 0.3.38）
+#    CI 内部顺序：发版前置校验 → bump → gen-src-hash → 校验不变量 → 提交 + tag → npm publish → GitHub Release
 ```
 
-> **发布不变量**：`package.json` 版本 == `templates/.add-coder-src-hash.json._version`。
-> 手工发版请「先 bump → 再 `npx tsx scripts/gen-src-hash.ts` → 一起提交 → 最后打 tag」，否则 tag 指向的提交里真源版本会滞后一版（0.3.37 实测踩过）。
-> `release.yml` 已把这四步内联（bump → 重生成 → 校验 → 提交 + tag），CI 发版无需手工干预。
+> **禁止手工 bump / 手工 publish（正式版）**：本地 `npm version`（除 preview 的 `--no-git-tag-version` 外）与 `npm publish --tag=latest` 一律不做。
+> 反例（2026-09-15 实测）：先把 `package.json` 手工 bump 到 `0.3.36`，又点 release workflow（bump=patch）→ CI 在 `0.3.36` 上再 patch 一次，
+> 直接发布 **`0.3.37`**，`0.3.36` 被跳过且从未上 npm。两个入口各自"再 +1"，中间那版就被吃掉。
+> 同理，`0.3.33` / `0.3.34` 是"手工 bump + 手工 publish"，没打 tag → git 里这两个版本没有 tag，也没有 GitHub Release。
+> **这两个历史缺口保持现状，不追补 tag**（2026-09-16 决定）：npm 实况与 CHANGELOG 是权威记录，重推 tag 会触发 `publish.yml`（即便已加 registry 幂等跳过，
+> 也只是补一条历史 GitHub Release，收益不抵噪声）。发版前置校验的 tag 断言只作用于**当前待发版本**，不受历史缺口影响。
+
+> **发版前置校验（硬门禁，单一真源 `scripts/release-preflight.ts`）**：
+> ① 仓库版本 == registry `latest`（双向：拦手工 bump 与手工 publish）；② `package.json` == `templates/.add-coder-src-hash.json._version`；
+> ③ tag `v<版本>` 已存在。任一不过 → workflow 在 bump 之前就失败，不会污染 registry。
+> 本地自检：`npm run release:preflight`（`-- --worktree` 追加工作区干净检查）。
+> 若未来再出现"某版本缺 tag"（说明它没经 CI 发布），按校验输出的修复指引处理：在对应 bump 提交上补 tag 并推送，然后由 CI 重新发版。
 
 CI 自动 `npm publish --tag=latest`。
 
@@ -76,4 +82,4 @@ CI 自动 `npm publish --tag=latest`。
 
 - **preview.yml**：feature/fix/feat/enhance 分支 push → build → bump → `--tag=preview`
 - **publish.yml**：tag `v*` push → build → `--tag=latest` + GitHub Release
-- **release.yml**：手动触发 → changelog + version bump + tag
+- **release.yml**：手动触发（唯一正式发版入口）→ 发版前置校验 → bump → src-hash 对齐 → 提交 + tag → publish + GitHub Release
