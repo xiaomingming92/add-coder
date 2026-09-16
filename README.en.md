@@ -301,8 +301,8 @@ npx add-coder init
 | Plan | Description |
 |------|-------------|
 | Demo Repo | A full example repository showcasing end-to-end closed-loop practice of Policy-Update-Loop and the Report system |
-| MCP Restructure | MCP toolchain architecture upgrade, improving audit and gateway tool extensibility and standalone deployment capability |
-| Memory Enhancement | ✅ **Delivered in v0.3.35**: idempotent evidence collection + deterministic waypoint recall + hybrid FTS×vector recall (RRF fusion + governed rerank) + Handoff Digest candidates + a ranking calibration foundation; defaults to `shadow` mode (recall runs and is audited, not injected yet) |
+| ~~MCP Restructure~~ | ✅ v0.2.9 MCP toolchain architecture upgrade, improving audit and gateway tool extensibility and standalone deployment capability |
+| ~~Memory Enhancement~~ | ✅ **v0.3.35→v0.3.37 Governance memory**: idempotent evidence collection + deterministic waypoint recall + hybrid FTS×vector recall (RRF fusion + governed rerank) + Handoff Digest candidates + a ranking calibration foundation; native layer (SQLite FTS5 tables + triggers) auto-applied by `init`/`db-ensure` with `memory:reindex` self-heal; defaults to `shadow` mode (recall runs and is audited, not injected yet) |
 
 ---
 

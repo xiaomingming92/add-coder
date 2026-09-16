@@ -502,7 +502,7 @@ Tasks (实验性)     双向              ✅ 已实现      长任务持久化 
 | MCP 能力重构 | ✅ v0.2.9 MCP 工具链架构升级，提升审计与门禁工具的可扩展性和独立部署能力 | 2026-07/23/add-coder-mcp-restructure-plan-v1.md |
 | Hook 通知升级 | ✅ v0.2.9 Hook 拦截事件 jsonl → fs.watch → record_dev_operation 落库 + Notification + 治理信号 | 2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md |
 | ide插件 | 解耦ADD范式代码和被治理项目的代码 |在做了,大家拭目以待吧,让编程更有趣,我的目标其实不在于IDE,我的工作顺手的事情 |
-| 对话记忆增强 | ✅ **v0.3.35 记忆闭环落地**：幂等采证 + 位点确定性召回 + FTS×向量混合召回（RRF 融合 + 治理重排）+ Handoff Digest 候选 + 排序权重校准基座；默认 `shadow` 模式（召回照跑照审计、暂不注入） | 门槛未下调：Hybrid MRR@5 0.4867 < 0.75，由校准线程以数据逼近 |
+| 对话记忆增强 | ✅ **v0.3.35→v0.3.37 记忆闭环落地**：幂等采证 + 位点确定性召回 + FTS×向量混合召回（RRF 融合 + 治理重排）+ Handoff Digest 候选 + 排序权重校准基座；默认 `shadow` 模式（召回照跑照审计、暂不注入）；v0.3.37 起原生层（SQLite FTS5 虚表 + 触发器）由 init/db-ensure 自动应用，`memory:reindex` 自助修复 | 门槛未下调：Hybrid MRR@5 0.4867 < 0.75，由校准线程以数据逼近 |
 
 ---
 
@@ -970,7 +970,7 @@ npx add-coder stack --clear       # clear tech-stack setting (neutral)
 | Demo Repo | Full example repository showcasing Policy-Update-Loop with Report system end-to-end | 📋 |
 | ~~MCP Restructure~~ | ✅ v0.2.9 3,467-line monolith → 27 modules covering all six MCP primitives | 2026-07/23/... |
 | ~~Hook Notification Upgrade~~ | ✅ v0.2.9 ~36 files: hook intercept → jsonl → fs.watch → record_dev_operation | 2026-07/24/... |
-| Memory Enhancement | Long-term project knowledge memory and plan-level sparse memory | 📋 |
+| ~~Memory Enhancement~~ | ✅ v0.3.35→v0.3.37 **Governance memory**: idempotent evidence collection + deterministic waypoint recall + hybrid FTS×vector recall (RRF fusion + governed rerank) + Handoff Digest candidates + ranking-calibration foundation; SQLite FTS5 native layer auto-applied by `init`/`db-ensure` + `memory:reindex` self-heal; defaults to `shadow` mode | 2026-09/15/... |
 
 ---
 
