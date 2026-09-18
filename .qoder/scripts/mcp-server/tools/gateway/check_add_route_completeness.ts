@@ -17,6 +17,7 @@ import {
   PROJECT_ROOT,
   MAGIC_DIR,
 } from "../../shared/fs.js";
+import { resolvePlanArtifact } from "./plan-resolve.js";
 
 export function registerCheckAddRouteCompleteness(server: ToolRegistrar) {
   server.registerTool(
@@ -36,15 +37,26 @@ export function registerCheckAddRouteCompleteness(server: ToolRegistrar) {
         if (!existsSync(plansDir))
           return errorResponse(`plans 目录不存在: ${plansDir}`);
         const allFiles = await readdirRecursive(plansDir);
-        const arFile = allFiles.find(
-          (f) =>
-            f.toLowerCase().includes(pp.toLowerCase()) &&
-            f.includes("add-route"),
+        // 版本配对（2026-09-18 修复）：与 Plan 同目录同版本优先，不再"去版本取首个匹配"（永远命中 v1）
+        const { plan: resolvedPlan, artifact: resolvedAr } = resolvePlanArtifact(
+          allFiles,
+          pp,
+          "add-route",
         );
+        const arFile = resolvedAr?.file;
         if (!arFile)
           return errorResponse(`未找到匹配的 add-route 文件（关键词: ${pp}）`);
         const content = await readFileSafe(join(plansDir, arFile));
         if (!content) return errorResponse("add-route 文件无法读取");
+        const pairing: string[] = [];
+        if (resolvedPlan)
+          pairing.push(
+            `Plan: ${resolvedPlan.file}${resolvedPlan.version > 0 ? ` (v${resolvedPlan.version})` : ""}`,
+          );
+        pairing.push(
+          `add-route: ${arFile}${resolvedAr && resolvedAr.version > 0 ? ` (v${resolvedAr.version})` : ""} 〔配对依据: ${resolvedAr?.via}〕`,
+        );
+        if (resolvedAr?.warning) pairing.push(`⚠️ ${resolvedAr.warning}`);
         const steps: Record<string, { checked: number; unchecked: number }> =
           {};
         let cur = "";
@@ -71,6 +83,7 @@ export function registerCheckAddRouteCompleteness(server: ToolRegistrar) {
         const parts = [
           `=== add-route Step 完成度扫描 ===`,
           `文件: ${MAGIC_DIR}/plans/${arFile}`,
+          ...pairing,
           `整体: ${tu}/${tc} (${tc > 0 ? Math.round((tu / tc) * 100) : 0}%)`,
           "",
         ];

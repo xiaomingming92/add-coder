@@ -28,6 +28,11 @@ import {
   writeGateMetric,
   GATE_METRIC_TYPE,
 } from "../../shared/memory/metrics/gate-writer.js";
+import {
+  extractAppendixFiles,
+  resolvePlanArtifact,
+  splitGitPathList,
+} from "./plan-resolve.js";
 
 export function registerCheckRahs(server: ToolRegistrar) {
   const runtimeContext = getRuntimeContext();
@@ -50,14 +55,11 @@ export function registerCheckRahs(server: ToolRegistrar) {
         const apf = (await readdirRecursive(plansDir)).filter((f) =>
           f.endsWith(".md"),
         );
-        const pm = apf.find(
-          (f) =>
-            f.toLowerCase().includes(pp.toLowerCase()) &&
-            f.includes("-plan-v") &&
-            !f.includes(".hitl"),
-        );
-        if (!pm)
+        // 版本配对解析（2026-09-18 修复）：Plan 取版本最高者（旧实现取首个命中 → 多版本时命中旧版）
+        const resolvedPlan = resolvePlanArtifact(apf, pp, "plan").plan;
+        if (!resolvedPlan)
           return errorResponse(`未找到匹配的 Plan 文件（关键词: ${pp}）`);
+        const pm = resolvedPlan.file;
         // Plan 正文在多个维度（Spec 引用解析、采证 seed）共用，提到此处只读一次
         const planContent = (await readFileSafe(join(plansDir, pm))) || "";
         let scopeScore = 80,
@@ -142,28 +144,23 @@ export function registerCheckRahs(server: ToolRegistrar) {
         } catch { /* checklist progress unavailable */ }
         try {
           // 范围保真度：git diff 变更文件与 add-route 附录清单匹配率
-          const arFile = apf.find(
-            (f) =>
-              f.toLowerCase().includes(pp.toLowerCase()) &&
-              f.toLowerCase().includes("add-route"),
-          );
+          // 版本配对（2026-09-18 修复）：与 Plan 同目录同版本优先，不再"去版本取首个匹配"
+          const arFile = resolvePlanArtifact(apf, pp, "add-route").artifact?.file;
           if (arFile) {
             const arContent =
               (await readFileSafe(join(plansDir, arFile))) || "";
-            const appendix = (
-              arContent.match(/`[^`]+\.(ts|js|sh|md|tsx|json|yml|yaml)`/g) ||
-              []
-            ).map((f: string) => f.replace(/`/g, "").toLowerCase());
-            // core.quotepath=false：避免非 ASCII 路径被八进制转义后与附录清单比不中（与 check_spec_sync 同修）
-            const diff = runCommand("git", ["-c", "core.quotepath=false", "diff", "--name-only"], {
-              cwd: PROJECT_ROOT,
-              timeout: 5000,
-            });
-            const diffFiles = diff.stdout
-              .trim()
-              .split("\n")
-              .filter(Boolean)
-              .map((f: string) => f.toLowerCase());
+            const appendix = extractAppendixFiles(arContent).map((f) =>
+              f.toLowerCase(),
+            );
+            // -z（NUL 分隔）：git 不加引号/八进制转义，非 ASCII 路径与附录可直接比对（与 check_spec_sync 同源修复）
+            const diff = runCommand(
+              "git",
+              ["-c", "core.quotepath=false", "diff", "--name-only", "-z"],
+              { cwd: PROJECT_ROOT, timeout: 5000 },
+            );
+            const diffFiles = splitGitPathList(diff.stdout).map((f) =>
+              f.toLowerCase(),
+            );
             if (appendix.length > 0 && diffFiles.length > 0) {
               const matched = diffFiles.filter((f) =>
                 appendix.some((a) => f === a || f.endsWith(`/${a}`)),

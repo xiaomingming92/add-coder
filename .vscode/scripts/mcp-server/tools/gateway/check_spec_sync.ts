@@ -20,6 +20,13 @@ import {
   MAGIC_DIR,
 } from "../../shared/fs.js";
 import { runCommand } from "../../shared/run-command.js";
+import {
+  attributeToOtherPlans,
+  extractAppendixFiles,
+  parseArtifactName,
+  resolvePlanArtifact,
+  splitGitPathList,
+} from "./plan-resolve.js";
 
 export function registerCheckSpecSync(server: ToolRegistrar) {
   server.registerTool(
@@ -44,55 +51,40 @@ export function registerCheckSpecSync(server: ToolRegistrar) {
           f.endsWith(".md"),
         );
         const kw = args.planKeyword as string;
-        // 多版本（-plan-vN）共存时取版本号最高者：活跃 Plan 优先，避免评分旧版（2026-08-12 修复，同 check_dps R9）
-        let planMatch: string | undefined = planFiles
-          .filter(
-            (f) =>
-              f.toLowerCase().includes(kw.toLowerCase()) && f.includes("-plan-v"),
-          )
-          .sort((a, b) => {
-            const va = parseInt(a.match(/-plan-v(\d+)/)?.[1] ?? "0", 10);
-            const vb = parseInt(b.match(/-plan-v(\d+)/)?.[1] ?? "0", 10);
-            return vb - va;
-          })[0];
-        if (!planMatch)
-          planMatch = planFiles.find((f) =>
-            f.toLowerCase().includes(kw.toLowerCase()),
-          );
-        if (!planMatch)
+        // 版本配对解析（单一真源 plan-resolve）：Plan 取最高版本且排除 .hitl 提案；
+        // add-route 与 Plan 同目录同版本优先 —— 旧实现"去版本取首个匹配"永远命中 v1（2026-09-18 修复）
+        const { plan, artifact: ar } = resolvePlanArtifact(planFiles, kw, "add-route");
+        if (!plan)
           return errorResponse(`未找到匹配的 Plan 文件（关键词: ${kw}）`);
-        lines.push(`Plan: ${planMatch}`);
+        lines.push(`Plan: ${plan.file}${plan.version > 0 ? ` (v${plan.version})` : ""}`);
 
-        // 定位 add-route 文件
-        const kwNoVersion = kw.replace(/-plan-v\d+$/i, "");
-        const arFile = planFiles.find(
-          (f) =>
-            f.toLowerCase().includes(kwNoVersion.toLowerCase()) &&
-            f.toLowerCase().includes("add-route"),
-        );
-        if (!arFile) {
+        if (!ar) {
           lines.push("add-route: 未找到", "");
           lines.push("💡 提示：tasks.md/checklist.md 进度请用 plan_track 或 plan_status 查询");
         } else {
-          lines.push(`add-route: ${arFile}`);
-          const arContent = (await readFileSafe(join(plansDir, arFile))) || "";
+          lines.push(
+            `add-route: ${ar.file}${ar.version > 0 ? ` (v${ar.version})` : ""} 〔配对依据: ${ar.via}〕`,
+          );
+          if (ar.warning) lines.push(`⚠️ ${ar.warning}`);
+          const arContent = (await readFileSafe(join(plansDir, ar.file))) || "";
           // 提取 add-route 附录文件清单（toml 纳入：sync-magic-rules.toml 等控制面文件，2026-08-18 修复）
           // sql/prisma 纳入（2026-09-16 修复）：原生 DDL 与 schema 是常见交付物，此前不在白名单 →
           // 附录里明明登记了 `.../sqlite-fts5.sql` 仍被判"不在附录中"（假告警）。
-          const appendixFiles = (arContent.match(/`[^`]+\.(ts|tsx|js|jsx|sh|sql|prisma|md|json|yml|yaml|toml)`/g) || [])
-            .map((f: string) => f.replace(/`/g, ""));
+          const appendixFiles = extractAppendixFiles(arContent);
           lines.push(`附录文件: ${appendixFiles.length} 个`);
 
           // git diff 变更文件（win32 下 git 为 .cmd → runCommand 自动解析，issue #10 跨端修复）
           let diffFiles: string[] = [];
           try {
-            // core.quotepath=false：默认 git 会把非 ASCII 路径转成 "\346\236..." 八进制转义 →
-            // 与附录里的真实中文路径永远比不中（2026-09-16 修复：架构文档类路径的假告警）。
-            const diff = runCommand("git", ["-c", "core.quotepath=false", "diff", "--name-only"], {
-              cwd: PROJECT_ROOT,
-              timeout: 5000,
-            });
-            diffFiles = diff.stdout.trim().split("\n").filter(Boolean);
+            // -z（NUL 分隔）下 git 永不加引号/八进制转义 —— 比 core.quotepath=false 更硬：
+            // 后者在路径含特殊字符时仍可能加引号，而带引号的 `".codex/..."` 既躲过 magic 前缀豁免，
+            // 也与附录里的真实路径比不中（2026-09-18 修复：check_spec_sync / check_rahs 同源）
+            const diff = runCommand(
+              "git",
+              ["-c", "core.quotepath=false", "diff", "--name-only", "-z"],
+              { cwd: PROJECT_ROOT, timeout: 5000 },
+            );
+            diffFiles = splitGitPathList(diff.stdout);
           } catch {
             lines.push("Git diff: 无法获取");
           }
@@ -110,8 +102,34 @@ export function registerCheckSpecSync(server: ToolRegistrar) {
                 !appendixSet.has(f.toLowerCase()),
             );
             if (unmatched.length > 0) {
-              lines.push(`⚠️ ${unmatched.length} 个文件在 git diff 中但不在 add-route 附录中:`);
-              unmatched.forEach((f: string) => lines.push(`  - ${f}`));
+              // 工作区常有多个 Plan 同时在飞 —— 先分摊归属，把"其它 Plan 已登记"从本 Plan 的
+              // 未登记噪声里摘出来（按日期新者优先读，全部命中即提前结束）
+              const otherRoutes = planFiles
+                .filter((f) => {
+                  const parsed = parseArtifactName(f, "add-route");
+                  return parsed !== null && f !== ar.file;
+                })
+                .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+              const { owners, unowned } = await attributeToOtherPlans(
+                unmatched,
+                otherRoutes,
+                (rel) => readFileSafe(join(plansDir, rel)),
+              );
+              if (unowned.length > 0) {
+                lines.push(`⚠️ ${unowned.length} 个文件在 git diff 中但不在本 Plan 附录中:`);
+                unowned.forEach((f: string) => lines.push(`  - ${f}`));
+              } else {
+                lines.push("✅ 本 Plan 附录已覆盖全部非其它 Plan 的变更文件");
+              }
+              if (owners.size > 0) {
+                lines.push(
+                  "",
+                  `ℹ️ ${owners.size} 个文件属于其它 Plan 已登记的交付物（本 Plan 不判定）:`,
+                );
+                for (const { file, route } of owners.values()) {
+                  lines.push(`  - ${file} ← ${route}`);
+                }
+              }
             } else {
               lines.push("✅ git diff 变更文件全部在 add-route 附录中");
             }

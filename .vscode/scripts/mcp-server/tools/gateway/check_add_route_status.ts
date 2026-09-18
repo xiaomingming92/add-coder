@@ -18,6 +18,7 @@ import {
 } from "../../shared/fs.js";
 import { prisma } from "../../shared/prisma.js";
 import { getRuntimeContext } from "../../shared/env.js";
+import { parseArtifactName, resolvePlanArtifact } from "./plan-resolve.js";
 
 function scanCheckboxes(content: string) {
   let t = 0,
@@ -162,8 +163,10 @@ export function registerCheckAddRouteStatus(server: ToolRegistrar) {
         }
         let fileExists = false;
         const matchedFiles: string[] = [];
+        let planDirEntries: string[] = [];
         try {
           const entries = await readdirRecursive(plansDir);
+          planDirEntries = entries;
           for (const e of entries) {
             const el = e.toLowerCase();
             if (
@@ -177,6 +180,33 @@ export function registerCheckAddRouteStatus(server: ToolRegistrar) {
         } catch {
           /* empty */
         }
+        // 版本配对（2026-09-18 修复）：存在性判定保留"任一命中"（不把 warn 翻成 never_generated），
+        // 但**扫描对象**改为与 Plan 配对的版本 —— 旧实现用 readdir 顺序里的 matchedFiles[0]，
+        // 多版本共存时扫的是最早的 v1，完成度与版本关系都失真。
+        const matchedSorted = matchedFiles
+          .map((f) => ({ f, version: parseArtifactName(f, "add-route")?.version ?? 0 }))
+          .sort((a, b) => b.version - a.version || (a.f < b.f ? 1 : -1));
+        const { plan: resolvedPlan, artifact: paired } = resolvePlanArtifact(
+          planDirEntries,
+          planKeyword,
+          "add-route",
+        );
+        const scanTarget =
+          paired?.file ?? matchedSorted[0]?.f ?? matchedFiles[0] ?? "";
+        const pairingNotes: string[] = [];
+        if (resolvedPlan)
+          pairingNotes.push(
+            `Plan: ${resolvedPlan.file}${resolvedPlan.version > 0 ? ` (v${resolvedPlan.version})` : ""}`,
+          );
+        if (paired)
+          pairingNotes.push(
+            `add-route: ${paired.file}${paired.version > 0 ? ` (v${paired.version})` : ""} 〔配对依据: ${paired.via}〕`,
+          );
+        if (matchedFiles.length > 1)
+          pairingNotes.push(
+            `ℹ️ 多版本共存：${matchedSorted.map((e) => `${e.f}(v${e.version})`).join(" / ")} —— 本次扫描 ${scanTarget}`,
+          );
+        if (paired?.warning) pairingNotes.push(`⚠️ ${paired.warning}`);
         const parts = [
           `=== ADD 守卫：add-route 存在性交叉校验 ===`,
           `Plan 关键词: "${planKeyword}"`,
@@ -184,14 +214,13 @@ export function registerCheckAddRouteStatus(server: ToolRegistrar) {
           "",
         ];
         if (auditHasRecord && fileExists) {
-          const sc = scanCheckboxes(
-            (await readFileSafe(join(plansDir, matchedFiles[0]))) || "",
-          );
+          const sc = scanCheckboxes((await readFileSafe(join(plansDir, scanTarget))) || "");
           const ok = sc.unchecked === 0;
           parts.push(
             `状态: ${ok ? "✅ normal" : "⚠️ warn_step_incomplete"}`,
             ok ? "操作: 继续执行后续流程" : "操作: ⚠️ 存在未闭环 Step",
             "",
+            ...pairingNotes,
           );
           parts.push("=== 审计记录 ===");
           for (const r of auditRecords.slice(0, 5))
@@ -248,14 +277,13 @@ export function registerCheckAddRouteStatus(server: ToolRegistrar) {
           );
           return errorResponse(parts.join("\n"));
         }
-        const scW = scanCheckboxes(
-          (await readFileSafe(join(plansDir, matchedFiles[0]))) || "",
-        );
+        const scW = scanCheckboxes((await readFileSafe(join(plansDir, scanTarget))) || "");
         const wOk = scW.unchecked === 0;
         parts.push(
           `状态: ⚠️ warn${scW.total > 0 && !wOk ? "_step_incomplete" : ""} — 文件存在但审计日志无记录`,
           "操作: 允许继续，但建议补记录",
           "",
+          ...pairingNotes,
           "=== 匹配文件 ===",
         );
         for (const f of matchedFiles) parts.push(`  ${MAGIC_DIR}/plans/${f}`);

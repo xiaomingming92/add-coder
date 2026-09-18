@@ -38,6 +38,7 @@ import {
   writeGateMetric,
   GATE_METRIC_TYPE,
 } from "../../shared/memory/metrics/gate-writer.js";
+import { resolvePlanArtifact } from "./plan-resolve.js";
 
 export function registerCheckDps(server: ToolRegistrar) {
   const runtimeContext = getRuntimeContext();
@@ -68,22 +69,22 @@ export function registerCheckDps(server: ToolRegistrar) {
         const apf = (await readdirRecursive(plansDir)).filter(
           (f) => f.endsWith(".md") && !f.includes(".hitl"),
         );
-        // 多版本（-plan-vN）共存时取版本号最高者：活跃 Plan 优先，避免评分旧版（2026-08-12 修复）
-        const matched = apf.filter(
-          (f) =>
-            f.toLowerCase().includes(pp.toLowerCase()) && f.includes("-plan-v"),
+        // 版本配对解析（单一真源 plan-resolve）：Plan 取最高版本且排除 .hitl 提案；
+        // add-route / review 与 Plan 同目录同版本优先（2026-09-18 修复：旧实现去版本取首个匹配，永远命中 v1）
+        const { plan: resolvedPlan, artifact: resolvedAr } = resolvePlanArtifact(
+          apf,
+          pp,
+          "add-route",
         );
-        if (!matched.length)
+        if (!resolvedPlan)
           return errorResponse(`未找到匹配的 Plan 文件（关键词: ${pp}）`);
-        const pm = matched.sort((a, b) => {
-          const va = parseInt(a.match(/-plan-v(\d+)/)?.[1] ?? "0", 10);
-          const vb = parseInt(b.match(/-plan-v(\d+)/)?.[1] ?? "0", 10);
-          return vb - va;
-        })[0];
+        const pm = resolvedPlan.file;
         const planPath = join(plansDir, pm);
         const pc = await readFileSafe(planPath);
         if (!pc) return errorResponse(`无法读取 Plan 文件: ${pm}`);
-        parts.push(`Plan: ${pm}`);
+        parts.push(
+          `Plan: ${pm}${resolvedPlan.version > 0 ? ` (v${resolvedPlan.version})` : ""}`,
+        );
 
         let sn = basename(pm).replace(/-plan-v\d+\.md$/, ""),
           sc = "";
@@ -97,25 +98,14 @@ export function registerCheckDps(server: ToolRegistrar) {
           rc = "";
         if (existsSync(reviewsDir)) {
           const rfs = await readdirRecursive(reviewsDir);
-          const rkNoVersion = pp.replace(/-plan-v\d+$/i, "");
-          rn =
-            rfs.find(
-              (f) =>
-                f.toLowerCase().includes(rkNoVersion.toLowerCase()) &&
-                f.includes("-review-v"),
-            ) || "";
+          rn = resolvePlanArtifact(rfs, pp, "review").artifact?.file || "";
           if (rn) rc = (await readFileSafe(join(reviewsDir, rn))) || "";
         }
-        // ★ 兼容精简版和标准版 Plan：剥离 -plan-vN 后缀匹配 add-route 和 review
-        const kwNoVersion = pp.replace(/-plan-v\d+$/i, "");
         let arContent = "";
-        const arFile = apf.find(
-          (f) =>
-            f.toLowerCase().includes(kwNoVersion.toLowerCase()) &&
-            f.toLowerCase().includes("add-route"),
-        );
+        const arFile = resolvedAr?.file;
         if (arFile)
           arContent = (await readFileSafe(join(plansDir, arFile))) || "";
+        if (resolvedAr?.warning) parts.push(`⚠️ ${resolvedAr.warning}`);
 
         // 维度一: 语义相关性
         //   子维度 A: 映射结构 (40%) — 映射表是否存在 + 覆盖行数
