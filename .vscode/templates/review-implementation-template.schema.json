@@ -43,6 +43,12 @@
             "required": true
         },
         {
+            "id": "wiring",
+            "heading": "## 6.2 接线可达性核对",
+            "required": true,
+            "note": "2026-09-18 增补（回流 farm-agent P0 #R9）：逐项核对新增被调用方的生产调用点与端到端产出（[W] 判据）。三次同类事故（纯函数与单测齐全、生产不可达）均在此节可被拦截。"
+        },
+        {
             "id": "checklist",
             "heading": "## 7. 关联 Checklist",
             "required": true
