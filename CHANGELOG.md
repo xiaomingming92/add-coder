@@ -5,6 +5,23 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [未发布] - 待下个版本
+
+> 2026-09-18 的两批内容：① 自 farm-agent 回灌的 `[W]` 接线判据（模板真源 + 六端分发）；
+> ② `check_spec_sync` 版本配对修复（同一根因波及另外 4 个闸门工具）。审计链：`farm-agent-template-backport-2026-09-18`、`add-coder-check-spec-sync-version-pairing`。
+
+### 修复
+
+- **`check_spec_sync` 永远命中 v1 路线图**（farm-agent 多 v2 Plan 暴露）：add-route 解析按 planKeyword **去版本后缀取首个匹配** → 多版本共存时恒命中日期最早的 v1，于是拿旧版路线图的附录比对当前工作区，实测报出 **37 个"未登记"假告警**。新增 `gateway/plan-resolve.ts` 作为 Plan↔兄弟制品版本配对**单一真源**（Plan 取版本最高且排除 `.hitl` / devlog / handoff / add-route / review 兄弟产物；add-route 走「同目录同版本 → 同基名最高版本 → 关键词兜底」；**版本落后显式告警，不静默降级**），`check_spec_sync` / `check_dps` / `check_add_route_status` / `check_add_route_completeness` / `check_rahs` 五个闸门工具统一改用（六端同步分发）。farm-agent 实测：Plan 由 `...-plan-v2.hitl.md` 纠正为 `...-plan-v2.md`，add-route v1 → v2，未登记 **37 → 12**；显式传 `-plan-v1` 时仍正确配对 v1
+- **`check_spec_sync` 未登记噪声无法归因**：git diff 是全仓范围，多 Plan 在飞时其它 Plan 的交付物被算进本 Plan → 现先按其它 add-route 的附录分摊归属（命中即归属、全部命中提前结束），单列「属于其它 Plan 已登记的交付物（本 Plan 不判定）」，farm-agent 实测 16 个文件被正确归因
+- **git diff 路径引号/八进制转义（同族第三例）**：`core.quotepath=false` 在路径含特殊字符时仍可能加引号，而带引号的 `".codex/..."` 既躲过 magic 前缀豁免、也与附录里的真实中文路径比不中 → `check_spec_sync` / `check_rahs` 统一改 `--name-only -z`（NUL 分隔，git 永不加引号），路径解析收敛到 `splitGitPathList`
+- **回归可用性**：新增 `tests/plan-resolve.test.ts`（14 用例，含 farm-agent 真实多版本布局、`-plan-v2.hitl.md` 干扰、版本落后告警、review 变体名、`-z` 路径解析、归属分摊提前结束）；全量 558 passed / 10 skipped，`tsc --noEmit` 干净，`validate-docs` 失败数不变
+
+### 模板
+
+- **`[W]` 接线判据回灌**（自 farm-agent 2026-09-18 回流 P0 #R9，同类事故三例均"纯函数与单测齐全、生产不可达"）：`review-implementation-template` 新增 **§6.2 接线可达性核对**——被调用方逐项核对表（symbol / 期望调用点 / grep 非测试命中 / 端到端产出 / 判定）+ 4 条可否证伪判据，明确"实现了 / 有单测 / 已导出"**不作为通过理由**；`review-implementation-template.schema.json` 增 `wiring` 章节且 **`required: true`**（硬判据，不接受降级——历史 review-implementation 文档会因此多一条 `MISSING_SECTION`，已知并接受）；`checklist-template` 图例新增 `[W]` 接线验证并补一条检查项。farm 域符号名泛化为 `{symbol}` / 占用通道表述，溯源保留在 `[来源: farm-agent 2026-09-18 回流 P0 #R9]`（六端同步分发）
+
+---
 ## [0.3.38] - 2026-09-16
 
 ### 修复
