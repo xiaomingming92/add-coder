@@ -15,7 +15,9 @@
 >
 > **升级动作（VS Code Copilot，Issue [#21](https://github.com/xiaomingming92/add-coder/issues/21)）**：本版起
 > `add-coder status` 会在缺键时告警 —— 按提示在 `settings.json` 加 `"github.copilot.chat.virtualTools.threshold": 0`
-> 并重载窗口，即可解除工具"假禁用"（细节见下表「文档」）。
+> 并重载窗口，即可解除工具"假禁用"（修复措施 ①–④ 见下表「文档」）。
+> 该 issue 已由报告者关闭：**根因在宿主**（Copilot Chat 虚拟工具折叠），本版交付的是**缓解 + 自检**，不是宿主侧修复，
+> 上游两点反馈草稿仍留在治理文档附录里。
 >
 > **段边界**：下方 `[0.3.39]` 段是 **2026-09-18** 的发布内容（`ad3259b v0.3.39` 只 bump 版本号、未改段名），
 > 只保留该批次条目（`check_spec_sync` 三项修复 + `[W]` 接线判据回灌）；当日（09-21）条目已按发布窗口
