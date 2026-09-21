@@ -5,7 +5,34 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
-## [未发布] - 待下个版本
+## [未发布] - 待下个版本（0.3.40）
+
+> 2026-09-21 当日工作。审计链：`add-coder-memory-cjk-bigram-baseline-plan-v1`（75/75，RAHS 91 🟢）、
+> `add-coder-multi-host-adapter-alignment-plan-v1`（47/47）、`add-coder-plan-close-entry-plan-v1`。
+>
+> **段边界说明**：下方 `[0.3.39]` 段是 **2026-09-18** 的发布内容（`ad3259b v0.3.39` 只 bump 了版本号，未改段名）。
+> 当日（09-21）另有若干条目因历史原因写在 0.3.39 段内（HITL widget 缓存键 / VS Code 折叠 / status 自检 /
+> 多宿主三端文档 / MCP Apps 扩展协商 / Plan 生命周期关闭）—— 如需按发布窗口严格归位，可逐条搬入本段。
+
+### 新增
+
+- **记忆检索词法基线换地基：`searchText` 分词主通道 + jieba 主 / bigram 兜底**（`add-coder-memory-cjk-bigram-baseline-plan-v1` 轮 1–3，75/75，RAHS 91 🟢）：原 PG 基线实为 `pg_trgm` 相似度（trigram 窗口 = 3 字，**2 字中文查询连 token 都生成不出**），且通道 B 的 `to_tsvector('simple', topic||content)` 对中文**不分词**（整段落一个 token）；bigram 只做在查询侧、文档侧无索引；评测只跑内存 SQLite 却把结论外推为 PG 表现。现改为**写入期产出的 `searchText`（CJK bigram / jieba 词级 token 串）+ `tsvector` 表达式索引**（`AddMemory_searchText_tsv_idx`，**不依赖扩展**），写入与查询共用同一 tokenization 契约（`retrieval/cjk-tokenize.ts` 为 bigram 真源、`retrieval/cjk-segmenter.ts` 为 `segmentForMatch → {terms, method}`；`@node-rs/jieba` 作 **optionalDependency**，装不上即 bigram 兜底且 `method` 显式暴露，禁止静默降级）；SQLite 虚表列改 `searchText` + `tokenize=unicode61`，触发器同步。**可信度三件套**：① 双后端同标注集评测（`recall-eval --backend sqlite|pg|both`；PG 走**事务内**灌语料 + `ROLLBACK` 不落库；阈值唯一真源 `PASS_THRESHOLD`）实测 **sqlite / pg 各 `Recall@5 = 0.9444`**（leakage/mandatory/scope 全 0），**2 字短查询 `mandatoryMiss = 0`**；② **检索指纹**（jieba 版本 × 用户词典哈希 × tokenization 契约版本）⇒ 分词器/词典一变即显式报「需重索引」，配套 `backfill-search-text --apply --refresh` 把历史 token 统一到当前口径；③ `get_memory_health` 增 `lexicalProfile`（`method` / `degradedReason` / `userDict` / `fingerprint`）+ 两条降级告警（`LEXICAL_BIGRAM_FALLBACK` / `LEXICAL_FINGERPRINT_STALE`）。**已知边界（如实登记）**：同义桥接（"表结构改" ↔ "迁移"）不在词法能力内，两侧对称漏召，需 `--hybrid` 向量通道或领域词典
+- **MCP Apps 渲染探针 `probe_widget_render`**（`add-coder-multi-host-adapter-alignment-plan-v1`）：新增最小 widget 探针资源（`ui://add-coder/widget-probe-minimal`，**零外部引用 / 10 行内联脚本 / 不查业务 DOM id**）与配套工具，把「宿主渲染器故障 / 宿主 CSP 拦 inline / 业务 widget 缺陷」三类原因**一次分开**。本仓实测：服务端 `resources/read` 正常返回 HTML（`capabilities.extensions`、工具 `_meta`、MIME 全绿）而**最小 app 仍报 "This app couldn't be loaded"** ⇒ 判定为 Codex 桌面端渲染器故障（宿主侧），并据此在 Codex 治理文档补「面板加载失败三步定位」与降级通道口径
+- **范式 Step 3「执行风格」`executionMode`（`stepwise` 默认 / `delegated` 托管）+ `AGENTS.md` 入口模板化 + 特殊占位符声明化**（`add-coder-agents-template-and-step3-execution-modes-plan-v1`，17/17）：`templates/core/AGENTS.md` 成为入口**真源**（`{{magicDir}}` / `{{projectName}}` / `{{stackReferenceLine}}` 占位符，六端渲染分发）；Step 3 引入声明式开关 —— **托管仍完整遵守 ADD**（`[T]` 验证 / `record_dev_operation` / `tasks.md` 勾选 / 闸门 / 3.5 / 0.6.5 / Step 8 照做），唯一差别是**不逐步向用户同步进度**，仅在两个可判定停止条件触发时打断（①文档与代码不对齐：`check_spec_sync` 未归因漂移 / 偏离 WHEN-THEN；②基线低于预期：`tsc`/`pnpm test`/`validate-docs` 失败或 DPS<80 / RAHS<90）；`vocabulary` 增「托管实施 / 单步实施」触发词
+
+### 模板
+
+- **`executionMode` 口径补齐三处同族模板**：该开关此前只在 `skills/add-paradigm/SKILL.md` 与**重型** add-route 模板生效，而轻量 `add-route-template.md`、`simple-plan-template.md`、`handoff-multi-round-template.md`（**每轮粘贴给 AI 的启动指令**）仍写死单步节拍 ⇒ 用轻量模板或按 handoff 启动的会话会把托管开关抵消一半。现三处均补「适用模式」说明（六端同步分发，逐端 6/6 一致）
+
+### 修复
+
+- **`db:ensure` 幂等出口被他因阻塞**：`PlanLifecycleStatus.REOPENED` 当时是**直接 `ALTER TYPE` 打在库上**的，迁移历史缺失 ⇒ db-ensure 重建的干净 shadow 不含该值 ⇒ 每次 diff 都生成同一条 `ADD VALUE`，打到主库（已存在）即报 `enum label already exists (42710)`。现补 versioned 迁移 `20260921150000_plan_lifecycle_reopened.sql`（`ADD VALUE IF NOT EXISTS`，对已手工加过的库是 no-op）并删掉失败运行遗留的自动生成 delta ⇒ `pnpm db:ensure` 连跑两次均 `schema 一致（幂等出口）`、不再重新生成 delta
+- **两处分发缺口（下游会半残）**：① 用户项目的 schema 真源 `templates/core/prisma/add.prisma`（`src/cli/prisma-injector.ts` 据此注入）**缺** `AddMemory.searchText` 与 `PlanLifecycleStatus.REOPENED` —— 仓根那份有 ≠ 下游有，已补齐（两文件 diff 完全一致）；② 回填脚本 `backfill-search-text.ts` 原只在**仓根**（不随包分发）⇒ 下游无法自助回填存量 `searchText`，已下沉 `templates/core/scripts/memory/`（相对路径在 templates 树与 `{magicDir}` 树中一致），仓根改为转发导入（避免双份实现漂移）
+- **唯一 eslint 错误（生成器冗余类型断言）**：`src/caijuehub/transcribe/generators/custom.ts` 的 `Object.entries((d.replace_specials ?? {}) as Record<string, string>)` 中 `?? {}` 后类型未变，触发 `@typescript-eslint/no-unnecessary-type-assertion` ⇒ `eslint src/` 非零。删除断言后 `eslint src/` **零 error**（`tsc` 0 / `pnpm test` 635 passed | 6 skipped）
+
+---
+
+## [0.3.39] - 2026-09-18
 
 > 2026-09-18 的两批内容：① 自 farm-agent 回灌的 `[W]` 接线判据（模板真源 + 六端分发）；
 > ② `check_spec_sync` 版本配对修复（同一根因波及另外 4 个闸门工具）。审计链：`farm-agent-template-backport-2026-09-18`、`add-coder-check-spec-sync-version-pairing`。
