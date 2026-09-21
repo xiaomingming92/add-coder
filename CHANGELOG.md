@@ -8,7 +8,9 @@
 ## [未发布] - 待下个版本（0.3.40）
 
 > 2026-09-21 当日工作。审计链：`add-coder-memory-cjk-bigram-baseline-plan-v1`（75/75，RAHS 91 🟢）、
-> `add-coder-multi-host-adapter-alignment-plan-v1`（47/47）、`add-coder-plan-close-entry-plan-v1`、
+> `add-coder-multi-host-adapter-alignment-plan-v1`（47/47）、`add-coder-copilot-virtualtools-visibility-plan-v1`（30/30，
+> Issue #21 折叠适配 + `status` 建议性自检 + HITL widget URI 内容哈希，`d1215db` / `780837d`）、
+> `add-coder-plan-close-entry-plan-v1`、`add-coder-memory-injection-wiring-plan-v1`（当日落 CLOSED）、
 > `add-coder-agents-template-and-step3-execution-modes-plan-v1`（17/17）。
 >
 > **段边界**：下方 `[0.3.39]` 段为 **2026-09-18** 的发布内容（`ad3259b v0.3.39` 只 bump 版本号、未改段名），
