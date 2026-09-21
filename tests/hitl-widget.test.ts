@@ -78,6 +78,13 @@ describe("HITL core widget + Codex MCP Apps", () => {
     rmSync(runtime.root, { recursive: true, force: true })
     mkdirSync(runtime.root, { recursive: true })
     vi.clearAllMocks()
+    /*
+     * [2026-09-21] widget URI 在进程内 memoize（生产语义：同一进程内 URI 稳定，改文件需重启）。
+     * 测试里每个用例都要基于"当前 temp root 的 widget 文件是否存在"重新求值 ⇒ 每例前清缓存。
+     */
+    return import("../templates/core/scripts/mcp-server/shared/hitl-ui.js").then((m) => {
+      m.resetHitlApprovalWidgetUriCache()
+    })
   })
 
   afterEach(() => {
@@ -112,8 +119,9 @@ describe("HITL core widget + Codex MCP Apps", () => {
     expect(render?.config).toMatchObject({
       annotations: { readOnlyHint: true },
       _meta: {
-        ui: { resourceUri: "ui://add-coder/hitl-approval" },
-        "openai/outputTemplate": "ui://add-coder/hitl-approval",
+        // [2026-09-21] URI = 基名 + widget 内容哈希（宿主把 URI 当缓存键）；本用例未落 widget 文件 ⇒ 回退基名
+        ui: { resourceUri: expect.stringMatching(/^ui:\/\/add-coder\/hitl-approval(-[0-9a-f]{8})?$/) },
+        "openai/outputTemplate": expect.stringMatching(/^ui:\/\/add-coder\/hitl-approval(-[0-9a-f]{8})?$/),
       },
     })
     const result = await render!.callback({ planName: "widget-plan-v1", type: "PLAN" }, {})
@@ -138,8 +146,8 @@ describe("HITL core widget + Codex MCP Apps", () => {
      * 只挂声明不挂结果 → 客户端只显示 JSON（此前线上表现）。
      */
     expect(result._meta).toMatchObject({
-      ui: { resourceUri: "ui://add-coder/hitl-approval" },
-      "openai/outputTemplate": "ui://add-coder/hitl-approval",
+      ui: { resourceUri: expect.stringMatching(/^ui:\/\/add-coder\/hitl-approval(-[0-9a-f]{8})?$/) },
+      "openai/outputTemplate": expect.stringMatching(/^ui:\/\/add-coder\/hitl-approval(-[0-9a-f]{8})?$/),
     })
     expect(prismaMock.hitlRecord.findMany).toHaveBeenCalledTimes(1)
   })
@@ -168,18 +176,72 @@ describe("HITL core widget + Codex MCP Apps", () => {
     )
     registerHitlApprovalWidgetResource(fakeServer as never)
 
+    // [2026-09-21] 资源 URI 现由「基名 + widget 内容哈希」构成（写入文件后必然带哈希）
+    const widgetUri = registration!.uri
+    expect(widgetUri).toMatch(/^ui:\/\/add-coder\/hitl-approval-[0-9a-f]{8}$/)
     expect(registration).toMatchObject({
-      uri: "ui://add-coder/hitl-approval",
       config: { mimeType: "text/html;profile=mcp-app" },
     })
-    const result = await registration!.callback(new URL("ui://add-coder/hitl-approval"))
+    const result = await registration!.callback(new URL(widgetUri))
     expect(result).toEqual({
       contents: [{
-        uri: "ui://add-coder/hitl-approval",
+        uri: widgetUri,
         mimeType: "text/html;profile=mcp-app",
         text: widgetSource,
       }],
     })
+  })
+
+  /*
+   * [2026-09-21 修复回归] 官方 MCP Apps 规范：「Treat the resource URI as a cache key. When you make
+   * a breaking change to the HTML, JavaScript, or CSS, publish a new URI and update every tool that
+   * references it.」—— 2026-09-18 改 widget HTML 未换 URI，宿主命中旧缓存 ⇒ 实测 "This app couldn't
+   * be loaded"。本用例把该规则机器化：内容变 ⇒ URI 必变；文件缺失 ⇒ 回退基名（不阻断注册）。
+   */
+  it("bumps the widget resource URI when content changes (cache-key rule)", async () => {
+    const {
+      getHitlApprovalWidgetUri,
+      resetHitlApprovalWidgetUriCache,
+      computeWidgetContentHash,
+      HITL_APPROVAL_WIDGET_URI_BASE,
+    } = await import("../templates/core/scripts/mcp-server/shared/hitl-ui.js")
+
+    const widgetDir = join(runtime.root, ".codex", "templates")
+    mkdirSync(widgetDir, { recursive: true })
+    const widgetPath = join(widgetDir, "hitl-approval-widget.html")
+
+    writeFileSync(widgetPath, "<html><body>v1</body></html>", "utf-8")
+    resetHitlApprovalWidgetUriCache()
+    const uriV1 = getHitlApprovalWidgetUri()
+    expect(uriV1).toBe(`${HITL_APPROVAL_WIDGET_URI_BASE}-${computeWidgetContentHash()}`)
+    expect(uriV1).toMatch(new RegExp(`^${HITL_APPROVAL_WIDGET_URI_BASE}-[0-9a-f]{8}$`))
+
+    // 内容变更（等价于"改 HTML 没 bump URI"的老做法）⇒ 新 URI 自动生成
+    writeFileSync(widgetPath, "<html><body>v2-changed</body></html>", "utf-8")
+    resetHitlApprovalWidgetUriCache()
+    const uriV2 = getHitlApprovalWidgetUri()
+    expect(uriV2).not.toBe(uriV1)
+
+    // 工具 _meta 与资源注册共用同一函数 ⇒ 工具声明同步指向新 URI
+    const tools = new Map<string, ToolRegistration>()
+    const registrar = {
+      registerTool(name: string, config: Record<string, unknown>, callback: ToolRegistration["callback"]) {
+        tools.set(name, { config, callback })
+        return {}
+      },
+    } as unknown as ToolRegistrar
+    const { registerHitlTools } = await import(
+      "../templates/core/scripts/mcp-server/tools/hitl.js"
+    )
+    registerHitlTools(registrar)
+    expect(tools.get("render_hitl_approval")?.config).toMatchObject({
+      _meta: { ui: { resourceUri: uriV2 }, "openai/outputTemplate": uriV2 },
+    })
+
+    // 文件缺失 ⇒ 回退基名（fail-open，不阻断资源注册）
+    rmSync(widgetPath, { force: true })
+    resetHitlApprovalWidgetUriCache()
+    expect(getHitlApprovalWidgetUri()).toBe(HITL_APPROVAL_WIDGET_URI_BASE)
   })
 
   it("keeps the table scrollable, binds CSP-safe controls, and falls back through Codex follow-up", () => {

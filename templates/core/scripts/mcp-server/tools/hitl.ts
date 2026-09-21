@@ -23,7 +23,7 @@ import {
   buildHitlProposalMarkdown,
   applyHitlDecisionToProposal,
 } from "../shared/hitl-proposal-content.js"
-import { HITL_APPROVAL_WIDGET_URI } from "../shared/hitl-ui.js"
+import { getHitlApprovalWidgetUri } from "../shared/hitl-ui.js"
 
 // 无类型边界单点（zod 托管）：动态加载的 prisma client 在此一次性转为运行期校验的泛型委托
 const db = {
@@ -49,6 +49,8 @@ function elicitFormSchema(
 
 export function registerHitlTools(server: ToolRegistrar) {
   const runtimeContext = getRuntimeContext()
+  // [2026-09-21 修复] widget 资源 URI = 基名 + HTML 内容哈希（宿主把 URI 当缓存键 ⇒ 改 HTML 自动失效）
+  const WIDGET_URI = getHitlApprovalWidgetUri()
 
   // ═══════════════ 辅助：按安装环境裁决交互模式（caijuehub: hitl-interaction-rules.toml） ═══════════════
   const _interaction = (() => {
@@ -186,8 +188,8 @@ export function registerHitlTools(server: ToolRegistrar) {
     }),
     annotations: { readOnlyHint: true },
     _meta: {
-      ui: { resourceUri: HITL_APPROVAL_WIDGET_URI },
-      "openai/outputTemplate": HITL_APPROVAL_WIDGET_URI,
+      ui: { resourceUri: WIDGET_URI },
+      "openai/outputTemplate": WIDGET_URI,
       "openai/toolInvocation/invoking": "正在加载 HITL 审批表…",
       "openai/toolInvocation/invoked": "HITL 审批表已加载",
     },
@@ -246,14 +248,22 @@ export function registerHitlTools(server: ToolRegistrar) {
         dimensions,
         stale,
         // 服务端无法得知客户端是否真的渲染了 widget —— 如实标注 unknown，不谎报
-        ui: { resourceUri: HITL_APPROVAL_WIDGET_URI, rendered: "unknown" as const },
+        // requiresHostFlag：宿主侧开关（Codex /experimental → enable_mcp_apps）；未开启时 widget 必然加载失败
+        ui: {
+          resourceUri: WIDGET_URI,
+          rendered: "unknown" as const,
+          requiresHostFlag: "experimental.enable_mcp_apps",
+        },
         fallback: { markdownPath, htmlPath },
       }
       const fallbackHint = markdownPath || htmlPath
+      // [2026-09-21 修复] 把「为什么 widget 不显示」的两个确定原因写进返回文本：
+      //   ① 宿主开关未开（Codex /experimental → enable_mcp_apps）；② 工具元数据变更后未重连 MCP server。
+      const widgetHint = `widget 若未显示：「This app couldn't be loaded」⇒ ① 确认宿主已开启 /experimental → enable_mcp_apps（Codex）；② 重启/重连 MCP server（工具元数据与资源 URI 变更后必须重连）。降级入口：${fallbackHint}`
       const text =
         stale.stale === true
-          ? `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。⚠️ 当前 server 进程早于产物更新（需重启）；widget 若未显示，降级入口：${fallbackHint}`
-          : `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。widget 若未显示，降级入口：${fallbackHint}`
+          ? `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。⚠️ 当前 server 进程早于产物更新（需重启）；${widgetHint}`
+          : `已加载 ${planName} round ${current.round} 的 ${dimensions.length} 个审批维度。${widgetHint}`
       return {
         content: [{ type: "text" as const, text }],
         structuredContent: output,
@@ -266,8 +276,8 @@ export function registerHitlTools(server: ToolRegistrar) {
          * + 资源 mimeType 为 `text/html;profile=mcp-app` + 资源存在 + dimensions 非空。
          */
         _meta: {
-          ui: { resourceUri: HITL_APPROVAL_WIDGET_URI },
-          "openai/outputTemplate": HITL_APPROVAL_WIDGET_URI,
+          ui: { resourceUri: WIDGET_URI },
+          "openai/outputTemplate": WIDGET_URI,
         },
       }
     } catch (e) {

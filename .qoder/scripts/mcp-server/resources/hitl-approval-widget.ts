@@ -5,13 +5,15 @@ import { PROJECT_ROOT, MAGIC_DIR } from "../shared/fs.js"
 import {
   HITL_APPROVAL_WIDGET_FILE,
   HITL_APPROVAL_WIDGET_MIME,
-  HITL_APPROVAL_WIDGET_URI,
+  getHitlApprovalWidgetUri,
 } from "../shared/hitl-ui.js"
 
 export function registerHitlApprovalWidgetResource(server: McpServer) {
+  // [2026-09-21 修复] 与工具 `_meta.ui.resourceUri` 共用同一函数（基名 + 内容哈希），保证两处严格一致
+  const WIDGET_URI = getHitlApprovalWidgetUri()
   server.registerResource(
     "hitl-approval-widget",
-    HITL_APPROVAL_WIDGET_URI,
+    WIDGET_URI,
     {
       title: "ADD HITL Approval",
       description: "逐项审核 ADD HITL 提案的 core 标准 widget",
