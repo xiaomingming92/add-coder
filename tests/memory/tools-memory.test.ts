@@ -181,12 +181,12 @@ beforeEach(() => {
 })
 
 describe("工具注册", () => {
-  it("注册全部 8 个 MVP 工具", () => {
+  it("注册全部 9 个记忆工具（8 MVP + refresh_memory_snapshots 接线入口）", () => {
     const tools = setup()
-    for (const name of ["propose_memory", "recall_memory", "get_memory", "list_memories", "review_memory", "resolve_memory", "feedback_memory", "get_memory_health"]) {
+    for (const name of ["propose_memory", "recall_memory", "get_memory", "list_memories", "review_memory", "resolve_memory", "feedback_memory", "get_memory_health", "refresh_memory_snapshots"]) {
       expect(tools.has(name), `缺少工具 ${name}`).toBe(true)
     }
-    expect(tools.size).toBe(8)
+    expect(tools.size).toBe(9)
   })
 })
 

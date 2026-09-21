@@ -108,19 +108,43 @@ export class SessionStartGuard {
    *   shadow → 仅提示快照存在（召回可执行并落审计，但不注入上下文）
    *   inject → 读预计算快照注入（新鲜度 ≤7 天，token 预算截断，带来源边界标签）
    * 同步 Hook ≤200ms 约束：只读文件，任何异常 fail-open 静默跳过。
+   *
+   * [2026-09-21 接线修复] 三态必须**可区分**，且"未接线/已过期"不再静默：
+   * 原实现 `if (!existsSync(file)) return` 会让"没跑 job"与"没有已治理记忆"、
+   * 以及"档位没开"三种情况在会话里完全无痕，用户与模型都无从判断记忆是否接上。
    */
   protected emitMemoryL1(): void {
     try {
       const mode = recallMode()
       if (mode === "off" || !this.magicDir) return
       const file = join(this.projectDir, this.magicDir, MEMORY_DIR_NAME, L1_SNAPSHOT_FILE)
-      if (!existsSync(file)) return
-      if (mode === "shadow") {
-        process.stdout.write(`[Memory] L1 快照已生成（shadow 模式未注入）。需要时调用 recall_memory 显式召回: ${file}\n`)
+      // ① 未接线：文件不存在（缺 job 入口 / 首次安装 / 从未刷新）
+      if (!existsSync(file)) {
+        process.stdout.write(
+          `[Memory] ⚠️ L1 快照未接线（${file} 不存在）——当前档位 ${mode}。` +
+          `生成快照：执行 \`npx add-coder sync\`、调用 MCP 工具 refresh_memory_snapshots、或运行 ` +
+          `\`${this.magicDir}/scripts/memory/memory-jobs.ts refresh-l1\`；` +
+          `注入开关：ADD_MEMORY_RECALL_MODE=inject（默认）。详见 ${this.magicDir}/docs/ADD-governance-codex.md\n`,
+        )
         return
       }
-      // inject：过期快照不注入
-      if (Date.now() - statSync(file).mtimeMs > L1_SNAPSHOT_TTL_MS) return
+      if (mode === "shadow") {
+        process.stdout.write(
+          `[Memory] 当前档位 shadow：召回可执行并落审计，但**不注入**上下文（快照已生成: ${file}）。` +
+          `需要注入时去掉 ADD_MEMORY_RECALL_MODE 或设为 inject（默认）；也可直接调用 recall_memory 显式召回。\n`,
+        )
+        return
+      }
+      // ② 已接线但过期：inject 下不注入，但必须说明原因与刷新入口
+      const ageMs = Date.now() - statSync(file).mtimeMs
+      if (ageMs > L1_SNAPSHOT_TTL_MS) {
+        const days = Math.floor(ageMs / 86400000)
+        process.stdout.write(
+          `[Memory] ⚠️ L1 快照已过期（${days} 天 > TTL 7 天，未注入）：${file}` +
+          `——刷新：调用 refresh_memory_snapshots 或运行 \`${this.magicDir}/scripts/memory/memory-jobs.ts refresh-l1\`\n`,
+        )
+        return
+      }
       const text = readFileSync(file, "utf-8")
       const budget = memoryMaxTokens()
       if (estimateTokens(text) <= budget) {

@@ -29,6 +29,7 @@ import { ensureEmbeddingModel } from "../../lib/model-predownload";
 import { ensurePortsContract } from "../../lib/ports-contract";
 // 期望态应用属库层能力（init / db-ensure / memory:reindex 三处共用）；命令层只编排出输出
 import { applyMemoryExpectedState } from "../../lib/memory-expected-state.js";
+import { refreshL1SnapshotOnInstall } from "../../lib/memory-snapshot-install.js";
 
 interface InitOptions { adapter?: string; config?: string; force?: boolean; dryRun?: boolean; stack?: string; skipModel?: boolean; printMcpConfig?: boolean; writeUserConfig?: boolean; }
 interface DbChoice { engine: "postgresql" | "sqlite" | "manual"; container?: "podman" | "docker" | "manual"; user?: string; password?: string; port?: string; reuseExisting?: boolean; }
@@ -87,6 +88,19 @@ export async function initCommand(options: InitOptions) {
     // dry-run 提示不被 deployDocs 首行 return 吞掉（Review P1 #1）；只补缺不覆盖
     ensurePortsContract(ctx.projectRoot, ctx.config, !!options.dryRun);
     deployDocs(ctx);
+    // 记忆 L1 快照接线（2026-09-21 Plan `add-coder-memory-injection-wiring-plan-v1`）：
+    // 安装末尾刷新，使"装完即有快照可注入"。失败**阻断**（人类决策）：打印根因 + 复现命令 + 非零退出，
+    // 不做"告警放行"——否则用户会以为记忆已接线，实际会话里永远无内容。
+    if (!options.dryRun) {
+        const snap = refreshL1SnapshotOnInstall({ projectRoot: ctx.projectRoot, magicDir: ctx.magicDir });
+        if (!snap.ok) {
+            console.error(`\n✗ 记忆快照未就绪: ${snap.detail}`);
+            console.error(`  复现命令: ${snap.cmd}`);
+            console.error("  修复后重新运行 add-coder init（该步骤为硬门禁）。");
+            process.exit(1);
+        }
+        console.log(`✅ 记忆 L1 快照已刷新: ${snap.relScript}`);
+    }
     finalize(ctx, result, dbFail);
     // embedding 模型预下载（model-predownload Plan）：非 dry-run；skip 也打印状态（Review P2 #5）；失败 warn 不阻断（降级边界）
     if (!options.dryRun) {

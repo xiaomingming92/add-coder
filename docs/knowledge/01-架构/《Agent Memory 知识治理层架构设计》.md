@@ -80,7 +80,7 @@ ADD_MEMORY_MAX_TOKENS         # 召回注入预算
 
 | 开关 | 默认 | 消费者 | 实现 |
 |------|------|--------|------|
-| `ADD_MEMORY_RECALL_MODE` | `shadow` | session-start-guard（L1 注入三态）、prompt-router（回忆提示）、post-tool-router（采证总闸之一） | `shared/memory/switches.ts` |
+| `ADD_MEMORY_RECALL_MODE` | `inject`（2026-09-21 起；退回不注入设 `shadow`） | session-start-guard（L1 注入三态）、prompt-router（回忆提示）、post-tool-router（采证总闸之一） | `shared/memory/switches.ts` |
 | `ADD_MEMORY_MAX_TOKENS` | `600` | session-start-guard L1 截断；snapshot job L1 预算 | 同上 |
 | `ADD_MEMORY_EVIDENCE` | `on` | post-tool-router 白名单采证入队 | 同上 |
 | `ADD_MEMORY_VECTOR_MODE` | `off`（等价 embedding=none） | recall_memory degradedMode 标注 | `shared/memory/embedding/index.ts` |
@@ -108,7 +108,7 @@ v1 的 §1–§7 是**设计基线**；下表是落地后与基线的对应关�
 | §2 数据模型 6 枚举 + 6 模型 | ✅ 已建 | `prisma/add.prisma`；主库 15 表 / `vector 0.8.6` / `add_memory_vector` + 2 索引 |
 | §3.5 FTS 基线 + Vector 可选 | ✅ 已落地**双通道** | `memory/retrieval/vector/{pgvector,sqlite-vec}.ts` + 能力检测与 `degradedMode`；`memory/embedding/{local-onnx,openai-compatible}.ts` |
 | §4 写入流（Evidence→Candidate→ACTIVE） | ✅ 已落地 + **Gate→MetricSnapshot 采证** | `memory/metrics/{gate-writer,stage-words,gate-recall}.ts`（采证幂等：`sourceRef=<gate>:<planKeyword>:<runId>`，runId **内容派生**） |
-| §6 发布开关 | ✅ 已落地（含 L1/L2 快照与采证队列） | `shared/memory/switches.ts`、`${MAGIC_DIR}/memory/{l1,l2}-context.md`、`evidence-queue.jsonl` |
+| §6 发布开关 | ⚠️ 曾缺**入口**，2026-09-21 补齐（如实登记） | 开关本体 `shared/memory/switches.ts` 早已就位，但 §90 契约的异步入口 `scripts/memory/memory-jobs.ts` **未随模板分发**、且无 MCP 工具暴露 ⇒ 下游项目 `${MAGIC_DIR}/memory/l1-context.md` 永不生成（farm-agent 实测整场会话零注入、零提示）。现补齐三入口：MCP 工具 `refresh_memory_snapshots`、模板 `{magicDir}/scripts/memory/memory-jobs.ts`、`init`/`sync` 末尾刷新（失败阻断）；默认档同步改为 `inject` |
 | §3.8 Embedding 首版 none | ⬆️ 已推进到 Phase 5（双 provider） | 同上；`ADD_MEMORY_VECTOR_MODE=off|auto|required` |
 | Handoff Digest（v1 未列） | ✅ 新增：候选态生成，不进 ACTIVE | `memory/domain/handoff-digest.ts`；`memory-compat.ts` 提供 v1 门面（`deprecated+mappedTo`，**不转发执行**） |
 | 排序参数（v1 硬编码） | ⬆️ 改为**由观测校准**（权重快照为单一事实源） | `calibration/*`（反馈统计 / 批量拟合 / 快照 / Kalman / FFT 诊断）+ `scripts/memory/*`；`rankingVersion` → v3（快照哈希） |

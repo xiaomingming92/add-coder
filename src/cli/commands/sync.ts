@@ -20,6 +20,7 @@ import { writeFiles } from "../writer";
 import { loadConfig } from "../config-loader";
 import { detectIDE, resolveAdapters } from "../detect";
 import { magicDirFor, ADD_DIR } from "../../shared/paths.js";
+import { refreshL1SnapshotOnInstall } from "../../lib/memory-snapshot-install.js";
 
 import { selectFiles } from "../../lib/select-files";
 import { ask } from "../../lib/utils";
@@ -336,6 +337,7 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
         ensurePortsContract(projectRoot, config);
         // embedding 模型检测/下载（model-predownload Plan）：patch 分支末尾
         await maybeModelDownload(options);
+        refreshSnapshotOrExit(projectRoot, magicDir);
         return;
     }
 
@@ -349,6 +351,7 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
 
     if (missing.size === 0) {
         console.log(SYNC_CONFIG.PROMPT_FULL);
+        refreshSnapshotOrExit(projectRoot, magicDir);
         return;
     }
 
@@ -370,6 +373,24 @@ export async function syncCommand(options: { adapter?: string; interactive?: boo
     ensurePortsContract(projectRoot, config);
     // embedding 模型检测/下载（model-predownload Plan）：普通分支末尾
     await maybeModelDownload(options);
+    refreshSnapshotOrExit(projectRoot, magicDir);
+}
+
+/**
+ * 同步末尾的记忆 L1 快照硬门禁（2026-09-21 Plan `add-coder-memory-injection-wiring-plan-v1`）。
+ *
+ * 与 init 共用同一库层实现（不复制刷新逻辑）；失败**阻断**（人类决策）：
+ * 打印根因 + 复现命令 + 非零退出，避免"以为接上了、实际一直没注入"。
+ */
+function refreshSnapshotOrExit(projectRoot: string, magicDir: string): void {
+    const snap = refreshL1SnapshotOnInstall({ projectRoot, magicDir });
+    if (!snap.ok) {
+        console.error(`\n✗ 记忆快照未就绪: ${snap.detail}`);
+        console.error(`  复现命令: ${snap.cmd}`);
+        console.error("  修复后重新运行 add-coder sync（该步骤为硬门禁）。");
+        process.exit(1);
+    }
+    console.log(`✅ 记忆 L1 快照已刷新: ${snap.relScript}`);
 }
 
 /** 迁移命令指引：从 caijuehub POST_SYNC 策略渲染场景化后续命令（按宿主 migrations 状态分流） */

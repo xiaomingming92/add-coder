@@ -120,6 +120,32 @@ get_project_context({ scope: "add-state" })
 - 待执行的 ADD 操作清单
 - 如 MCP 工具不可用 → 跳过，不阻断流程
 
+### 2.6 召回记忆（L1 快照 / L2 按需）
+
+> **为什么有这一步**（2026-09-21 接线修复）：设计契约的会话注入分层是——session-init 只注入小型 L1，任务相关 L2 由 `recall_memory` 按需获得。此前本 SKILL 零记忆引用，模型因此**从未想到**调用召回，记忆写进去也不会回到会话里。
+
+**动作**：
+
+1. 读 `${MAGIC_DIR}/memory/l1-context.md`（若 SessionStart hook 已注入，内容就在上文；未注入时直接读文件）
+2. 需要与当前任务相关的上下文时，调 `recall_memory({ query: <意图>, stage: "session-start" })` 取 L2
+3. 把命中的约束 / 决策 / 陷阱写入「上下文基准」（标注来源，不臆造）
+4. **未接线或降级时明示**：若快照不存在 / 已过期 / 档位为 `shadow`，据实告知当前状态与开启方式，禁止假装已有记忆
+
+**预期产出**：
+- 记忆段（内容，或"未接线：`npx add-coder sync` / `refresh_memory_snapshots`"的状态说明）
+- 与审计日志、Plan 拓扑交叉后的上下文基准
+
+**开启与刷新**：
+
+```bash
+# 档位（默认已是 inject；退回不注入设为 shadow）
+ADD_MEMORY_RECALL_MODE=inject
+# 刷新快照（安装期由 add-coder init / sync 自动完成）
+node ${MAGIC_DIR}/scripts/memory/memory-jobs.ts refresh-l1
+```
+
+**MCP 工具不可用时**：读快照文件即可（只读），不阻断流程。
+
 ---
 
 ## Step 3：分析审计日志 + Plan 索引 + ADD 状态推断上下文
@@ -231,6 +257,7 @@ Plan 是否存在？
 
 - [ ] Step 1: 已扫描 `.trae/reviews/*review-runtime*` 并汇总未关闭发现
 - [ ] Step 2: 已调用 `query_audit_logs({})`（含 `RUNTIME_ERROR` 查询）
+- [ ] Step 2.6: 已召回记忆（L1 快照 / `recall_memory`），未接线时已明示状态与开启方式
 - [ ] Step 3: 已分析审计日志推断上下文
 - [ ] Step 4: 已构建上下文摘要
 - [ ] Step 5: 已向用户展示恢复的上下文（含未关闭运行时发现，如有）

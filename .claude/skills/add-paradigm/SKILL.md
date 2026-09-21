@@ -109,16 +109,18 @@ description: "Audit-Driven Development paradigm workflow. Invoke when starting a
 
 **检测链路**：`session-init` / `PromptSubmit` hook 检测到稀疏上下文时，自动提示 AI 执行以下流程。
 
-当检测到稀疏上下文时，MUST 调用以下工具三件套重建完整上下文：
+当检测到稀疏上下文时，MUST 调用以下**四件套**重建完整上下文（⓪ 记忆召回于 2026-09-21 前置接入：记忆里往往已有历史决策/陷阱，先召回可避免重复踩坑；未接线时据实明示，不假装有记忆）：
 
 ```text
-① plan_status({ planName })   → tasks.md 进度、实施阶段状态
+⓪ recall_memory({ query, stage: "session-start" }) / list_memories({ repositoryRef, status: "ACTIVE" })
+   → 受治理记忆（约束/决策/陷阱/约定）；未接线或档位 shadow 时输出状态说明与开启方式
+① plan_status({ planName })   → tasks.md 进度、实施状态
 ② review_status({ planName })  → P0/P1 缺陷数、回流率（跨轮审计）
 ③ status_hitl({ planName })    → 审批是否已 tongyi/bohui
-④ 汇总三结果 → AI 确定：上次做到哪个 Task、有哪些未闭环缺陷、审批是否通过
+④ 汇总四结果 → AI 确定：历史约束与陷阱有哪些、上次做到哪个 Task、有哪些未闭环缺陷、审批是否通过
 ```
 
-**调用顺序**：① → ② → ③，汇总后即可进入后续 ADD 步骤，无需人工确认。
+**调用顺序**：⓪ → ① → ② → ③，汇总后即可进入后续 ADD 步骤，无需人工确认。
 
 **工具清单**：
 

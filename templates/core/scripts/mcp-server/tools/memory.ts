@@ -1,9 +1,10 @@
 /*
  * Memory 治理面 MCP 工具（Spec §8，Plan §6.1/§6.2）
  *
- * 8 个 MVP 工具：
+ * 9 个工具：
  *   propose_memory / recall_memory / get_memory / list_memories
  *   review_memory / resolve_memory / feedback_memory / get_memory_health
+ *   refresh_memory_snapshots（2026-09-21 接线：下游唯一可调用的 L1/L2 快照入口）
  *
  * 横切契约：
  * - 所有写工具与读工具均强制 repositoryRef === runtimeContext.projectKey（ERR_REPOSITORY_MISMATCH）
@@ -12,6 +13,8 @@
  * - 状态迁移走领域状态机 assertTransition + AuditLog 打点（ADD-5）
  */
 import * as z from "zod/v4"
+import { existsSync, readFileSync, statSync } from "node:fs"
+import { join } from "node:path"
 import type { ToolRegistrar } from "./registrar.js"
 import { textResponse, errorResponse } from "../shared/response.js"
 import { prisma } from "../shared/prisma.js"
@@ -52,6 +55,18 @@ import {
 } from "../shared/memory/embedding/index.js"
 import { createPgVectorAdapter } from "../shared/memory/retrieval/vector/pgvector.js"
 import { createSqliteVecAdapter } from "../shared/memory/retrieval/vector/sqlite-vec.js"
+import {
+  refreshL1Snapshot,
+  refreshL2Snapshot,
+  type SnapshotDeps,
+} from "../shared/memory/jobs/snapshot.js"
+import { drainEvidenceQueue } from "../shared/memory/jobs/evidence-collector.js"
+import {
+  recallMode,
+  MEMORY_DIR_NAME,
+  L1_SNAPSHOT_FILE,
+  L1_SNAPSHOT_TTL_MS,
+} from "../shared/memory/switches.js"
 
 /** 测试可注入依赖（生产默认从 prisma/DATABASE_URL 构建） */
 export interface MemoryToolDeps {
@@ -642,13 +657,179 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
         ...lexical.map((l) => l.health()),
       ])
 
+      // ── 接线自检（2026-09-21 Plan Task 3.1）：回答"记忆到底接没接上" ──
+      // 只报告不修改：不写用户 env、不改开关，只给可执行的修复指引。
+      const memoryDir = join(runtimeContext.projectRoot, runtimeContext.magicDir, MEMORY_DIR_NAME)
+      const l1Path = join(memoryDir, L1_SNAPSHOT_FILE)
+      const wiringWarnings: Array<{ code: string; detail: string; fixHint: string }> = []
+      const mode = recallMode()
+
+      if (!existsSync(memoryDir)) {
+        wiringWarnings.push({
+          code: "MEMORY_DIR_MISSING",
+          detail: `${runtimeContext.magicDir}/${MEMORY_DIR_NAME}/ 不存在（快照与采证队列均未接线）`,
+          fixHint: "运行 `npx add-coder sync`（安装期会自动生成），或调用 refresh_memory_snapshots",
+        })
+      }
+      if (mode === "shadow") {
+        const recent = await recallDb.findMany({
+          where: { repositoryRef, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } },
+          take: 1,
+        })
+        if (recent.length === 0) {
+          wiringWarnings.push({
+            code: "SHADOW_ZERO_RECALL",
+            detail: "当前档位 shadow 且近 30 天零召回：记忆从未进入会话",
+            fixHint: "去掉 ADD_MEMORY_RECALL_MODE 或设为 inject（默认），或直接调用 recall_memory 显式召回",
+          })
+        }
+      }
+      if (existsSync(l1Path)) {
+        const ageMs = Date.now() - statSync(l1Path).mtimeMs
+        if (ageMs > L1_SNAPSHOT_TTL_MS) {
+          wiringWarnings.push({
+            code: "SNAPSHOT_STALE",
+            detail: `L1 快照已过期（${Math.floor(ageMs / 86400000)} 天 > TTL 7 天）：注入会被跳过`,
+            fixHint: "调用 refresh_memory_snapshots，或运行 {magicDir}/scripts/memory/memory-jobs.ts refresh-l1",
+          })
+        }
+        const content = readFileSync(l1Path, "utf-8")
+        if (/本仓库暂无已治理记忆|本次查询未命中已治理记忆/.test(content)) {
+          wiringWarnings.push({
+            code: "SNAPSHOT_EMPTY",
+            detail: "L1 快照已接线但 0 条（ACTIVE=0 或过滤过严）：会话启动不会拿到任何记忆",
+            fixHint: "先用 propose_memory 沉淀，再经 review_memory → resolve_memory 升为 ACTIVE",
+          })
+        }
+      } else if (existsSync(memoryDir)) {
+        wiringWarnings.push({
+          code: "SNAPSHOT_MISSING",
+          detail: `L1 快照缺失: ${runtimeContext.magicDir}/${MEMORY_DIR_NAME}/${L1_SNAPSHOT_FILE}`,
+          fixHint: "调用 refresh_memory_snapshots（或运行 memory-jobs.ts refresh-l1 / npx add-coder sync）",
+        })
+      }
+
       return textResponse(JSON.stringify({
         repositoryRef,
         backlog: { candidate: backlog.CANDIDATE ?? 0, pending: backlog.PENDING ?? 0, byStatus: backlog },
         leakage: { checkedRecalls: recentRecalls.length, crossRepositorySelections: leakage },
         providers: { embedding: embeddingHealth },
         index: ftsHealth ?? { component: "fts", status: "unavailable", detail: "无 lexical adapter" },
+        // 接线状态（新增字段，既有字段保持不变）：ok = 四项告警全空
+        wiring: {
+          status: wiringWarnings.length === 0 ? "ok" : "warning",
+          recallMode: mode,
+          snapshotPath: l1Path,
+          warnings: wiringWarnings,
+        },
       }))
+    } catch (e) { return fail(e) }
+  })
+
+  // ===== 9. refresh_memory_snapshots（2026-09-21 接线：下游唯一可调用的快照入口） =====
+  server.registerTool("refresh_memory_snapshots", {
+    description: "刷新记忆快照并消费采证队列：drain evidence-queue → refresh L1（默认）/ L2（需 query）。这是下游唯一可调用的快照入口（init / sync / memory-jobs CLI 复用同一实现）。原子写、幂等、token 预算取 ADD_MEMORY_MAX_TOKENS（默认 600）；任一子步失败都会逐条列出（failed=true），不静默吞错。",
+    inputSchema: z.object({
+      repositoryRef: z.string().describe("仓库标识（必须等于运行时 projectKey）"),
+      levels: z.enum(["l1", "l2", "both"]).optional().default("l1").describe("刷新层级：默认 l1"),
+      query: z.string().optional().describe("levels 含 l2 时必填：L2 快照的召回意图"),
+      drainEvidence: z.boolean().optional().default(true).describe("是否先消费 evidence-queue（默认是）"),
+    }),
+  }, async (args: Record<string, unknown>, _ctx: unknown) => {
+    try {
+      const repositoryRef = args.repositoryRef as string
+      assertRepository(repositoryRef)
+      const levels = (args.levels as "l1" | "l2" | "both" | undefined) ?? "l1"
+      const query = args.query as string | undefined
+      const drain = (args.drainEvidence as boolean | undefined) ?? true
+      if (levels !== "l1" && !query) {
+        return errorResponse("levels 含 l2 时必须提供 query（L2 是按 query 的上下文快照），不接受静默降级为 L1")
+      }
+
+      const snapshotDeps: SnapshotDeps = {
+        repositoryRef,
+        projectDir: runtimeContext.projectRoot,
+        magicDir: runtimeContext.magicDir,
+        lexical,
+        fetchByIds: async (ids) =>
+          await memoryDb.findMany({
+            where: { id: { in: ids } },
+            include: { supersedes: { select: { id: true } } },
+          }),
+        fetchEvidenceSourceRefs: async (memoryIds) => {
+          const links = await linkDb.findMany({ where: { memoryId: { in: memoryIds } } })
+          const evIds = [...new Set(links.map((l) => l.evidenceId))]
+          const evs = evIds.length > 0 ? await evidenceDb.findMany({ where: { id: { in: evIds } } }) : []
+          const refById = new Map(evs.map((e) => [e.id, e.sourceRef]))
+          const out = new Map<string, string[]>()
+          for (const l of links) {
+            const ref = refById.get(l.evidenceId)
+            if (!ref) continue
+            const arr = out.get(l.memoryId) ?? []
+            arr.push(ref)
+            out.set(l.memoryId, arr)
+          }
+          return out
+        },
+        audit: {
+          createRecall: (data) => recallDb.create({ data: data }),
+          createRecallItem: (data) => recallItemDb.create({ data: data }),
+        },
+      }
+
+      const steps: Array<{ name: string; ok: boolean; detail: string }> = []
+
+      if (drain) {
+        try {
+          const r = await drainEvidenceQueue({
+            projectDir: runtimeContext.projectRoot,
+            magicDir: runtimeContext.magicDir,
+            repositoryRef,
+            evidenceDb,
+          })
+          // 行级失败不吞：坏行计入 errors 并原样透出（fail-open 到行，但绝不静默）
+          steps.push({
+            name: "drain-evidence",
+            ok: r.errors.length === 0,
+            detail: r.errors.length === 0
+              ? `消费 ${r.processed} 条（跳过 ${r.skipped}），offset=${r.newOffset}`
+              : `消费 ${r.processed} 条，${r.errors.length} 行失败：${r.errors.slice(0, 3).join("; ")}`,
+          })
+        } catch (e) {
+          steps.push({ name: "drain-evidence", ok: false, detail: e instanceof Error ? e.message : String(e) })
+        }
+      }
+
+      const files: Array<{ level: "L1" | "L2"; path: string; itemCount: number; injectedTokens: number }> = []
+
+      if (levels === "l1" || levels === "both") {
+        try {
+          const r = await refreshL1Snapshot(snapshotDeps)
+          files.push({ level: "L1", path: r.path, itemCount: r.itemCount, injectedTokens: r.injectedTokens })
+          steps.push({ name: "refresh-l1", ok: true, detail: `${r.itemCount} 条 / ${r.injectedTokens} tokens → ${r.path}` })
+        } catch (e) {
+          steps.push({ name: "refresh-l1", ok: false, detail: e instanceof Error ? e.message : String(e) })
+        }
+      }
+
+      if (levels === "l2" || levels === "both") {
+        try {
+          const r = await refreshL2Snapshot(snapshotDeps, query as string, "refresh-l2")
+          files.push({ level: "L2", path: r.path, itemCount: r.itemCount, injectedTokens: r.injectedTokens })
+          steps.push({ name: "refresh-l2", ok: true, detail: `${r.itemCount} 条 / ${r.injectedTokens} tokens → ${r.path}` })
+        } catch (e) {
+          steps.push({ name: "refresh-l2", ok: false, detail: e instanceof Error ? e.message : String(e) })
+        }
+      }
+
+      const failed = steps.some((s) => !s.ok)
+      const payload = { repositoryRef, mode: recallMode(), steps, files, failed }
+      const body = JSON.stringify(payload)
+      return textResponse(
+        failed
+          ? `⚠️ 快照刷新存在失败子步（failed=true）：${steps.filter((s) => !s.ok).map((s) => `${s.name}: ${s.detail}`).join(" | ")}\n${body}`
+          : body,
+      )
     } catch (e) { return fail(e) }
   })
 }

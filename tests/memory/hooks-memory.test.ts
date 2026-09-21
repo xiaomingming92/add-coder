@@ -74,7 +74,7 @@ describe("switches 三态", () => {
     expect(recallMode({ ADD_MEMORY_RECALL_MODE: "off" } as never)).toBe("off")
     expect(recallMode({ ADD_MEMORY_RECALL_MODE: "inject" } as never)).toBe("inject")
     expect(recallMode({ ADD_MEMORY_RECALL_MODE: "garbage" } as never)).toBe("shadow")
-    expect(recallMode({} as never)).toBe("shadow") // 默认 shadow
+    expect(recallMode({} as never)).toBe("inject") // 默认 inject（2026-09-21 人类决策：shadow 默认等于功能未启用）
   })
   it("MAX_TOKENS 默认 600，非法值回落", () => {
     expect(memoryMaxTokens({} as never)).toBe(600)
@@ -100,7 +100,8 @@ describe("session-start-guard L1 注入", () => {
     const out = captureStdout()
     new TestSessionGuard(tmp).callL1()
     const text = out.join("")
-    expect(text).toContain("shadow 模式未注入")
+    expect(text).toContain("当前档位 shadow")
+    expect(text).toContain("不注入")
     expect(text).toContain(file)
     expect(text).not.toContain("<agent-memory")
   })
@@ -112,12 +113,15 @@ describe("session-start-guard L1 注入", () => {
     expect(out.join("")).toContain("<agent-memory")
     expect(out.join("")).toContain("DECISION")
   })
-  it("inject 模式：过期快照（>7 天）不注入", () => {
+  it("inject 模式：过期快照（>7 天）不注入，但必须说明已过期（不再静默）", () => {
     vi.stubEnv("ADD_MEMORY_RECALL_MODE", "inject")
     writeSnapshot(SNAPSHOT, 8 * 24 * 3600 * 1000)
     const out = captureStdout()
     new TestSessionGuard(tmp).callL1()
-    expect(out.join("")).toBe("")
+    const text = out.join("")
+    expect(text).toContain("已过期")
+    expect(text).toContain("refresh-l1")
+    expect(text).not.toContain("<agent-memory")
   })
   it("inject 模式：超预算截断并附显式标记", () => {
     vi.stubEnv("ADD_MEMORY_RECALL_MODE", "inject")
@@ -127,10 +131,13 @@ describe("session-start-guard L1 注入", () => {
     new TestSessionGuard(tmp).callL1()
     expect(out.join("")).toContain("已截断")
   })
-  it("fail-open：快照不存在/目录损坏不抛异常", () => {
+  it("未接线：快照不存在时输出告警（不静默），且仍不抛异常（fail-open）", () => {
     const out = captureStdout()
     expect(() => new TestSessionGuard(tmp).callL1()).not.toThrow()
-    expect(out.join("")).toBe("")
+    const text = out.join("")
+    expect(text).toContain("未接线")
+    expect(text).toContain("refresh_memory_snapshots")
+    expect(text).not.toContain("<agent-memory")
   })
 })
 
