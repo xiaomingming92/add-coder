@@ -452,7 +452,7 @@ function writeHookEvent(hook, decision, cmd, reason, plan = "unknown", status = 
 
 // templates/core/scripts/mcp-server/shared/memory/switches.ts
 function recallMode(env = process.env) {
-  const v = (env.ADD_MEMORY_RECALL_MODE ?? "shadow").toLowerCase();
+  const v = (env.ADD_MEMORY_RECALL_MODE ?? "inject").toLowerCase();
   return v === "off" || v === "inject" ? v : "shadow";
 }
 var L1_SNAPSHOT_TTL_MS = 7 * 24 * 60 * 60 * 1e3;

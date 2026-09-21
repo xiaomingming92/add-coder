@@ -529,7 +529,7 @@ export const context = {
     {
       "id": "has_add_dev_unclosed",
       "consumed": true,
-      "text": "[ADD Stop] ⚠️ 代码已完成但验收未闭环:\n{{info}}\n\n请依次执行（不要等下次会话）:\n  ① Write devlog → handoff 同目录 devlog-{plan}-v{n}.md\n     格式: # Devlog: {plan}\\n 日期 / Plan / 轮次 / 本轮改了什么 / 验收结果 / 遗留项 / 架构回看\n  ② Edit handoff → 更新 §验证标准 全部 [x] + 补充审计 ID\n     ★ 同步: checklist 有新 cuid → handoff ADD-7 表必须对应新增行\n     ★ Step 0 准入: handoff + add-route + Specs 三元组缺一不可，缺则回退 Step 0.5\n  ③ Read docs/ → 回看架构文档确认一致性\n  ④ Edit add-route → 勾选对应 Step [x]\n\n以上全部完成后 Agent 才能停止。\n\n下次恢复: 读 handoff → 查同目录 devlog-*.md → query_audit_logs\n"
+      "text": "[ADD Stop] ⚠️ 代码已完成但验收未闭环:\n{{info}}\n\n请依次执行（不要等下次会话）:\n  ① Write devlog → 调用 `record_dev_operation`（MCP）落库审计；并把本轮验收记录（日期 / Plan / 轮次 / 改了什么 / 验收结果 / 遗留项 / 架构回看）写进 handoff 的验收段落——**不新建 devlog 文件**\n  ② Edit handoff → 更新 §验证标准 全部 [x] + 补充审计 ID（真实 cuid）\n     ★ 同步: checklist 有新 cuid → handoff ADD-7 表必须对应新增行\n     ★ Step 0 准入: handoff + add-route + Specs 三元组缺一不可，缺则回退 Step 0.5\n  ③ Read docs/ → 回看架构文档确认一致性\n  ④ Edit add-route → 勾选对应 Step [x]\n\n以上全部完成后 Agent 才能停止。\n\n下次恢复: 读 handoff → query_audit_logs({ planKeyword })（devlog 即 DevOperation 记录，无独立文件）\n"
     },
     {
       "id": "has_add_dev_closed",
@@ -541,7 +541,7 @@ export const context = {
     {
       "adapter": "qoder",
       "id": "has_add_dev_unclosed",
-      "text": "[ADD Stop] ⚠️ 代码已完成但验收未闭环:\n{{info}}\n\n请依次执行（不要等下次会话）:\n  ① Write devlog → handoff 同目录 devlog-{plan}-v{n}.md\n     格式: # Devlog: {plan}\\n 日期 / Plan / 轮次 / 本轮改了什么 / 验收结果 / 遗留项 / 架构回看\n  ② Edit handoff → 更新 §验证标准 全部 [x] + 补充审计 ID\n     ★ 同步: checklist 有新 cuid → handoff ADD-7 表必须对应新增行\n     ★ Step 0 准入: handoff + add-route + Specs 三元组缺一不可，缺则回退 Step 0.5\n  ③ Read docs/ → 回看架构文档确认一致性\n  ④ Edit add-route → 勾选对应 Step [x]\n\n以上全部完成后 Agent 才能停止。\n\n下次恢复: 读 handoff → 查同目录 devlog-*.md → query_audit_logs\n"
+      "text": "[ADD Stop] ⚠️ 代码已完成但验收未闭环:\n{{info}}\n\n请依次执行（不要等下次会话）:\n  ① Write devlog → 调用 `record_dev_operation`（MCP）落库审计；并把本轮验收记录（日期 / Plan / 轮次 / 改了什么 / 验收结果 / 遗留项 / 架构回看）写进 handoff 的验收段落——**不新建 devlog 文件**\n  ② Edit handoff → 更新 §验证标准 全部 [x] + 补充审计 ID（真实 cuid）\n     ★ 同步: checklist 有新 cuid → handoff ADD-7 表必须对应新增行\n     ★ Step 0 准入: handoff + add-route + Specs 三元组缺一不可，缺则回退 Step 0.5\n  ③ Read docs/ → 回看架构文档确认一致性\n  ④ Edit add-route → 勾选对应 Step [x]\n\n以上全部完成后 Agent 才能停止。\n\n下次恢复: 读 handoff → query_audit_logs({ planKeyword })（devlog 即 DevOperation 记录，无独立文件）\n"
     }
   ],
   "templates": {

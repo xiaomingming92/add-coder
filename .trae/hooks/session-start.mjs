@@ -484,7 +484,7 @@ var PreloadTemplates = class _PreloadTemplates {
 
 // templates/core/scripts/mcp-server/shared/memory/switches.ts
 function recallMode(env = process.env) {
-  const v = (env.ADD_MEMORY_RECALL_MODE ?? "shadow").toLowerCase();
+  const v = (env.ADD_MEMORY_RECALL_MODE ?? "inject").toLowerCase();
   return v === "off" || v === "inject" ? v : "shadow";
 }
 function memoryMaxTokens(env = process.env) {
@@ -580,19 +580,39 @@ var SessionStartGuard = class {
    *   shadow → 仅提示快照存在（召回可执行并落审计，但不注入上下文）
    *   inject → 读预计算快照注入（新鲜度 ≤7 天，token 预算截断，带来源边界标签）
    * 同步 Hook ≤200ms 约束：只读文件，任何异常 fail-open 静默跳过。
+   *
+   * [2026-09-21 接线修复] 三态必须**可区分**，且"未接线/已过期"不再静默：
+   * 原实现 `if (!existsSync(file)) return` 会让"没跑 job"与"没有已治理记忆"、
+   * 以及"档位没开"三种情况在会话里完全无痕，用户与模型都无从判断记忆是否接上。
    */
   emitMemoryL1() {
     try {
       const mode = recallMode();
       if (mode === "off" || !this.magicDir) return;
       const file = join3(this.projectDir, this.magicDir, MEMORY_DIR_NAME, L1_SNAPSHOT_FILE);
-      if (!existsSync3(file)) return;
-      if (mode === "shadow") {
-        process.stdout.write(`[Memory] L1 \u5FEB\u7167\u5DF2\u751F\u6210\uFF08shadow \u6A21\u5F0F\u672A\u6CE8\u5165\uFF09\u3002\u9700\u8981\u65F6\u8C03\u7528 recall_memory \u663E\u5F0F\u53EC\u56DE: ${file}
-`);
+      if (!existsSync3(file)) {
+        process.stdout.write(
+          `[Memory] \u26A0\uFE0F L1 \u5FEB\u7167\u672A\u63A5\u7EBF\uFF08${file} \u4E0D\u5B58\u5728\uFF09\u2014\u2014\u5F53\u524D\u6863\u4F4D ${mode}\u3002\u751F\u6210\u5FEB\u7167\uFF1A\u6267\u884C \`npx add-coder sync\`\u3001\u8C03\u7528 MCP \u5DE5\u5177 refresh_memory_snapshots\u3001\u6216\u8FD0\u884C \`${this.magicDir}/scripts/memory/memory-jobs.ts refresh-l1\`\uFF1B\u6CE8\u5165\u5F00\u5173\uFF1AADD_MEMORY_RECALL_MODE=inject\uFF08\u9ED8\u8BA4\uFF09\u3002\u8BE6\u89C1 ${this.magicDir}/docs/ADD-governance-codex.md
+`
+        );
         return;
       }
-      if (Date.now() - statSync(file).mtimeMs > L1_SNAPSHOT_TTL_MS) return;
+      if (mode === "shadow") {
+        process.stdout.write(
+          `[Memory] \u5F53\u524D\u6863\u4F4D shadow\uFF1A\u53EC\u56DE\u53EF\u6267\u884C\u5E76\u843D\u5BA1\u8BA1\uFF0C\u4F46**\u4E0D\u6CE8\u5165**\u4E0A\u4E0B\u6587\uFF08\u5FEB\u7167\u5DF2\u751F\u6210: ${file}\uFF09\u3002\u9700\u8981\u6CE8\u5165\u65F6\u53BB\u6389 ADD_MEMORY_RECALL_MODE \u6216\u8BBE\u4E3A inject\uFF08\u9ED8\u8BA4\uFF09\uFF1B\u4E5F\u53EF\u76F4\u63A5\u8C03\u7528 recall_memory \u663E\u5F0F\u53EC\u56DE\u3002
+`
+        );
+        return;
+      }
+      const ageMs = Date.now() - statSync(file).mtimeMs;
+      if (ageMs > L1_SNAPSHOT_TTL_MS) {
+        const days = Math.floor(ageMs / 864e5);
+        process.stdout.write(
+          `[Memory] \u26A0\uFE0F L1 \u5FEB\u7167\u5DF2\u8FC7\u671F\uFF08${days} \u5929 > TTL 7 \u5929\uFF0C\u672A\u6CE8\u5165\uFF09\uFF1A${file}\u2014\u2014\u5237\u65B0\uFF1A\u8C03\u7528 refresh_memory_snapshots \u6216\u8FD0\u884C \`${this.magicDir}/scripts/memory/memory-jobs.ts refresh-l1\`
+`
+        );
+        return;
+      }
       const text = readFileSync3(file, "utf-8");
       const budget = memoryMaxTokens();
       if (estimateTokens(text) <= budget) {
