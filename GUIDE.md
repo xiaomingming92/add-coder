@@ -423,3 +423,17 @@ ERROR: Tool mcp_add-dev-tools_update_hitl is currently disabled by the user, and
 `plan_*` / `review_*` / `status_*` / `update_*` / `render_hitl_approval` / `record_dev_operation` / `query_audit_logs` / `get_project_context` / `get_memory` —— 折叠按字母序裁剪，治理工具恰好落在被裁区间，表现为 HITL 审批链（TONGYI 无法落库 → 哨兵不生成 → Plan 写入被 PreToolUse 阻断）与 ADD-7 审计链同时中断。
 
 完整口径（触发条件、设置语义、上游反馈草稿、Codex 侧同类面板问题）见 [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md)「工具可见性」章节。问题来源：[Issue #21](https://github.com/xiaomingming92/add-coder/issues/21)。
+
+---
+
+## 九·二、排障：另外三端的「面板/工具」类问题
+
+与 VS Code 折叠同族的三类宿主限制（观测日期 **2026-09-21**，宿主行为会随版本变化）：
+
+| 端 | 典型现象 | 一句话处置 | 完整口径 |
+|---|---|---|---|
+| Claude Code | 审批面板不显示，只回文本 | 面板不渲染 ≠ 审批断链：打开 `render_hitl_approval` 的 `fallback.markdownPath` / `htmlPath` 确认后调 `update_hitl`；治理工具可用 `alwaysLoad` 常驻 | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md)「HITL 面板与工具预算」 |
+| Trae | 聊天发不出去 / 质量下降 | 输入长度含该 agent 所用 MCP server 的全部工具定义 ⇒ 按 server 取舍 + 精简描述 + 拆分治理/业务 agent | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md)「工具预算与 HITL 降级」 |
+| Qoder CN | 治理工具不被选中 | 工具按 prompt + 名称/描述自动挑选（无白名单）⇒ 确认 Agent 模式 + 已打开项目目录，按「动词 + 对象 + 触发时机」改写描述 | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md)「工具选择与 genui 审批」 |
+
+> **共同原则**：这三类都是**宿主能力差异**，不是 add-coder 实现缺陷；本地确定性手段只有「按端降级 + 把宿主事实写进文档」。适配矩阵与更新记录见 [README「已知问题 / 限制」](./README.md#-已知问题--限制)。

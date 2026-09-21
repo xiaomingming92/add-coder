@@ -142,7 +142,9 @@ AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达�
 - **文档层**（v0.3.25 起）—— Handoff 文档（每轮 Session 结束自动生成、下轮自动加载）· Plan 索引（`index.md` 集中索引 + 模糊匹配）· DevLog 时序（`{YYYY-MM}/{DD}/` 全量可回溯）
 - **知识层**（v0.3.35 记忆闭环）—— 候选制入库 → 幂等采证（白名单工具事件 → `evidence-queue.jsonl` → 异步消费 → `MetricSnapshot`）→ 位点召回 → 混合召回 + 治理重排 → 反馈回流校准，全链条留痕
 
-**开关**：`ADD_MEMORY_RECALL_MODE=off|shadow|inject`（默认 `shadow`：召回照跑照审计、暂不注入上下文）· `ADD_MEMORY_MAX_TOKENS`（默认 600）· `ADD_MEMORY_EVIDENCE`（默认 `on`）。
+**开关**：`ADD_MEMORY_RECALL_MODE=off|shadow|inject`（**默认 `inject`**：会话启动注入 L1 快照；退回不注入设 `shadow`，关闭设 `off`）· `ADD_MEMORY_MAX_TOKENS`（默认 600）· `ADD_MEMORY_EVIDENCE`（默认 `on`）。
+
+**快照生成入口**（`${MAGIC_DIR}/memory/l1-context.md`，TTL 7 天）：`npx add-coder init` / `npx add-coder sync` 结束时自动刷新（**失败即阻断并报因**）；日常更新用 MCP 工具 `refresh_memory_snapshots`，或运行 `${MAGIC_DIR}/scripts/memory/memory-jobs.ts refresh-l1`。未接线 / 已过期 / 档位为 `shadow` 时，会话启动会明确输出当前状态与开启方式（不再静默）。
 
 > 如实登记：Hybrid `MRR@5` 实测 0.4867 < 0.75 门槛（FTS-only 0.6551、Recall@5 0.9592）——**门槛不下调**，由排序校准线程以数据校准替代手调：记忆能力可跑、可查、可裁决，不靠指标注水。
 > 真源落点、表结构、开发流程见 [DEVELOPMENT.md](./DEVELOPMENT.md) §十七。
@@ -502,7 +504,7 @@ Tasks (实验性)     双向              ✅ 已实现      长任务持久化 
 | ~~MCP 能力重构~~ | ✅ v0.2.9 MCP 工具链架构升级，提升审计与门禁工具的可扩展性和独立部署能力 | 2026-07/23/add-coder-mcp-restructure-plan-v1.md |
 | ~~Hook 通知升级~~ | ✅ v0.2.9 Hook 拦截事件 jsonl → fs.watch → record_dev_operation 落库 + Notification + 治理信号 | 2026-07/24/add-coder-hook-notify-upgrade-plan-v1.md |
 | ide插件 | 解耦ADD范式代码和被治理项目的代码 |在做了,大家拭目以待吧,让编程更有趣,我的目标其实不在于IDE,我的工作顺手的事情 |
-| ~~对话记忆增强~~ | ✅ **v0.3.35→v0.3.37 记忆闭环落地**：幂等采证 + 位点确定性召回 + FTS×向量混合召回（RRF 融合 + 治理重排）+ Handoff Digest 候选 + 排序权重校准基座；默认 `shadow` 模式（召回照跑照审计、暂不注入）；v0.3.37 起原生层（SQLite FTS5 虚表 + 触发器）由 init/db-ensure 自动应用，`memory:reindex` 自助修复 | 门槛未下调：Hybrid MRR@5 0.4867 < 0.75，由校准线程以数据逼近 |
+| ~~对话记忆增强~~ | ✅ **v0.3.35→v0.3.37 记忆闭环落地**：幂等采证 + 位点确定性召回 + FTS×向量混合召回（RRF 融合 + 治理重排）+ Handoff Digest 候选 + 排序权重校准基座；默认 `inject` 模式（2026-09-21 起会话启动即注入 L1，退回不注入设 `shadow`）；v0.3.37 起原生层（SQLite FTS5 虚表 + 触发器）由 init/db-ensure 自动应用，`memory:reindex` 自助修复 | 门槛未下调：Hybrid MRR@5 0.4867 < 0.75，由校准线程以数据逼近 |
 
 ---
 
@@ -574,6 +576,9 @@ published 2 weeks ago by wujixmm <wujixmm@gmail.com>
 | # | 现象 | 影响 | 处置 |
 |---|---|---|---|
 | 1 | VS Code Copilot 下部分 MCP 工具稳定返回 `Tool mcp_<server>_<name> is currently disabled by the user`（**用户从未禁用任何工具**） | 实测 26/47 治理工具不可用：`update_hitl` / `status_hitl` / `plan_*` / `review_*` / `render_hitl_approval` / `record_dev_operation` / `query_audit_logs` / `get_project_context` / `get_memory` ⇒ HITL 审批链 + ADD-7 审计链同时中断 | 宿主 Copilot Chat 的 VirtualTools 折叠机制所致，**非 add-coder 实现缺陷**（触发条件是「所有 MCP 服务器工具总数 ≥ 64」，Pylance 等扩展同受害）。**必配项**：在用户级或工作区级 `settings.json` 加入 `"github.copilot.chat.virtualTools.threshold": 0` 并**重载 VS Code 窗口**；存量会话临时解法则按[降级流程](./templates/core/docs/ADD-governance-vscode-copilot.md)先激活 `activate_fallback_*` 代理。详见 [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md)「工具可见性」章节 · Issue [#21](https://github.com/xiaomingming92/add-coder/issues/21) |
+| 2 | Claude Code 下 HITL 审批面板**不显示**（工具只回文本） | 看不到 widget 不等于审批断了；若误以为"必须点面板"会卡住 Plan 写入 | 该端**不渲染 MCP Apps**（`ui://` 资源被丢弃，[issue #95149](https://github.com/anthropics/claude-code/issues/95149)）。处置：打开 `render_hitl_approval` 返回的 `fallback.markdownPath`（或 `htmlPath`）逐维确认后调 `update_hitl`。另注意 tool search 默认开启（治理工具可加 `alwaysLoad` 常驻）、工具描述与 server instructions 各截断 2KB。详见 [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md)「HITL 面板与工具预算」章节 |
+| 3 | Trae 下聊天**发不出问题**/问答质量下降 | 输入长度超限会中断聊天，表现为"工具装多了反而不能用" | 官方口径：输入长度包含**该 agent 所用 MCP server 的全部工具定义**（另含提问、agent prompt、用户/项目规则）。处置：按 server 粒度取舍、精简工具描述、拆分治理/业务 agent。详见 [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md)「工具预算与 HITL 降级」章节 |
+| 4 | Qoder CN 下治理工具**不被选中** | 审批/审计工具没被调用，链路看着"没反应" | 该端按 **prompt + 工具名称/描述**自动选择工具，无确定性白名单。处置：确认处于 **Agent 模式 + 已打开项目目录**；按「动词 + 治理对象 + 触发时机」改写描述，避免同族描述雷同。详见 [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md)「工具选择与 genui 审批」章节 |
 
 ---
 

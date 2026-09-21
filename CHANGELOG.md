@@ -10,6 +10,16 @@
 > 2026-09-18 的两批内容：① 自 farm-agent 回灌的 `[W]` 接线判据（模板真源 + 六端分发）；
 > ② `check_spec_sync` 版本配对修复（同一根因波及另外 4 个闸门工具）。审计链：`farm-agent-template-backport-2026-09-18`、`add-coder-check-spec-sync-version-pairing`。
 
+### 新增
+
+- **多宿主适配：三端「面板 + 工具可见性」口径文档化**（`add-coder-multi-host-adapter-alignment-plan-v1` 轮 1）：Claude Code 新增「HITL 面板与工具预算」（该端**不渲染** MCP Apps `ui://`（[issue #95149](https://github.com/anthropics/claude-code/issues/95149)）⇒ 审批走 `render_hitl_approval` 的 `fallback.markdownPath`/`htmlPath` 人工确认后 `update_hitl` 落库；tool search 默认开启、无固定 per-server 上限，治理工具可用 `alwaysLoad` / `"anthropic/alwaysLoad": true` 常驻；工具描述与 server instructions 各截断 2KB、MCP 输出默认 25k token）；Trae 新增「工具预算与 HITL 降级」（官方口径：输入长度 = 提问 + agent prompt + **该 agent 所用 MCP server 的全部工具定义** + 用户/项目规则，超限会**发不出问题** ⇒ 按 server 取舍 / 精简描述 / 拆分治理与业务 agent）；Qoder CN 新增「工具选择与 genui 审批」（工具按 **prompt + 名称/描述**自动挑选，无确定性白名单 ⇒ 命名「动词 + 治理对象 + 触发时机」+ Agent 模式前提 + genui 降级）。README（中/英）「已知问题 / 限制」由 1 条扩到 4 条，GUIDE 新增「九·二」三端排障表；六端 `docs/ADD-governance-*.md` 逐端与真源一致（30/30）
+- **服务端 MCP Apps 扩展协商 + server instructions**（同 Plan 轮 2）：`capabilities` 增 `extensions["io.modelcontextprotocol/ui"]`（官方扩展规范要求宿主与 server 双方声明；此前只靠工具侧 legacy 位 `_meta.ui.resourceUri` + `openai/outputTemplate`，宿主一旦收紧协商即全端同时失效），真源抽到零副作用模块 `scripts/mcp-server/shared/server-capabilities.ts`（入口 import 即启动，内联则不可单测）；同时补 `instructions`（**≤2048 字节**、前 512 字符自包含：三个必做 WHEN + 六个工具族分区），提升 tool search 与描述式选择下的命中率。legacy 兼容位保留不删，两条路径并存；`tests/mcp-apps-capability.test.ts` 8 用例守护（扩展键序列化 / 既有能力保留 / legacy 防误删 / widget URI 形态 / instructions 长度·前缀·六族·禁宿主开关名）
+- **Plan 生命周期关闭首次真正落地**（基座来自 `add-coder-plan-close-entry-plan-v1`）：`plan_update` MCP 工具 + 随模板分发的 `{magicDir}/scripts/plan-close.ts`（与工具共用同一实现，禁止工具/脚本双份漂移），生命周期可逆（新增 `REOPENED`）。本仓实测：`add-coder-copilot-virtualtools-visibility-plan-v1` 与 `add-coder-memory-injection-wiring-plan-v1` 落 `CLOSED`（后者由 `add-coder-multi-host-adapter-alignment-plan-v1` 轮 3 核验收敛后关闭，重复执行返回 `idempotent: true` 且不新增审计）
+
+### 文档
+
+- **`status` 宿主自检文案加固**：VS Code 必配项缺失态新增「若你的 Copilot / VS Code 版本已不再提供该设置项，可忽略本告警（建议性检查，不影响退出码）」——该键是宿主实验设置，若被改名/移除，旧文案会产出永远消不掉的告警；文案抽为纯函数 `virtualToolsNoticeLines()` 以便断言，新增 2 用例（13 → 15）
+
 ### 修复
 
 - **HITL core widget 在 Codex 报 "This app couldn't be loaded"（资源 URI 缓存键）**：宿主把 MCP Apps 的 resource URI 当**缓存键**（官方规范：「Treat the resource URI as a cache key. When you make a breaking change to the HTML, JavaScript, or CSS, publish a new URI and update every tool that references it.」），而 `hitl-approval-widget.html` 在 2026-09-18 改过、URI 未变 ⇒ 宿主持续命中旧组件缓存。现改为**机制化**：`shared/hitl-ui.ts` 新增 `getHitlApprovalWidgetUri()` = 基名 `ui://add-coder/hitl-approval` + widget 内容 sha256 前 8 位（进程内 memoize；文件缺失回退基名，fail-open），**资源注册与工具 `_meta.ui.resourceUri` / `openai/outputTemplate` 共用同一函数**，改 HTML/JS/CSS 即自动换 URI，不再依赖人记得手动 bump；`render_hitl_approval` 出参补 `ui.requiresHostFlag` 与否决提示（明确两个排查项：宿主实验开关、MCP server 重连）。回归：`tests/hitl-widget.test.ts` 新增「内容变 ⇒ URI 必变 / 文件缺失 ⇒ 回退基名 / 工具 `_meta` 同步指向新 URI」用例（5 passed）

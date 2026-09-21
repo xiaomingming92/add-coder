@@ -113,3 +113,25 @@ MCP Apps 的组件绑定发生在 `tools/list` 解析工具定义 `_meta.ui.reso
 | 状态查询 | `status_hitl({ planName, type })` 返回最新 round 状态，与 `.hitl-tongyi-*` 哨兵构成双通道校验 |
 
 > **红线**：降级不等于"绕过审批"。仍然必须由人类给出同意/驳回，AI 只负责把该裁决如实落库；`BOHUI` 后需 `create_hitl` 新建 round 重新发起，不得复用上一轮结论。
+
+### 前提 ④：面板报 "This app couldn't be loaded" 时的三步定位（2026-09-21 实测结论）
+
+该报错只说明**宿主没把 app 渲染出来**，原因可能在宿主、在 CSP、也可能在业务 widget。用下面三步把责任边界钉死（每步都有可复现命令/工具）：
+
+**第 1 步 · 服务端自证（MCP 协议直连，不经过宿主）**：确认资源真的能被取到。
+
+用**任意 MCP 客户端**（或自建 stdio 探针）依次调用：`initialize` → `tools/list` → `resources/list` → `resources/read`（URI 取工具 `_meta.ui.resourceUri` 的值）。
+
+期望输出（2026-09-21 实测）：`capabilities` 含 `extensions["io.modelcontextprotocol/ui"]`、`instructions` 非空、`render_hitl_approval._meta.ui.resourceUri` 有值、`resources/list` 含 `ui://add-coder/hitl-approval-<hash> [text/html;profile=mcp-app]`、`resources/read` 返回 HTML 正文。**若这一步通过，就排除"资源缺失 / MIME 错 / 注册失败"三类原因。**
+
+**第 2 步 · 最小 app 隔离（`probe_widget_render` 工具）**：调用后宿主会渲染一个**零依赖**探针 widget（`ui://add-coder/widget-probe-minimal`：无外部引用、10 行内联脚本、全程 try/catch、不查业务 DOM id）。
+
+| 探针面板显示 | 结论 | 处置 |
+|---|---|---|
+| 「ADD widget probe: 内联脚本已执行」 | 宿主能渲染 app ⇒ 问题在**业务 widget**（握手 / DOM / 数据注入） | 改 widget |
+| 「ADD widget probe: HTML 已加载（内联脚本未执行）」 | 宿主 **CSP 拦截 inline script** | 在资源注册的 `_meta.ui.csp` 里显式放行 inline script/style |
+| 仍报 "This app couldn't be loaded" | **宿主渲染器故障**（连最小 app 都加载不了） | 走第 3 步；本地一律走「前提 ③」降级通道 |
+
+**第 3 步 · 上游反馈**：把第 1、2 步的输出作为最小复现提交给宿主方，本轮实测结论见下。
+
+> **本轮（2026-09-21）实测结论**：`~/.codex/config.toml` 的 `[features] enable_mcp_apps = true` 已开启、服务端第 1 步全部通过，但**最小探针 widget 仍报 "This app couldn't be loaded"** ⇒ **判定为 Codex 桌面端渲染器问题，非 add-coder 缺陷**。宿主日志（`~/.codex/logs_2.sqlite`）中未见对应错误条目，需宿主侧提供更细诊断入口。**在此期间 HITL 一律走「前提 ③」的 markdown/HTML 降级通道**（本轮已用该通道完成 Plan 审批与实现审查审批各一次，均正常落库）。

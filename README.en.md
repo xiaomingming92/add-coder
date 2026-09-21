@@ -93,7 +93,9 @@ The fatal flaw of AI conversations: architectural decisions from last session, b
 - **Document layer** (since v0.3.25) — Handoff documents (auto-generated each session end, auto-loaded next session) · Plan index (`index.md`, fuzzy lookup) · DevLog timeline (`{YYYY-MM}/{DD}/`, fully traceable)
 - **Knowledge layer** (the v0.3.35 memory loop) — candidate-only intake → idempotent evidence collection (whitelisted tool events → `evidence-queue.jsonl` → async consumption → `MetricSnapshot`) → waypoint recall → hybrid recall + governed rerank → feedback-driven calibration, every step on the record
 
-**Switches**: `ADD_MEMORY_RECALL_MODE=off|shadow|inject` (default `shadow`: recall runs and is audited, but is not injected yet) · `ADD_MEMORY_MAX_TOKENS` (default 600) · `ADD_MEMORY_EVIDENCE` (default `on`).
+**Switches**: `ADD_MEMORY_RECALL_MODE=off|shadow|inject` (**default `inject`**: the L1 snapshot is injected at session start; set `shadow` to keep recall but stop injecting, `off` to disable) · `ADD_MEMORY_MAX_TOKENS` (default 600) · `ADD_MEMORY_EVIDENCE` (default `on`).
+
+**Snapshot generation** (`${MAGIC_DIR}/memory/l1-context.md`, TTL 7 days): refreshed automatically at the end of `npx add-coder init` / `npx add-coder sync` (**failure blocks the command with the root cause**); on demand via the `refresh_memory_snapshots` MCP tool or `${MAGIC_DIR}/scripts/memory/memory-jobs.ts refresh-l1`. When the snapshot is missing, stale, or the mode is `shadow`, session start prints the state and how to enable it (never silent).
 
 > Honest disclosure: measured Hybrid `MRR@5` 0.4867 < the 0.75 threshold (FTS-only 0.6551, Recall@5 0.9592) — the threshold stays put; data-driven calibration replaces hand-tuning. The capability runs, can be inspected and can be adjudicated — no metric inflation.
 > Source layout, tables and dev workflow: [DEVELOPMENT.md](./DEVELOPMENT.md) §十七.
@@ -136,6 +138,17 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 | VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/16 | `.vscode/hooks/*.mjs` (Agent Host dual channel)<br>**Required setting**: `"github.copilot.chat.virtualTools.threshold": 0` + reload the window (see the "工具可见性" / tool-visibility section of that doc — otherwise governance tools get folded by the host and misreported as disabled) |
 | Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/16 | `hooks.json` → `.trae/hooks/*.mjs` |
 | Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 5/16 | `.codex/hooks.json` → `.codex/hooks/*.mjs` |
+
+## ⚠️ Known issues / limitations
+
+> Host behaviour changes between releases. Each row states the host fact as observed on **2026-09-21** and links to the governance doc that carries the full playbook.
+
+| # | Symptom | Impact | Handling |
+|---|---|---|---|
+| 1 | VS Code Copilot returns `Tool mcp_<server>_<name> is currently disabled by the user` for ~26/47 governance tools (the user disabled nothing) | HITL approval chain + ADD-7 audit chain break at the same time | Host-side VirtualTools folding (trigger: **≥ 64 tools across all MCP servers**), not an add-coder defect. **Required setting**: `"github.copilot.chat.virtualTools.threshold": 0` + reload the window; legacy sessions can activate an `activate_fallback_*` proxy first. See [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) · [Issue #21](https://github.com/xiaomingming92/add-coder/issues/21) |
+| 2 | Claude Code shows no HITL approval panel (tool returns text only) | A missing panel does **not** mean the approval chain is broken | This host does not render MCP Apps (`ui://` resources are dropped — [issue #95149](https://github.com/anthropics/claude-code/issues/95149)). Open `fallback.markdownPath` (or `htmlPath`) from `render_hitl_approval`, then call `update_hitl`. Tool search is on by default (use `alwaysLoad` for governance tools); tool descriptions and server instructions are each truncated at 2KB. See [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) |
+| 3 | Trae fails to send a chat message / answers degrade | Adding more MCP servers can make the chat unusable | Input length includes **every tool definition of every MCP server used by that agent** (plus prompt, agent prompt, user/project rules). Trim per server, shorten descriptions, or split governance/business agents. See [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) |
+| 4 | Qoder CN does not select governance tools | Approval/audit looks like it "does nothing" | Tools are auto-selected from **prompt + tool name/description** (no deterministic allow-list). Use **Agent mode with a project folder open**, and phrase descriptions as "verb + governance object + when to use". See [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) |
 
 ### ⑦ Codex Native Integration (v0.3.25)
 
@@ -351,7 +364,7 @@ DPS（Documentation Precision Score）= 语义 + 熵 + CPM 关键路径 + 结构
 
 多数工具的记忆 = 会话/仓库级文本摘录 + 向量检索（解决「看过」）；add-coder 是**受治理的知识层**：候选制入库（approve 需 ≥1 证据）· 证据链 + 幂等采证 · 位点确定性召回 · FTS×向量 RRF 融合 + 治理重排 · 召回可重放（`recallId` / `rankingVersion`）· 治理状态机可证伪（supersede 强制 scope 兼容）· 八级 scope 隔离 + 越库泄漏抽查 · 权重快照即排序参数单一事实源。
 
-**落地**：文档层（Handoff / Plan 索引 / DevLog 时序）+ 知识层（v0.3.35 记忆闭环，全链条留痕）；开关 `ADD_MEMORY_RECALL_MODE` 默认 `shadow`（召回照跑照审计、暂不注入）。
+**落地**：文档层（Handoff / Plan 索引 / DevLog 时序）+ 知识层（v0.3.35 记忆闭环，全链条留痕）；开关 `ADD_MEMORY_RECALL_MODE` 默认 `inject`（2026-09-21 起；退回不注入设 `shadow`）。
 **如实登记**：Hybrid `MRR@5` 0.4867 < 0.75 门槛，门槛不下调，由排序校准线程以数据校准替代手调。
 
 ### ④ Policy-Update-Loop：治理自我进化

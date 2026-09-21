@@ -97,3 +97,33 @@ UserPromptSubmit hook additional context: ADD workflow active. ...
 1. **`PROJECT_DIR` 注入链最先执行**：env 优先（QODER/QODERCN_PROJECT_DIR）→ `tryResolveMagicDir` 物理推导——入口薄壳首行，因为治理库可能依赖 `${PROJECT_DIR}` 定位文件
 2. **additionalContext 放在入口最前**：在任何 `exit` 分支之前，确保所有代码路径都能注入上下文
 3. **Stop/PreToolUse 不用 JSON**：中断/阻断类输出走 stderr 纯文本，不走 stdout JSON
+
+---
+
+## 工具选择与 genui 审批（宿主能力适配）
+
+> **时效声明**：以下为 **2026-09-21** 官方文档口径。来源：[MCP 用户指南](https://docs.qoder.com/user-guide/chat/model-context-protocol) · [MCP 常见问题](https://docs.qoder.com/troubleshooting/mcp-common-issue)。
+
+### 工具选择：按 prompt + 名称/描述自动挑选
+
+Qoder IDE 依据**用户输入 prompt** 与**工具的名称与描述**自动选择 MCP 工具（调用前弹确认框）；官方排障页另建议：**避免 MCP 服务器与工具命名过于相似**。
+
+⇒ 治理工具能否被选中，取决于其**名称与描述是否可被检索命中**——不存在确定性白名单开关。
+
+**命名/描述规范（本项目工具族）**：
+
+| 规则 | 反例 | 正例 |
+|---|---|---|
+| 描述以「动词 + 治理对象 + 触发时机」开头 | "HITL 相关操作" | "提交一次性人类审批裁决（Plan 启动 / 评审前必须调用）" |
+| 同族工具描述不得雷同 | `plan_track` 与 `plan_sync` 都写"更新 Plan 数据" | `plan_track`="扫描文档回填进度"；`plan_sync`="把进度写回 Plan 文档" |
+| 描述带 ADD 语境 | "记录操作" | "记录开发操作审计（ADD-7，改完文件必须调用）" |
+
+### 前提：Agent 模式 + 已打开项目目录
+
+未打开项目目录时，Qoder IDE 默认 **Ask 模式**，**不调用 MCP 工具**；审批与审计链要求切到 **Agent 模式**。
+
+### genui 审批路径
+
+Qoder 端走 **genui**：`hitl-interaction-rules` 按环境裁决 → 先 `genui show_widget` 渲染逐项决策表单 → 用户拍板后以 `_use_genui=true` 调 `update_hitl` 落库。
+
+genui 不可用时的降级与 Claude Code 一致：打开 `fallback.markdownPath` 人工确认 → `update_hitl` 落库。
