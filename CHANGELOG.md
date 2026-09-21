@@ -13,6 +13,10 @@
 >
 > 列义：**变更** / **根因 → 做法** / **验收证据** / **来源**。
 >
+> **升级动作（VS Code Copilot，Issue [#21](https://github.com/xiaomingming92/add-coder/issues/21)）**：本版起
+> `add-coder status` 会在缺键时告警 —— 按提示在 `settings.json` 加 `"github.copilot.chat.virtualTools.threshold": 0`
+> 并重载窗口，即可解除工具"假禁用"（细节见下表「文档」）。
+>
 > **段边界**：下方 `[0.3.39]` 段是 **2026-09-18** 的发布内容（`ad3259b v0.3.39` 只 bump 版本号、未改段名），
 > 只保留该批次条目（`check_spec_sync` 三项修复 + `[W]` 接线判据回灌）；当日（09-21）条目已按发布窗口
 > **全部归入本段**（该是谁的就归谁）。
@@ -34,7 +38,7 @@
 | 变更 | 根因 → 做法 | 验收证据 | 来源 |
 | --- | --- | --- | --- |
 | **`status` 宿主自检文案加固** | 必配项是宿主实验设置，若被改名/移除，旧文案会产出永远消不掉的告警。→ 缺失态补「若你的 Copilot / VS Code 版本已不再提供该设置项，可忽略本告警（建议性检查，不影响退出码）」，文案抽为纯函数 `virtualToolsNoticeLines()` 以便断言 | 用例 13 → 15 | `…copilot-virtualtools-visibility-plan-v1` |
-| **VS Code Copilot 工具"假禁用"（Issue [#21](https://github.com/xiaomingming92/add-coder/issues/21)）** | Copilot Chat 的虚拟工具折叠（bundle 内 `VirtualToolGrouper`，`Contains the tools:` 字样可定位）在**全局 MCP 工具总数 ≥ `virtualTools.threshold` / 2（默认 64）**时按 toolset 分组、组内只留前 N-1 个直连，其余折进 `activate_fallback_*`；未激活代理即调用 → 稳定误报 `Tool mcp_<server>_<name> is currently disabled by the user`（实测 **26/47**，含 `update_hitl` / `plan_*` / `record_dev_operation` / `get_project_context` ⇒ HITL 审批链（TONGYI 不落库 → 哨兵不生成 → Plan 写入被 PreToolUse 阻断）与 ADD-7 审计链同时断裂）。根因在宿主（Pylance 19 工具中 14 个被折叠、Java Debug / Python 同受害）→ 只做**宿主适配 + 文档化**：必配 `"github.copilot.chat.virtualTools.threshold": 0`（阈值=∞ ⇒ 折叠整体禁用）+ **需重载 VS Code 窗口生效**；降级流程先在工具列表找描述含 `Contains the tools:` 的 `activate_fallback_*` 激活再重试，**代理名随会话槽位重算、勿缓存**；附录登记两条可上游反馈项（错误文案误导、折叠命中治理关键工具）。同时 `ADD-governance-codex.md` 增「HITL 审批面板：三前提与降级路径」（宿主开关 `enable_mcp_apps` / 改过工具元数据或资源 URI 后必须重连 MCP server / markdown + `update_hitl(_fallback)` 降级，且**不**为宿主实验旗标加常驻看门狗） | README §⑦ IDE 表格 +「已知问题 / 限制」索引（中英同步）；GUIDE 第九节 VS Code 排障流程；六端同步分发 | 同上 |
+| **VS Code Copilot 工具"假禁用"（Issue [#21](https://github.com/xiaomingming92/add-coder/issues/21)）：修复措施** | 折叠根因在宿主：Copilot Chat 的 `VirtualToolGrouper` 在**全局 MCP 工具总数 ≥ `virtualTools.threshold` / 2（默认 64）**时按 toolset 分组、组内按字母序只留前 N-1 个直连，其余折进 `activate_fallback_*`；未激活代理即调用 → 稳定误报 `Tool mcp_<server>_<name> is currently disabled by the user`（实测 **26/47**：`plan_*` / `review_*` / `status_*` / `update_hitl` 等字母序后段全中 ⇒ HITL 审批链（TONGYI 不落库 → 哨兵不生成 → Plan 正文写入被 PreToolUse 阻断）与 ADD-7 审计链同时断裂；Pylance 19 中 14、Java Debug / Python 同受害）。→ **修复措施（逐条对齐 issue 建议 1–4）**：①**必配项** `"github.copilot.chat.virtualTools.threshold": 0`（阈值=∞ ⇒ 折叠整体禁用，**需重载 VS Code 窗口生效**）落到 `ADD-governance-vscode-copilot.md`「工具可见性」章节 + README §⑦ 指针 + 新增「已知问题 / 限制」索引（中英同步）；②**诊断入口** `add-coder status` 建议性自检 —— 缺键或取值非 0 即输出告警 + 可复制修复片段 + 文档路径（**只报告，不替用户改 settings**）；③**降级流程** —— 先在当前工具列表激活描述含 `Contains the tools:` 的 `activate_fallback_*` 代理再重试目标工具（**代理名随会话槽位重算、勿缓存**）；④**上游反馈草稿** 登记两点（错误文案误导、折叠命中治理关键工具）。另 `ADD-governance-codex.md` 增「HITL 审批面板：三前提与降级路径」（宿主开关 `enable_mcp_apps` / 改过工具元数据或资源 URI 后必须重连 MCP server / markdown + `update_hitl(_fallback)` 降级入口，且**不**为宿主实验旗标加常驻看门狗） | issue 报的触发线 64、受影响 26/47 在文档里逐条可核对；六端 `ADD-governance-*.md` 同步分发；GUIDE 第九节 VS Code 排障流程 | `…copilot-virtualtools-visibility-plan-v1`（30/30） |
 
 ### 模板
 
