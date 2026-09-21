@@ -8,9 +8,11 @@ import { registerGatewayTools } from "./gateway/index.js"
 import { registerHookEventTools } from "./hook-event-report.js"
 import { registerHitlTools } from "./hitl.js"
 import { registerPlanTools } from "./plan.js"
+import { registerPlanLifecycleTools } from "./plan-lifecycle.js"
 import { registerReviewTools } from "./review.js"
 import { registerMemoryTools } from "./memory.js"
 import { registerMemoryCompatTools } from "./memory-compat.js"
+import { registerWidgetProbeTools } from "./widget-probe.js"
 import { PROJECT_ID } from "../shared/env.js"
 import type { ToolRegistrar } from "./registrar.js"
 
@@ -23,6 +25,7 @@ const READ_TOOLS = new Set([
   "get_project_context", "find_related_docs", "get_db_schema", "query_audit_logs",
   "plan_status", "review_status", "status_hitl", "contract_status",
   "render_hitl_approval",
+  "probe_widget_render",
   "check_dps", "check_rahs", "check_add_route_status", "check_spec_sync",
   "check_add_route_completeness", "check_phase_symmetry", "check_failure_path",
   "check_add_compliance", "get_hook_events",
@@ -107,8 +110,10 @@ export function registerAllTools(server: McpServer) {
   registerHookEventTools(registrar)  // 1 tool: get_hook_events
   registerHitlTools(registrar)       // 4 tools: create_hitl / update_hitl / status_hitl / render_hitl_approval
   registerPlanTools(registrar)       // 3 tools: plan_track / plan_status / plan_sync
+  registerPlanLifecycleTools(registrar) // 1 tool: plan_update（关闭/重开唯一入口；round 与 reopenCycle 语义分离）
   registerReviewTools(registrar)     // 3 tools: review_track / review_status / review_sync
-  registerMemoryTools(registrar)     // 8 tools: propose_memory / recall_memory / get_memory / list_memories / review_memory / resolve_memory / feedback_memory / get_memory_health
+  registerMemoryTools(registrar)     // 9 tools: propose_memory / recall_memory / get_memory / list_memories / review_memory / resolve_memory / feedback_memory / get_memory_health / refresh_memory_snapshots
   registerMemoryCompatTools(registrar) // 6 tools: 5 个 v1 弃用门面（append_memory/search_memory/read_memory/link_memory/memory_stats）+ forget_memory（合规清除）
-  // Total: 44 tools
+  registerWidgetProbeTools(registrar)  // 1 tool: probe_widget_render（面板渲染诊断，只读）
+  // Total: 46 tools
 }

@@ -6,6 +6,7 @@ import { prisma } from "../shared/prisma.js"
 import { PROJECT_ID, PROJECT_ROOT, getRuntimeContext } from "../shared/env.js"
 import type { AddUserRow, DevOperationRow } from "../shared/db-types.js"
 import { AddUserRowSchema, DevOperationRowSchema, validatedDelegate } from "../shared/db-types.js"
+import { writeDevOperation, type DevOperationWriterDatabase } from "../shared/dev-operation.js"
 
 export function registerAuditTools(server: ToolRegistrar) {
   const runtimeContext = getRuntimeContext()
@@ -82,41 +83,22 @@ export function registerAuditTools(server: ToolRegistrar) {
       try { if (beforeState) parsedBefore = JSON.parse(s(beforeState)); if (afterState) parsedAfter = JSON.parse(s(afterState)) } catch { return errorResponse("beforeState/afterState 必须是有效的 JSON 字符串。") }
       const isStructuredState = (value: unknown): value is Record<string, unknown> | unknown[] => typeof value === "object" && value !== null
       if (!isStructuredState(parsedBefore) || !isStructuredState(parsedAfter)) return errorResponse("beforeState/afterState 必须是非 null 的 JSON 对象或数组。")
-      let systemUser = await userDb.findUnique({ where: { username: "ai-assistant" }, select: { id: true } })
-      if (!systemUser) systemUser = await userDb.create({ data: { id: "ai-assistant", username: "ai-assistant", email: "ai-assistant@internal" } })
-      const operationPayload = {
-        projectKey: runtimeContext.projectKey,
-        producerAdapterKey: runtimeContext.adapterKey,
-        action: s(action),
-        targetType: s(targetType),
-        targetId: tId || "unknown",
-        planKeyword: s(planKeyword) || "unknown",
-        beforeState: parsedBefore,
-        afterState: parsedAfter,
-        reason: s(reason) || null,
-      }
-      const resolvedOperationKey = s(operationKey).trim() || createHash("sha256")
-        .update(JSON.stringify(operationPayload))
-        .digest("hex")
-      const scopedData: Partial<DevOperationRow> = {
-        ...operationPayload,
-        userId: systemUser.id,
-        contextId: runtimeContext.contextId,
-        toolName: "record_dev_operation",
-        operationKey: resolvedOperationKey,
-      }
-      const log = await devDb.upsert({
-        where: {
-          projectKey_producerAdapterKey_toolName_operationKey: {
-            projectKey: runtimeContext.projectKey,
-            producerAdapterKey: runtimeContext.adapterKey,
-            toolName: "record_dev_operation",
-            operationKey: resolvedOperationKey,
-          },
+      // 单一实现（2026-09-21 决策）：写入抽到 shared/dev-operation.ts，与 plan_update / 脚本共用；
+      // 幂等键语义逐字保持不变（hash 载荷不含 toolName，换调用方不产生新审计行）
+      const log = await writeDevOperation(
+        { devOperation: devDb, addUser: userDb } as unknown as DevOperationWriterDatabase,
+        {
+          context: runtimeContext,
+          action: s(action),
+          targetType: s(targetType),
+          targetId: tId,
+          planKeyword: s(planKeyword),
+          beforeState: parsedBefore,
+          afterState: parsedAfter,
+          reason: s(reason) || null,
+          operationKey: s(operationKey),
         },
-        create: scopedData,
-        update: {},
-      })
+      )
       const lines = [`✅ 开发操作已记录`, `  落库项目: ${PROJECT_ID} (${PROJECT_ROOT})`, `  ID: ${log.id}`, `  action: ${s(action)}`, `  targetType: ${s(targetType)}`, `  targetId: ${tId || "unknown"}`, `  planKeyword: ${s(planKeyword) || "unknown"}`, `  beforeState: ${JSON.stringify(log.beforeState)}`, `  afterState: ${JSON.stringify(log.afterState)}`, `  createdAt: ${log.createdAt.toISOString()}`]
       if (pathWarnings.length > 0) { lines.push(""); lines.push(...pathWarnings) }
       lines.push("", `📋 落库回查（必须执行）:`, tId ? `  query_audit_logs({ targetId: "${tId}" }) — 确认本条记录已写入` : "")

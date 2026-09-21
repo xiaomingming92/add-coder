@@ -116,10 +116,18 @@ describe("scoped Plan lifecycle resolver", () => {
     expect(result).toMatchObject({ availability: "STATUS_UNAVAILABLE", reason: "database offline" })
   })
 
-  it("限制 lifecycle 迁移，CLOSED 不可由文件重新激活", () => {
+  it("限制 lifecycle 迁移：可逆（CLOSED→ACTIVE/REOPENED）但仍拒绝非法转换", () => {
     expect(() => assertLifecycleTransition("DRAFT", "ACTIVE")).not.toThrow()
     expect(() => assertLifecycleTransition("ACTIVE", "BLOCKED")).not.toThrow()
-    expect(() => assertLifecycleTransition("CLOSED", "ACTIVE")).toThrow(/非法 Plan lifecycle/)
+    // 2026-09-21 人类决策：关闭可逆 + PUL 重开（走同一状态机，不新增状态语义）
+    expect(() => assertLifecycleTransition("CLOSED", "ACTIVE")).not.toThrow()
+    expect(() => assertLifecycleTransition("CLOSED", "REOPENED")).not.toThrow()
+    expect(() => assertLifecycleTransition("REOPENED", "ACTIVE")).not.toThrow()
+    // 非法转换仍拒（终态/越权路径）
+    expect(() => assertLifecycleTransition("CLOSED", "BLOCKED")).toThrow(/非法 Plan lifecycle/)
+    // ABANDONED 已接线且可逆（放弃后可复活）；仍非法的是跨越式跳转
+    expect(() => assertLifecycleTransition("ABANDONED", "ACTIVE")).not.toThrow()
+    expect(() => assertLifecycleTransition("ACTIVE", "REOPENED")).toThrow(/非法 Plan lifecycle/)  // 必须先 CLOSED 才谈重开
   })
 })
 

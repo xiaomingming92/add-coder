@@ -78,6 +78,7 @@ enum PlanLifecycleStatus {
   BLOCKED
   REJECTED
   CLOSED
+  REOPENED
   ABANDONED
 }
 

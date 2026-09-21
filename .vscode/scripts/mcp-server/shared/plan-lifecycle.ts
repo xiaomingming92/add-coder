@@ -1,4 +1,5 @@
 import type { RuntimeContextKey } from "./runtime-context.js"
+import * as z from "zod/v4"
 
 export const PLAN_LIFECYCLE_STATUSES = [
   "DRAFT",
@@ -6,10 +7,13 @@ export const PLAN_LIFECYCLE_STATUSES = [
   "BLOCKED",
   "REJECTED",
   "CLOSED",
+  "REOPENED",
   "ABANDONED",
 ] as const
 
 export type PlanLifecycleStatus = (typeof PLAN_LIFECYCLE_STATUSES)[number]
+/** lifecycle 的**唯一 zod 真源**：工具 inputSchema / db-types / 脚本校验一律 import 它，禁止再抄字面量（2026-09-21 决策） */
+export const PlanLifecycleStatusSchema = z.enum(PLAN_LIFECYCLE_STATUSES)
 export type PlanApprovalStatus = "DRAFT" | "SUBMITTED" | "TONGYI" | "BOHUI"
 
 export interface ScopedPlanStatusRow {
@@ -75,12 +79,21 @@ export interface PlanStatusUnavailable {
 export type PlanStatusResolution = PlanStatusSnapshot | NoActivePlanSnapshot | PlanStatusUnavailable
 
 const ALLOWED_TRANSITIONS: Readonly<Record<PlanLifecycleStatus, readonly PlanLifecycleStatus[]>> = {
+  // 两个状态机不要混：TONGYI/BOHUI 属**审批**状态机（HitlRecord.status）；
+  // 下面是 **Plan 生命周期**状态机（PlanLifecycleStatus），ABANDONED = 放弃该 Plan（非审批结论）。
   DRAFT: ["ACTIVE", "REJECTED", "ABANDONED"],
   ACTIVE: ["BLOCKED", "CLOSED", "ABANDONED"],
   BLOCKED: ["ACTIVE", "CLOSED", "ABANDONED"],
-  REJECTED: ["DRAFT", "ACTIVE", "ABANDONED"],
-  CLOSED: [],
-  ABANDONED: [],
+  // 驳回（BOHUI → REJECTED）= 不继续；后续可 归档(CLOSED) / 重启(REOPENED) / 回起草或施工 / 放弃(ABANDONED)
+  REJECTED: ["DRAFT", "ACTIVE", "CLOSED", "REOPENED", "ABANDONED"],
+  // 可逆 + PUL 重开（2026-09-21 人类决策）：
+  // - CLOSED → REOPENED：策略更新（PUL）或误关场景下重开，reopenCycle +1（与施工轮次 round 分离）
+  // - CLOSED → ACTIVE：直达重开（无需标记代数时的简路径）
+  CLOSED: ["REOPENED", "ACTIVE"],
+  // REOPENED 是**瞬态**：重开后完成新一轮 Step 0 即回 ACTIVE；也允许再次 CLOSED（重开后又关）
+  REOPENED: ["ACTIVE", "CLOSED"],
+  // 接线（2026-09-21 人类决策）：ABANDONED 保留为生命周期状态，且与 CLOSED 同口径**可逆**（放弃后可复活）
+  ABANDONED: ["ACTIVE"],
 }
 
 export function isActiveLifecycle(lifecycle: PlanLifecycleStatus): boolean {
