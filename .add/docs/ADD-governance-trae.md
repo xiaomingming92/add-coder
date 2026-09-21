@@ -61,3 +61,45 @@ Trae 的注入通道为 **stdout**（与 Claude Code 兼容）。Trae 支持导�
 | SessionEnd | ❌ | ✅ |
 | PreCompact | ❌ | ✅ |
 | 权限系统 | 无 hookpoint | PermissionRequest/Denied |
+
+---
+
+## 工具预算与 HITL 降级（宿主能力适配）
+
+> **时效声明**：以下为 **2026-09-21** 官方文档口径。来源：[Troubleshoot general issues](https://docs.trae.ai/ide/troubleshoot-general-issues)。
+
+### 工具预算：输入长度包含「全部 MCP 工具」
+
+官方排障文档「Chat functionality exceptions caused by excessively long input」明确：输入长度包含下列全部内容——
+
+1. 输入框内容
+2. 自定义 agent 的 prompt
+3. **该 agent 所用 MCP server 的全部工具定义**
+4. 用户规则 + 项目规则
+
+| 现象 | 后果 |
+|---|---|
+| 总长度超限 | **聊天功能异常（问题发不出去）**、问答质量下降 |
+| 官方建议 | 精简提问 / agent prompt / MCP 工具 / 规则；或切换模型 |
+
+> **口径提醒**：add-coder 工具族 40+ 个，但**没有**"工具数 > N 即中断"的公开阈值——约束对象是**总长度**，不要写成固定工具数。
+
+**裁剪指引（按需选）**：
+
+| 手段 | 做法 | 代价 |
+|---|---|---|
+| 按 server 取舍 | 业务任务只挂业务 server，治理任务只挂 add-coder | 单会话内无法混用两类工具 |
+| 精简描述 | 工具描述只留「做什么 + 何时用」，长示例移到文档 | 需要维护描述预算 |
+| 拆分挂载 | 建两个 agent（治理 / 业务），各自挂载所需工具 | 需要在 agent 间切换 |
+| 缩短规则 | 临时折叠与本次任务无关的项目规则段落 | 规则可发现性下降 |
+
+### HITL 降级
+
+Trae 不渲染 MCP Apps widget ⇒ 与 Claude Code 同一条降级链：
+
+```
+render_hitl_approval → fallback.markdownPath（{magicDir}/plans/**/*.hitl.md）
+                     → 人工逐维确认 → update_hitl（写哨兵 + 落库）
+```
+
+> 审批链依赖**工具调用**，不依赖 Hook：Trae 原生 6 事件里缺的卡位（SessionEnd / PostToolUseFailure 等）不影响 HITL 落库与 ADD-7 审计。

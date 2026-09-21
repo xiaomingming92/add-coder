@@ -42,6 +42,36 @@ LIMIT $${5 + terms.length}
   }
 }
 
+/**
+ * 主通道 SQL（轮 3 / Task 3.1）：`searchText` 的 tsvector 表达式索引。
+ * `searchText` 由写入期以**同一 tokenization 契约**产出（jieba 主 / bigram 兜底）⇒ 读写同源。
+ * 与旧实现的区别：旧 B 通道对 `topic||content` 直接 `to_tsvector('simple')`，中文整段落一个 token（等于没索引）。
+ */
+const MAIN_CHANNEL_SQL = `
+SELECT id, ts_rank(to_tsvector('simple', "searchText"), $1::tsquery) AS score
+FROM "AddMemory"
+WHERE "repositoryRef" = $2
+  AND "status"::text = ANY($3)
+  AND ("validUntil" IS NULL OR "validUntil" > $4)
+  AND ($5::text[] IS NULL OR "kind"::text = ANY($5))
+  AND to_tsvector('simple', "searchText") @@ $1::tsquery
+ORDER BY score DESC
+LIMIT $6
+`
+
+/**
+ * 由查询串构造 tsquery：token 用**引号包裹 + OR** 连接（召回优先），并剥离会破坏 tsquery 语法的字符。
+ * 返回 null 表示该查询无法构造有效 tsquery（如纯符号）→ 主通道跳过，由补充通道兜底。
+ */
+function buildTsquery(query: string): string | null {
+  const safe = extractQueryTerms(query)
+    .map((t) => t.replace(/[^\p{L}\p{N}_]/gu, ""))
+    .filter((t) => t.length > 0)
+  if (safe.length === 0) return null
+  return safe.map((t) => `'${t}'`).join(" | ")
+}
+
+/** 补充通道 A：pg_trgm 相似度（子串/模糊召回；不再是基线） */
 const CHANNEL_A_SQL = `
 SELECT id,
        GREATEST(
@@ -97,38 +127,60 @@ export function createPgFtsAdapter(q: RawQuerier): LexicalSearchAdapter & {
   searchChannels(query: string, filter: RecallFilter, limit: number): Promise<RankedId[][]>
 } {
   return {
-    id: "pg-trgm",
+    id: "pg-bigram-fts",
     async search(query, filter, limit) {
       const channels = await this.searchChannels(query, filter, limit)
-      return channels[0] ?? []
+      // 主通道可能因"查询无有效 token"为空（如纯符号）→ 返回首个非空通道，避免整条检索空手而归
+      return channels.find((c) => c.length > 0) ?? []
     },
     async searchChannels(query, filter, limit) {
-      const a = await runChannel(q, CHANNEL_A_SQL, query, filter, limit)
-      let b: RankedId[] = []
-      try {
-        b = await runChannel(q, CHANNEL_B_SQL, query, filter, limit)
-      } catch {
-        // tsquery 通道失败（如查询含特殊字符）不阻断主通道
+      // 主通道：searchText 的 tsvector（读写同源）
+      let main: RankedId[] = []
+      const tsquery = buildTsquery(query)
+      if (tsquery) {
+        try {
+          const rows = await q.query<{ id: string; score: number | string }>(MAIN_CHANNEL_SQL, [
+            tsquery,
+            filter.repositoryRef,
+            [...filter.statuses],
+            filter.now,
+            filter.kinds && filter.kinds.length > 0 ? [...filter.kinds] : null,
+            limit,
+          ])
+          main = rows.map((r, i) => ({ memoryId: r.id, rank: i + 1, score: Number(r.score) }))
+        } catch {
+          // 主通道异常（索引缺失 / tsquery 非法）不阻断补充通道；健康度由 health() 显式上报
+          main = []
+        }
       }
+      // 补充通道 A：pg_trgm（子串/模糊）
+      const a = await runChannel(q, CHANNEL_A_SQL, query, filter, limit)
       let c: RankedId[] = []
       const cc = channelC(query, filter, limit)
       if (cc) {
         const rows = await q.query<{ id: string; score: number | string }>(cc.sql, cc.params)
         c = rows.map((r, i) => ({ memoryId: r.id, rank: i + 1, score: Number(r.score) }))
       }
-      return [a, b, c]
+      return [main, a, c]
     },
     async health(): Promise<ComponentHealth> {
       try {
-        const ext = await q.query<{ count: number | string }>(
-          "SELECT COUNT(*)::int AS count FROM pg_extension WHERE extname = 'pg_trgm'", [])
-        if (Number(ext[0]?.count ?? 0) < 1) {
-          return { component: "pg-fts", status: "degraded", detail: "pg_trgm 扩展缺失" }
+        // 轮 3 / Task 3.1 新判定：**主通道**（searchText 列 + 表达式索引）才决定是否 degraded；
+        // 补充通道（pg_trgm）缺失只影响子串/模糊召回，不再整体降级。
+        const col = await q.query<{ count: number | string }>(
+          "SELECT COUNT(*)::int AS count FROM information_schema.columns WHERE table_name = 'AddMemory' AND column_name = 'searchText'", [])
+        if (Number(col[0]?.count ?? 0) < 1) {
+          return { component: "pg-fts", status: "degraded", detail: "AddMemory.searchText 列缺失（迁移未应用）" }
         }
-        const idx = await q.query<{ count: number | string }>(
+        const mainIdx = await q.query<{ count: number | string }>(
+          "SELECT COUNT(*)::int AS count FROM pg_indexes WHERE tablename = 'AddMemory' AND indexname = 'AddMemory_searchText_tsv_idx'", [])
+        if (Number(mainIdx[0]?.count ?? 0) < 1) {
+          return { component: "pg-fts", status: "degraded", detail: "主通道表达式索引缺失（AddMemory_searchText_tsv_idx），需 reindex" }
+        }
+        const trgm = await q.query<{ count: number | string }>(
           "SELECT COUNT(*)::int AS count FROM pg_indexes WHERE tablename = 'AddMemory' AND indexname LIKE '%trgm%'", [])
-        if (Number(idx[0]?.count ?? 0) < 2) {
-          return { component: "pg-fts", status: "degraded", detail: "trgm GIN 索引缺失，需 reindex" }
+        if (Number(trgm[0]?.count ?? 0) < 2) {
+          return { component: "pg-fts", status: "ok", detail: "补充通道（pg_trgm）索引缺失：子串/模糊召回受限，主通道正常" }
         }
         return { component: "pg-fts", status: "ok" }
       } catch (e) {

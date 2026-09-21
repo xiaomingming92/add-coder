@@ -4,6 +4,7 @@ import { registerRoundTaskResources } from "./round-task.js"
 import { registerVersionResource } from "./add-coder-version.js"
 import { registerHookEventResources } from "./hook-events-report.js"
 import { registerHitlApprovalWidgetResource } from "./hitl-approval-widget.js"
+import { registerWidgetProbeResource } from "./widget-probe.js"
 
 export function registerAllResources(server: McpServer) {
   registerAddStateResources(server)
@@ -11,4 +12,5 @@ export function registerAllResources(server: McpServer) {
   registerVersionResource(server)
   registerHookEventResources(server)  // 2 resources: hook-events/{daily,weekly}
   registerHitlApprovalWidgetResource(server)
+  registerWidgetProbeResource(server)  // 1 resource: 最小 MCP Apps 渲染探针（诊断用）
 }

@@ -34,12 +34,23 @@ LIMIT ?
   return { sql, params: [...termParams, filter.repositoryRef, filter.now.toISOString(), limit] }
 }
 
-/** 抽取可参与 trigram MATCH 的片段（连续 CJK/字母数字，≥3 字符），逐段加引号 */
-export function buildTrigramQuery(raw: string): string | null {
-  const segments = raw.match(/[㐀-鿿぀-ヿA-Za-z0-9_]+/g) ?? []
-  const usable = segments.filter((s) => s.length >= 3).map((s) => `"${s}"`)
-  return usable.length > 0 ? usable.join(" OR ") : null
+/**
+ * 构造 FTS5 MATCH 串（轮 3 / Task 3.2）。
+ *
+ * 变更理由：虚表已从 `topic/content + trigram` 改为 **`searchText` + unicode61**（写入期 token 串），
+ * 因此查询侧不再需要"≥3 字符片段"这种 trigram 窗口补偿——直接把查询用**同一 tokenization 契约**
+ * 展开成 token，逐 token 加引号后 `OR` 连接即可（1-2 字中文 token 天然可命中）。
+ */
+export function buildMatchQuery(raw: string): string | null {
+  const tokens = extractQueryTerms(raw)
+    .map((t) => t.replace(/"/g, ""))
+    .filter((t) => t.length > 0)
+  if (tokens.length === 0) return null
+  return tokens.map((t) => `"${t}"`).join(" OR ")
 }
+
+/** @deprecated 旧名（trigram 时代）；等价于 `buildMatchQuery`，保留仅为兼容外部导入 */
+export const buildTrigramQuery = buildMatchQuery
 
 const CHANNEL_A_SQL = `
 SELECT m.id AS id, bm25(add_memory_fts) AS score
@@ -75,7 +86,7 @@ export function createSqliteFtsAdapter(q: RawQuerier): LexicalSearchAdapter & {
     },
     async searchChannels(query, filter, limit) {
       let a: RankedId[] = []
-      const matchQ = buildTrigramQuery(query)
+      const matchQ = buildMatchQuery(query)
       if (matchQ) {
         const rows = await q.query<{ id: string; score: number }>(
           buildSql(CHANNEL_A_SQL, filter), [matchQ, filter.repositoryRef, filter.now.toISOString(), limit],
@@ -96,6 +107,12 @@ export function createSqliteFtsAdapter(q: RawQuerier): LexicalSearchAdapter & {
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'add_memory_fts'", [])
         if (rows.length < 1) {
           return { component: "sqlite-fts", status: "unavailable", detail: "add_memory_fts 虚表缺失，需执行 sqlite-fts5.sql" }
+        }
+        // 轮 3 / Task 3.2：虚表列必须是 searchText（unicode61 口径）；否则是旧库未升级
+        const cols = await q.query<{ name: string }>("PRAGMA table_info(add_memory_fts)", [])
+        const hasSearchText = cols.some((c) => c.name === "searchText")
+        if (!hasSearchText) {
+          return { component: "sqlite-fts", status: "degraded", detail: "FTS 虚表仍是旧列（topic/content），需执行 sqlite-fts5.sql 重建" }
         }
         return { component: "sqlite-fts", status: "ok" }
       } catch (e) {

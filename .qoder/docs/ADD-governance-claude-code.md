@@ -119,3 +119,55 @@ Claude Code 的注入通道为 **stdout → additionalContext**——hook 脚本
 | PermissionDenied | 记录拒绝原因 + 建议替代方案 |
 | StopFailure | 异常退出前紧急 dump State |
 | ConfigChange | settings.json 热重载 + 变更审计 |
+
+---
+
+## HITL 面板与工具预算（宿主能力适配）
+
+> **时效声明**：以下为 **2026-09-21** 的实测与官方文档口径。宿主行为会变——升级 Claude Code 后请按来源链接重新核对。
+
+### 面板能力：不渲染 MCP Apps
+
+| 项 | 结论 |
+|---|---|
+| MCP Apps（SEP-1865 `ui://` 资源） | **不渲染**：工具用 `_meta.ui.resourceUri` 绑定 UI 时，仍只返回文本结果，UI 被丢弃 |
+| 来源 | 官方 issue [anthropics/claude-code#95149](https://github.com/anthropics/claude-code/issues/95149)（2026-09-17，label `area:mcp`）；[MCP Apps 客户端矩阵](https://modelcontextprotocol.io/extensions/client-matrix) 未列 Claude Code |
+
+**降级链（审批走这条）**：
+
+```
+render_hitl_approval({ planName, type })
+   ├─ ui.resourceUri  → 本端丢弃（不渲染）
+   └─ fallback
+        ├─ markdownPath  → {magicDir}/plans/**/*.hitl.md   ← 打开逐维确认
+        └─ htmlPath      → {magicDir}/hitl/*-round<N>.html ← 浏览器/文件面板打开
+                ▼ 人工裁决
+        update_hitl({ planName, type, status: "TONGYI|BOHUI" })  ← 写哨兵 + 落库
+```
+
+> 面板缺失**不等于**审批链断裂：`update_hitl` 是工具调用，与 widget 是否渲染无关。
+
+### 工具预算：延迟加载，不是禁用
+
+| 项 | 口径 |
+|---|---|
+| 机制 | **MCP tool search 默认开启**：工具定义按需加载，会话启动只加载工具名与 server instructions |
+| 固定上限 | **无固定 per-server 工具上限**；实际约束是上下文预算 |
+| 配置 | `ENABLE_TOOL_SEARCH`：未设（全部延迟）/ `true` / `auto`（定义总量 < 10% 上下文时前载）/ `auto:N` / `false`（全部前载） |
+| 治理工具常驻 | `.mcp.json` 中该 server 设 `"alwaysLoad": true`；或按工具粒度在 `_meta` 设 `"anthropic/alwaysLoad": true` |
+
+**硬限制（直接影响治理工具可用性）**：
+
+| 限制 | 值 | 后果 |
+|---|---|---|
+| 工具描述截断 | 2KB | 描述过长时关键 WHEN 被截掉，工具更难被检索到 |
+| server instructions 截断 | 2KB | 同上，关键信息必须前置 |
+| MCP 输出上限 | 默认 25k token | 超出落盘为文件，模型按需读取（审计大结果会走这条） |
+
+### 排错
+
+| 现象 | 根因 | 处置 |
+|---|---|---|
+| 治理工具"找不到" | 工具定义被延迟加载 | 让模型用 ToolSearch 按名检索；高频工具改 `alwaysLoad` |
+| 审批只看得到文本 | 本端不渲染 MCP Apps | 打开 `fallback.markdownPath` 确认后 `update_hitl` |
+| 工具描述/约束被吞 | 2KB 截断 | 把 WHEN 前移或精简描述 |

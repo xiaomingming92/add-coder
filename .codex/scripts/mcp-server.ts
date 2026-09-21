@@ -14,6 +14,7 @@ import { PlanRoundSubscriber } from "./mcp-server/shared/plan-round-subscriber.j
 import { queryPlanRounds, type PlanRoundReadClient } from "./mcp-server/shared/plan-round-store.js"
 import { PROJECT_ROOT, MAGIC_DIR } from "./mcp-server/shared/env.js"
 import { clearRestartRequiredMarker } from "./mcp-server/shared/runtime-freshness.js"
+import { buildServerOptions } from "./mcp-server/shared/server-capabilities.js"
 
 /**
  * 启动后清掉本 adapter 的"需重启"标记（2026-09-14）：
@@ -50,7 +51,10 @@ function watchLauncher(): void {
 async function main() {
   const server = new McpServer(
     { name: "add-dev-tools", version: "1.0.0" },
-    { capabilities: { tools: {}, resources: { subscribe: true } } }
+    // 能力与 instructions 的真源在 shared/server-capabilities.ts（可被单测断言）：
+    // extensions["io.modelcontextprotocol/ui"] 走官方扩展协商；legacy 位（工具 _meta.ui.resourceUri +
+    // openai/outputTemplate）在 tools/hitl.ts 中保留，两条路径并存。
+    buildServerOptions()
   )
   registerAll(server)
   const transport = new StdioServerTransport()

@@ -9,10 +9,10 @@
 -- （其要求 INTEGER rowid），故采用独立 FTS 表 + 触发器同步。
 -- 幂等：全部 IF NOT EXISTS，可重复应用。
 
-CREATE VIRTUAL TABLE IF NOT EXISTS add_memory_fts USING fts5(memory_id UNINDEXED, topic, content, tokenize = 'trigram');
+CREATE VIRTUAL TABLE IF NOT EXISTS add_memory_fts USING fts5(memory_id UNINDEXED, searchText, tokenize = 'unicode61');
 
-CREATE TRIGGER IF NOT EXISTS add_memory_fts_ai AFTER INSERT ON "AddMemory" BEGIN INSERT INTO add_memory_fts(memory_id, topic, content) VALUES (new.id, new.topic, new.content); END;
+CREATE TRIGGER IF NOT EXISTS add_memory_fts_ai AFTER INSERT ON "AddMemory" BEGIN INSERT INTO add_memory_fts(memory_id, searchText) VALUES (new.id, new.searchText); END;
 
-CREATE TRIGGER IF NOT EXISTS add_memory_fts_au AFTER UPDATE ON "AddMemory" BEGIN DELETE FROM add_memory_fts WHERE memory_id = old.id; INSERT INTO add_memory_fts(memory_id, topic, content) VALUES (new.id, new.topic, new.content); END;
+CREATE TRIGGER IF NOT EXISTS add_memory_fts_au AFTER UPDATE ON "AddMemory" BEGIN DELETE FROM add_memory_fts WHERE memory_id = old.id; INSERT INTO add_memory_fts(memory_id, searchText) VALUES (new.id, new.searchText); END;
 
 CREATE TRIGGER IF NOT EXISTS add_memory_fts_ad AFTER DELETE ON "AddMemory" BEGIN DELETE FROM add_memory_fts WHERE memory_id = old.id; END;
