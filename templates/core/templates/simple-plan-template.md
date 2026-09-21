@@ -83,6 +83,10 @@
 > AI 读取本段 JSON → 调用 `TodoWrite` 加载到 IDE 任务面板。
 > 每条 content 以 `[轮次N·状态]` 前缀展示轮次分组，`id` 编码层级 `{plan-key}-r{N}-t{N}`。
 > 每完成一个 Task 后更新对应 `status` 为 `COMPLETE`。
+>
+> **执行风格**：`stepwise`（默认）逐 Task 停下等人确认；`delegated`（托管）轮内连续实施，**仍**逐 Task 更新 `status`
+> 并做 `[T]` 验证与 `record_dev_operation`，只是不逐步同步进度（停止条件见 `add-paradigm` SKILL Step 3）。
+> [2026-09-21：补齐与重型/轻量 add-route 模板同口径的模式说明]
 
 ```json
 {

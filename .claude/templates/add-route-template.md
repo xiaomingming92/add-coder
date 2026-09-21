@@ -96,6 +96,10 @@ Task N ──→ Task M（说明依赖原因）
 
 ### 每个 Task 完成后
 
+> **适用模式**：`stepwise`（默认）。`delegated`（托管）下**仍执行本块的两件事**（`[T]` 验证 → `record_dev_operation`），
+> 但不逐 Task 停下汇报；仅在 `add-paradigm` SKILL Step 3「执行风格」定义的两个停止条件触发时打断。
+> [2026-09-21：与重型 add-route 模板同口径 —— 节拍写在多处时，模式说明必须同步，否则托管开关只生效一半]
+
 1. 验证该 Task 的 checklist `[T]` 项
 2. 调用 `record_dev_operation` 记录 ADD-7 审计
 

@@ -263,6 +263,8 @@ query_audit_logs({ keyword: "{汇总关键词}" })
 5. 读本轮对应 {{magicDir}}/specs/{spec-name}/checklist.md
 6. 按 tasks.md 顺序执行代码修改
 7. 每完成一个 Task：读 checklist.md → 逐项验证 → **附可验证证据** → 勾选
+   （**执行风格**：`stepwise` = 逐 Task 停下向用户汇报；`delegated`（托管）= 本步骤照做但**不逐 Task 停下**，
+     仅两个停止条件触发时打断 —— 见 `add-paradigm` SKILL Step 3「执行风格」。[2026-09-21：补齐模式口径]）
 8. 每完成一个文件修改：record_dev_operation 写入 ADD-7 审计
 9. 写入审计后：query_audit_logs 按 action/targetId/keyword 回查确认落库
 10. 全部代码完成后：按本轮 handoff 的 ADD-7 恢复关键词逐项回查，确认当前Round可被下一轮恢复
