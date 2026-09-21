@@ -11,7 +11,9 @@ import { getRuntimeContext } from "../shared/env.js"
 // 口径单一真源：checklist 的 [T]/[R] 统计直接复用校验层，避免 tracker 与校验器两套口径漂移
 import { checklistStats } from "../../../validation/validators/checklist.js"
 import { assertPathInRuntimeScope } from "../shared/runtime-context.js"
-import { resolvePlanStatus } from "../shared/plan-lifecycle.js"
+import { resolvePlanStatus, PlanLifecycleStatusSchema, type PlanLifecycleStatus } from "../shared/plan-lifecycle.js"
+import { transitionPlanLifecycle } from "../shared/plan-lifecycle-mutation.js"
+import { writeDevOperation } from "../shared/dev-operation.js"
 import { createPrismaPlanStatusStore } from "../shared/plan-status-store.js"
 import {
   trackPlanAndPublish,

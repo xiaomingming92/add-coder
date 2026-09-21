@@ -215,14 +215,19 @@ export function isVsCodeTarget(config: AddCoderConfig, projectRoot?: string): bo
     }
 }
 
-/** 宿主适配自检输出（建议性：不写文件、不改退出码） */
-function printVirtualToolsCheck(config: AddCoderConfig): void {
-    const check = checkVsCodeVirtualTools({ projectRoot: config.projectRoot });
-    // magicDir 缺省（真实项目 loadConfig 未传 configPath 时为空串）→ 回退 .vscode，保证文档路径可读
-    const docPath = join(config.magicDir || ".vscode", "docs", "ADD-governance-vscode-copilot.md");
-
+/**
+ * 三态提示行（建议性检查）——抽成纯函数，便于用例断言文案而不必捕获 console。
+ *
+ * 「可忽略」声明的存在理由：该键是 Copilot Chat 的实验设置；宿主若改名或移除它，
+ * 用户会收到永远消不掉的告警（改无可改）。故 missing 态必须显式给出忽略口径。
+ */
+export function virtualToolsNoticeLines(
+    check: VirtualToolsCheck,
+    ctx: { projectRoot: string; docPath: string },
+): string[] {
+    const lines: string[] = [];
     const describe = (c: VsCodeSettingsCandidate): string => {
-        const where = c.path === join(config.projectRoot, ".vscode", "settings.json") ? "工作区" : "用户级";
+        const where = c.path === join(ctx.projectRoot, ".vscode", "settings.json") ? "工作区" : "用户级";
         if (!c.exists) return `${where}: ${c.path}（文件不存在）`;
         if (c.parseError) return `${where}: ${c.path}（解析失败: ${c.parseError}）`;
         if (!c.hasKey) return `${where}: ${c.path}（键缺失）`;
@@ -231,20 +236,33 @@ function printVirtualToolsCheck(config: AddCoderConfig): void {
 
     if (check.state === "ok") {
         const hit = check.candidates.find((c) => c.threshold === 0);
-        console.log(`  ✅ VS Code 虚拟工具折叠已关闭（${hit ? hit.path : VIRTUAL_TOOLS_SETTING_KEY + " = 0"}）`);
-        return;
+        lines.push(`  ✅ VS Code 虚拟工具折叠已关闭（${hit ? hit.path : VIRTUAL_TOOLS_SETTING_KEY + " = 0"}）`);
+        return lines;
     }
 
-    console.log(`  ⚠️ VS Code 宿主适配：未检测到 "${VIRTUAL_TOOLS_SETTING_KEY}": 0`);
-    check.candidates.forEach((c) => console.log(`     - ${describe(c)}`));
+    lines.push(`  ⚠️ VS Code 宿主适配：未检测到 "${VIRTUAL_TOOLS_SETTING_KEY}": 0`);
+    check.candidates.forEach((c) => lines.push(`     - ${describe(c)}`));
     if (check.state === "non-zero") {
-        console.log("     该键存在但取值非 0 ⇒ 折叠仍会触发（触发线 = 所有 MCP 服务器工具总数 ≥ 阈值/2，默认 64）");
+        lines.push("     该键存在但取值非 0 ⇒ 折叠仍会触发（触发线 = 所有 MCP 服务器工具总数 ≥ 阈值/2，默认 64）");
+    } else {
+        lines.push("     若你的 Copilot / VS Code 版本已不再提供该设置项，可忽略本告警（本项为建议性检查，不影响退出码）");
     }
-    console.log("     修复: 在用户级或工作区级 settings.json 加入下面这行，然后「重载 VS Code 窗口」（Developer: Reload Window）");
-    console.log(`           "${VIRTUAL_TOOLS_SETTING_KEY}": 0`);
-    console.log('     原因: 工具被宿主折叠时，未激活代理就调用会误报 "currently disabled by the user"，');
-    console.log("           HITL 审批链（update_hitl/status_hitl）与 ADD-7 审计链（record_dev_operation/query_audit_logs）会同时中断");
-    console.log(`     说明: ${docPath}（本项为建议性检查，不会修改你的设置文件）`);
+    lines.push("     修复: 在用户级或工作区级 settings.json 加入下面这行，然后「重载 VS Code 窗口」（Developer: Reload Window）");
+    lines.push(`           "${VIRTUAL_TOOLS_SETTING_KEY}": 0`);
+    lines.push('     原因: 工具被宿主折叠时，未激活代理就调用会误报 "currently disabled by the user"，');
+    lines.push("           HITL 审批链（update_hitl/status_hitl）与 ADD-7 审计链（record_dev_operation/query_audit_logs）会同时中断");
+    lines.push(`     说明: ${ctx.docPath}（本项为建议性检查，不会修改你的设置文件）`);
+    return lines;
+}
+
+/** 宿主适配自检输出（建议性：不写文件、不改退出码） */
+function printVirtualToolsCheck(config: AddCoderConfig): void {
+    const check = checkVsCodeVirtualTools({ projectRoot: config.projectRoot });
+    // magicDir 缺省（真实项目 loadConfig 未传 configPath 时为空串）→ 回退 .vscode，保证文档路径可读
+    const docPath = join(config.magicDir || ".vscode", "docs", "ADD-governance-vscode-copilot.md");
+    virtualToolsNoticeLines(check, { projectRoot: config.projectRoot, docPath }).forEach((line) =>
+        console.log(line),
+    );
 }
 
 export async function statusCommand() {

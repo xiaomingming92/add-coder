@@ -22,6 +22,7 @@ import {
   isVsCodeTarget,
   parseJsonc,
   vscodeSettingsCandidates,
+  virtualToolsNoticeLines,
 } from "../../src/cli/commands/status.js"
 
 /** 临时工作区 + 临时「用户主目录」，返回路径与清理函数 */
@@ -66,6 +67,36 @@ function config(overrides: Partial<AddCoderConfig> = {}): AddCoderConfig {
 }
 
 describe("status 宿主适配自检（issue #21）", () => {
+  it("键缺失时的提示含「可忽略」声明（宿主移除该设置后不再是无解告警）", () => {
+    const { projectRoot, homeDir, cleanup } = makeFixture()
+    try {
+      const check = checkVsCodeVirtualTools({ projectRoot, homeDir, platform: "linux", env: {} })
+      const lines = virtualToolsNoticeLines(check, {
+        projectRoot,
+        docPath: ".vscode/docs/ADD-governance-vscode-copilot.md",
+      }).join("\n")
+      expect(lines).toContain("可忽略")
+    } finally {
+      cleanup()
+    }
+  })
+
+  it("键 = 0 时的通过提示不含「可忽略」（避免给人「配了也没用」的错觉）", () => {
+    const { projectRoot, homeDir, writeWorkspaceSettings, cleanup } = makeFixture()
+    try {
+      writeWorkspaceSettings(`{ "${VIRTUAL_TOOLS_SETTING_KEY}": 0 }`)
+      const check = checkVsCodeVirtualTools({ projectRoot, homeDir, platform: "linux", env: {} })
+      const lines = virtualToolsNoticeLines(check, {
+        projectRoot,
+        docPath: ".vscode/docs/ADD-governance-vscode-copilot.md",
+      }).join("\n")
+      expect(check.state).toBe("ok")
+      expect(lines).not.toContain("可忽略")
+    } finally {
+      cleanup()
+    }
+  })
+
   it("所有候选都无该键 → missing（文件不存在也算缺键）", () => {
     const fx = makeFixture()
     try {

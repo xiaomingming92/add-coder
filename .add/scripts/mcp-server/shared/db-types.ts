@@ -15,6 +15,8 @@
  * 契约：schema 须与 prisma/add.prisma 模型对齐（字段名/可空性）。
  */
 import * as z from "zod/v4"
+// lifecycle 值的**唯一真源**（zod）：本文件不再手写字面量列表（2026-09-21 决策）
+import { PlanLifecycleStatusSchema } from "./plan-lifecycle.js"
 
 // ===== 行 schema（对齐 prisma/add.prisma；looseObject 前瞻兼容） =====
 
@@ -23,7 +25,7 @@ export const PlanRowSchema = z.looseObject({
   projectKey: z.string(),
   adapterKey: z.string(),
   planName: z.string(),
-  lifecycle: z.enum(["DRAFT", "ACTIVE", "BLOCKED", "REJECTED", "CLOSED", "ABANDONED"]),
+  lifecycle: PlanLifecycleStatusSchema,
   revision: z.number(),
   planPath: z.string(),
   planKeyword: z.string().nullable(),
