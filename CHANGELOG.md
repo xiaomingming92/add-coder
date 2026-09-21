@@ -5,7 +5,7 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
-## [未发布] - 待下个版本（0.3.40）
+## [0.3.40] - 2026-09-21
 
 > 2026-09-21 当日工作；6 条审计链全部 CLOSED —— `…memory-cjk-bigram-baseline-plan-v1`（75/75，RAHS 91 🟢）、
 > `…multi-host-adapter-alignment-plan-v1`（47/47）、`…copilot-virtualtools-visibility-plan-v1`（30/30）、
