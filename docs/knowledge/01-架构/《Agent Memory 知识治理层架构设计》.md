@@ -25,7 +25,7 @@ ADD Memory 是 add-coder 治理层的**跨 Plan 项目知识子系统**：从治
 | 模块 | 路径 | 职责 |
 |------|------|------|
 | 数据模型 | `prisma/add.prisma` + `templates/core/prisma/add.prisma`（双份同步） | 6 枚举 + 6 模型（AddMemory/Evidence/EvidenceLink/MetricSnapshot/Recall/RecallItem） |
-| Migration | `prisma/migrations/`（prisma migrate）+ `prisma/atlas-migrations/` | 基础表 + PG pg_trgm FTS 索引 + SQLite FTS5 bigram 虚表的原生 SQL |
+| Migration | `prisma/migrations/`（prisma migrate）+ `prisma/atlas-migrations/` | 基础表 + PG **bigram 分词 FTS**（`tsvector` 表达式索引，扩展无关）+ SQLite **FTS5 `trigram`** 虚表（DDL 真源 `src/lib/memory-fts-objects.ts`）的原生 SQL [2026-09-21 修订: 原文写「PG pg_trgm FTS 索引 + SQLite FTS5 bigram 虚表」与真源/DLL 均不符] |
 | 领域层 | `templates/core/scripts/mcp-server/shared/memory/domain/` | 状态机、scope 规则、去重、冲突检测、密钥扫描 |
 | 检索层 | `templates/core/scripts/mcp-server/shared/memory/retrieval/` | FTS adapter（PG/SQLite）、RRF 融合、治理重排、token-budget context builder、Recall 审计写入 |
 | Embedding | `templates/core/scripts/mcp-server/shared/memory/embedding/` | Provider 抽象；首版 `none`，pgvector/sqlite-vec 留接口（Phase 5） |
@@ -40,7 +40,7 @@ ADD Memory 是 add-coder 治理层的**跨 Plan 项目知识子系统**：从治
 
 1. **repositoryRef = projectKey**（`sha256("add-project\0" + canonicalRoot)`），与 AuditLog/DevOperation 同口径；所有查询先鉴权（repository 边界校验）再检索。
 2. **双后端共用一份 Prisma schema**；向量列与 FTS 索引由原生 migration 分发，schema 不表达向量列。
-3. **CJK FTS**：PG 用 `pg_trgm`；SQLite FTS5 用 bigram 外部内容表。
+3. **CJK FTS**：两侧统一 **CJK bigram 分词**（写入侧与查询侧共用同一 tokenization 契约 `retrieval/cjk-tokenize.ts`）；PG 走 `tsvector` 表达式索引（不依赖扩展，避免扩展可用性/Atlas 重建绑架召回），SQLite 走 FTS5。`pg_trgm` 降为**补充通道**（子串/模糊），不再充当基线。[2026-09-21 修订: 原文把 PG 基线写成 `pg_trgm`、把 SQLite 写成 bigram 外部内容表，二者均与实测不符]
 4. **可信度先于相似度**：lifecycle 过滤（默认只召回 ACTIVE）→ repository/scope 过滤 → FTS 候选 → RRF → 治理重排。
 5. **FTS 是可靠基线，Vector 是可选增强**：任何 embedding/pgvector/sqlite-vec 故障降级 FTS-only，不阻塞 ADD Gate（`degradedMode` 明示）。
 6. **自动采证、受控成忆**：Hook 只写 Evidence/MetricSnapshot/Candidate，不得直接创建 ACTIVE。
@@ -115,7 +115,7 @@ v1 的 §1–§7 是**设计基线**；下表是落地后与基线的对应关�
 | SQLite 原生层（FTS5 虚表 + 3 触发器） | ✅ 期望态三入口接线 + 自助修复 | 清单真源 `src/lib/memory-fts-objects.ts` → 生成物 `<magicDir>/scripts/mcp-server/shared/memory/retrieval/fts/sqlite-fts5.sql`（`gen-sqlite-fts-sql.ts` 生成，用例断言逐字一致）；消费方：init（`src/lib/memory-expected-state.ts`，失败告警不阻断）、`db-ensure.sh` sqlite 段（同语义 exit 0）、`add-coder memory:reindex --probe/--apply`（双后端，`src/lib/memory-fts-runtime.ts` + `src/cli/commands/memory-reindex.ts`） |
 | Prisma 7 `db execute` 口径 | ⚠️ 已校正（`--schema` 移除） | 实测 7.9.1：`--schema` 报 unknown option；datasource 由项目 `prisma.config.ts` 提供（官方文档同口径）→ 三处调用统一 `--file` 且用 `exec`（不用 `dlx`，避免拉取 8.0-rc 造成版本漂移） |
 
-**实测指标（门槛不下调，如实登记）**：FTS-only `Recall@5 = 0.9592`（≥ 0.9188 ✅）、`MRR@5 = 0.6551`；
+**实测指标（门槛不下调，如实登记；2026-09-21 双后端落定）**：评测已扩为**双后端同标注集**（60 条查询 / 54 条含 relevant，含 2 字短查询与释义查询），实测 **sqlite `Recall@5 = 0.9444` / pg `Recall@5 = 0.9444`**（`MRR@5` 0.6747 / 0.6778；leakage=0、mandatory=0、scope=0）——两侧同值即"读写同源"的证据。**阈值唯一真源 = `scripts/memory/recall-eval.ts` 的 `PASS_THRESHOLD`（FTS-only Recall@5 ≥ 0.70 / Hybrid MRR@5 ≥ 0.75）**；历史上文档里的 `0.9188` 与 `0.70` 两套口径已废止，一律引用该常量。[2026-09-21 修订: 轮 3 Task 3.6 —— 用双后实测替换"仅内存 SQLite 且不可外推"的旧表述]
 Hybrid 融合把 `MRR@5` 从 0.2612 抬到 **0.4867 后收敛，仍 < 0.75 门槛 ❌** —— 瓶颈是 top-5 内的排序判别力，
 由 `memory-rank-calibration` 以数据校准替代手调（该 plan 仍在飞，见 §11）。
 

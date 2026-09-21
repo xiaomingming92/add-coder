@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest"
 import { rrfFuse, rrfRank } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/fusion.js"
 import { rerankOne, DEFAULT_WEIGHTS, RANKING_VERSION } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/reranker.js"
 import { buildContext, estimateTokens } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/context-builder.js"
-import { buildTrigramQuery } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/fts/sqlite.js"
+import { buildMatchQuery } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/fts/sqlite.js"
 
 const ctx = { repository: "r1", paths: ["src/memory/retrieval/fusion.ts"] }
 
@@ -93,10 +93,12 @@ describe("token 预算", () => {
 
 describe("trigram 查询构建", () => {
   it("CJK 长片段与拉丁词加引号；短片段剔除", () => {
-    expect(buildTrigramQuery("migration 迁移")).toBe('"migration"')
-    expect(buildTrigramQuery("重复失败的原因")).toBe('"重复失败的原因"')
-    expect(buildTrigramQuery("ab")).toBeNull()
+    // 轮 3 / Task 3.2：改为 token 化 MATCH（不再是"≥3 字符片段"），2 字中文 token 也可命中
+    expect(buildMatchQuery("migration 迁移")).toBe('"migration" OR "迁移"')
+    expect(buildMatchQuery("重复失败的原因")).toBe('"重复" OR "复失" OR "失败" OR "败的" OR "的原" OR "原因"')
+    expect(buildMatchQuery("ab")).toBe('"ab"')
+    expect(buildMatchQuery("?!")).toBeNull()
     // "迁移" 仅 2 字符被剔除，≥3 字符片段保留
-    expect(buildTrigramQuery("为什么 迁移 会失败")).toBe('"为什么" OR "会失败"')
+    expect(buildMatchQuery("为什么 迁移 会失败")).toContain('"迁移"')
   })
 })

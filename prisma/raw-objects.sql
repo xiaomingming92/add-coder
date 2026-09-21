@@ -8,6 +8,12 @@
 -- 注意：扩展本身（pg_trgm）不写在本段 —— Atlas 免费版不接受期望态中的 CREATE EXTENSION
 -- （需登录 Pro）。扩展由迁移与开发库环境保证：主库见 20260819080000_add_agent_memory_fts.sql，
 -- dev/shadow 库在环境初始化时装到 template1 以被沙箱库继承（见能力矩阵 §四）。
+
+-- 记忆检索主通道（Plan add-coder-memory-cjk-bigram-baseline 轮 2 / Task 2.3）：
+-- 基于写入期产出的 searchText 建 tsvector **表达式索引** —— 不依赖扩展，2 字中文查询可命中。
+-- 与「补充通道」的三个 trigram 索引并存；删掉本行会让 db-ensure 把它判为多余对象并生成 DROP。
+CREATE INDEX IF NOT EXISTS "AddMemory_searchText_tsv_idx" ON "public"."AddMemory" USING GIN (to_tsvector('simple', "searchText"));
+
 CREATE INDEX IF NOT EXISTS "AddMemory_topic_trgm_idx" ON "public"."AddMemory" USING GIN ("topic" gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS "AddMemory_content_trgm_idx" ON "public"."AddMemory" USING GIN ("content" gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS "AddMemoryEvidence_excerpt_trgm_idx" ON "public"."AddMemoryEvidence" USING GIN ("excerpt" gin_trgm_ops);

@@ -110,7 +110,8 @@ describe("memory:reindex · sqlite（真实引擎）", () => {
       expect(code).toBe(0)
       expect(io.lines.join("\n")).toContain("完成度 4/4（100%）")
       expect(io.lines.join("\n")).toContain("✅ 期望态完整")
-      expect(io.lines.join("\n")).not.toContain("--apply")
+      // 断言目标 = "对象缺失时的修复提示"；指纹未记录时会有另一条 --apply 处置指引（轮 2 Task 2.7 新增，合法）
+      expect(io.lines.join("\n")).not.toContain("缺失（")
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

@@ -57,7 +57,9 @@ describe("detectBackend 后端识别", () => {
   })
 
   it("对象清单按后端区分，且 DDL 全部 IF NOT EXISTS（可重放前提）", () => {
-    expect(PG_FTS_OBJECTS).toHaveLength(4)
+    // 2026-09-21（Plan Task 2.1）：PG 主通道新增 searchText 表达式索引 → 5 个对象
+    expect(PG_FTS_OBJECTS).toHaveLength(5)
+    expect(PG_FTS_OBJECTS.map((s) => s.name)).toContain("AddMemory_searchText_tsv_idx")
     expect(SQLITE_FTS_OBJECTS).toHaveLength(4)
     for (const spec of [...PG_FTS_OBJECTS, ...SQLITE_FTS_OBJECTS]) {
       expect(spec.ddl).toMatch(/IF NOT EXISTS/i)
@@ -70,15 +72,20 @@ describe("detectBackend 后端识别", () => {
 describe("probeFts 探测", () => {
   it("PG：只列出真正缺失的对象并给出完成度", async () => {
     const { querier } = fakeBackend(
-      ["pg_trgm", "AddMemory_topic_trgm_idx", "AddMemory_content_trgm_idx"],
+      [
+        "pg_trgm",
+        "AddMemory_searchText_tsv_idx",
+        "AddMemory_topic_trgm_idx",
+        "AddMemory_content_trgm_idx",
+      ],
       "postgres",
     )
     const report = await probeFts(querier, "postgres")
     expect(report.backend).toBe("postgres")
     expect(report.missing).toEqual(["AddMemoryEvidence_excerpt_trgm_idx"])
-    expect(report.present).toBe(3)
-    expect(report.total).toBe(4)
-    expect(report.progress).toBe(75)
+    expect(report.present).toBe(4)
+    expect(report.total).toBe(5)
+    expect(report.progress).toBe(80)
     expect(report.rebuilt).toEqual([])
   })
 
@@ -98,12 +105,13 @@ describe("reindex 重建与可重放", () => {
     const report = await reindex(querier, "postgres")
     expect(report.missing).toEqual([])
     expect(report.rebuilt).toEqual([
+      "AddMemory_searchText_tsv_idx",
       "AddMemory_topic_trgm_idx",
       "AddMemory_content_trgm_idx",
       "AddMemoryEvidence_excerpt_trgm_idx",
     ])
     expect(report.progress).toBe(100)
-    expect(present.size).toBe(4)
+    expect(present.size).toBe(5)
   })
 
   it("SQLite：首次重建全部对象，第二次执行为 no-op（可重放）", async () => {

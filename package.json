@@ -121,6 +121,7 @@
     "vitest": "^4.1.10"
   },
   "optionalDependencies": {
-    "@ariga/atlas": "^1.3.0"
+    "@ariga/atlas": "^1.3.0",
+    "@node-rs/jieba": "^2.0.3"
   }
 }

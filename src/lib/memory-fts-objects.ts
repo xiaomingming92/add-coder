@@ -22,9 +22,20 @@ export interface FtsObjectSpec {
   ddl: string
 }
 
-/** Postgres：pg_trgm 扩展 + 三个 trigram GIN 索引（与 20260819080000_add_agent_memory_fts.sql 对齐） */
+/**
+ * Postgres：**bigram 分词 FTS 为主通道 + pg_trgm 为补充通道**（2026-09-21 修订，Plan Task 2.1）
+ *
+ * 主通道 = `AddMemory_searchText_tsv_idx`：对写入期产出的 `searchText`（CJK bigram / jieba 词级 token 串）
+ * 建 `tsvector` **表达式索引**，`to_tsvector('simple', ...)` 按空格切 token —— 不依赖扩展，
+ * 且 1-2 字中文查询可命中（这是 pg_trgm 窗口=3 字做不到的）。
+ * 补充通道 = 原有三个 `gin_trgm_ops` 索引（子串/模糊召回），保留但从基线降级为补充。
+ */
 export const PG_FTS_OBJECTS: readonly FtsObjectSpec[] = [
   { name: "pg_trgm", kind: "extension", ddl: `CREATE EXTENSION IF NOT EXISTS pg_trgm;` },
+  {
+    name: "AddMemory_searchText_tsv_idx", kind: "index",
+    ddl: `CREATE INDEX IF NOT EXISTS "AddMemory_searchText_tsv_idx" ON "public"."AddMemory" USING GIN (to_tsvector('simple', "searchText"));`,
+  },
   {
     name: "AddMemory_topic_trgm_idx", kind: "index",
     ddl: `CREATE INDEX IF NOT EXISTS "AddMemory_topic_trgm_idx" ON "public"."AddMemory" USING GIN ("topic" gin_trgm_ops);`,
@@ -39,19 +50,25 @@ export const PG_FTS_OBJECTS: readonly FtsObjectSpec[] = [
   },
 ] as const
 
-/** SQLite：FTS5 独立表 + 三个同步触发器（与 retrieval/fts/sqlite-fts5.sql 同源） */
+/**
+ * SQLite：FTS5 独立表 + 三个同步触发器（与 retrieval/fts/sqlite-fts5.sql 同源）
+ *
+ * 2026-09-21 修订（Plan Task 2.1）：索引列从 `topic/content` 原样文本改为**写入期产出的 `searchText`**，
+ * 分词器从 `trigram` 改为 `unicode61`——因为 token 化已在写入侧完成（bigram/jieba），
+ * FTS5 只负责按空格切 token；两侧共用同一 tokenization 契约，避免"索引在、命中不了"。
+ */
 export const SQLITE_FTS_OBJECTS: readonly FtsObjectSpec[] = [
   {
     name: "add_memory_fts", kind: "table",
-    ddl: `CREATE VIRTUAL TABLE IF NOT EXISTS add_memory_fts USING fts5(memory_id UNINDEXED, topic, content, tokenize = 'trigram');`,
+    ddl: `CREATE VIRTUAL TABLE IF NOT EXISTS add_memory_fts USING fts5(memory_id UNINDEXED, searchText, tokenize = 'unicode61');`,
   },
   {
     name: "add_memory_fts_ai", kind: "trigger",
-    ddl: `CREATE TRIGGER IF NOT EXISTS add_memory_fts_ai AFTER INSERT ON "AddMemory" BEGIN INSERT INTO add_memory_fts(memory_id, topic, content) VALUES (new.id, new.topic, new.content); END;`,
+    ddl: `CREATE TRIGGER IF NOT EXISTS add_memory_fts_ai AFTER INSERT ON "AddMemory" BEGIN INSERT INTO add_memory_fts(memory_id, searchText) VALUES (new.id, new.searchText); END;`,
   },
   {
     name: "add_memory_fts_au", kind: "trigger",
-    ddl: `CREATE TRIGGER IF NOT EXISTS add_memory_fts_au AFTER UPDATE ON "AddMemory" BEGIN DELETE FROM add_memory_fts WHERE memory_id = old.id; INSERT INTO add_memory_fts(memory_id, topic, content) VALUES (new.id, new.topic, new.content); END;`,
+    ddl: `CREATE TRIGGER IF NOT EXISTS add_memory_fts_au AFTER UPDATE ON "AddMemory" BEGIN DELETE FROM add_memory_fts WHERE memory_id = old.id; INSERT INTO add_memory_fts(memory_id, searchText) VALUES (new.id, new.searchText); END;`,
   },
   {
     name: "add_memory_fts_ad", kind: "trigger",

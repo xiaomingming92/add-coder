@@ -78,6 +78,7 @@ enum PlanLifecycleStatus {
   BLOCKED
   REJECTED
   CLOSED
+  REOPENED
   ABANDONED
 }
 
@@ -295,6 +296,9 @@ model AddMemory {
   topic           String
   content         String
   summary         String?
+  /// 检索展开文本（写入期产出：CJK bigram / jieba 词级 token 串，两侧共用同一 tokenization 契约）
+  /// 主通道索引 AddMemory_searchText_tsv_idx 建立在该列的 tsvector 表达式上（Plan Task 2.3）
+  searchText      String          @default("")
 
   scopeType       MemoryScopeType
   scopeValue      String

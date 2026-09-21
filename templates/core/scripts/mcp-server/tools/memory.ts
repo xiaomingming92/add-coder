@@ -17,6 +17,8 @@ import { existsSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
 import type { ToolRegistrar } from "./registrar.js"
 import { textResponse, errorResponse } from "../shared/response.js"
+import { expandForIndexWithMethod, jiebaUnavailableReason, segmentForMatch } from "../shared/memory/retrieval/cjk-segmenter.js"
+import { checkFtsFingerprint } from "../shared/memory/retrieval/fts-fingerprint.js"
 import { prisma } from "../shared/prisma.js"
 import { DATABASE_URL, getRuntimeContext } from "../shared/env.js"
 import {
@@ -81,6 +83,19 @@ const SCOPE_TYPES = ["ORGANIZATION", "REPOSITORY", "BRANCH", "MODULE", "PATH", "
 const RECALL_OUTCOMES = ["UNKNOWN", "USED", "USEFUL", "IRRELEVANT", "OUTDATED", "CONTRADICTED", "HARMFUL"] as const
 
 export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps = {}) {
+  /**
+   * 写入期检索展开（Plan Task 2.4 / Spec §3 R4）。
+   * 与查询侧共用 `segmentForMatch`（jieba 主 / bigram 兜底）⇒ 读写同源。
+   * **展开为空而原文非空 ⇒ 抛错**（调用方转成写入失败）：宁可写不进去，也不能写出"存了但检索不到"的行。
+   */
+  const requireSearchText = (topic: string, content: string): string => {
+    const { text, method } = expandForIndexWithMethod(`${topic} ${content}`)
+    if (!text && `${topic}${content}`.trim().length > 0) {
+      throw new Error(`检索展开失败：topic/content 非空但 token 为空（分词器=${method}），拒绝写入以免产生不可检索行`)
+    }
+    return text
+  }
+
   const runtimeContext = getRuntimeContext()
 
   // 无类型边界单点（zod 托管）：动态 client → 运行期校验的泛型委托
@@ -248,6 +263,9 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
       const created = await memoryDb.create({
         data: {
           kind, topic, content,
+          // 检索展开（Plan Task 2.4）：写入期产出，与查询侧共用同一 tokenization 契约；
+          // 展开为空而原文非空 ⇒ 拒绝写入（禁止产生"存进去但检索不到"的行，不静默）
+          searchText: requireSearchText(topic, content),
           summary: (args.summary as string | undefined) ?? null,
           scopeType, scopeValue, repositoryRef,
           importance: (args.importance as number | undefined) ?? 0.5,
@@ -709,12 +727,47 @@ export function registerMemoryTools(server: ToolRegistrar, deps: MemoryToolDeps 
         })
       }
 
+      // 词法口径（轮 3 / Task 3.7）：主通道用哪套 tokenization + 指纹是否需要重索引。
+      // 为什么必须在健康检查里：`searchText` 是写入期产出的 token 串，分词器/词典一变历史行就"索引在、命中不了"，
+      // 且不报错 ⇒ 只能靠这里显式透出，否则降级是静默的。
+      const probe = segmentForMatch("端口契约")
+      const fingerprint = checkFtsFingerprint(runtimeContext.projectRoot, runtimeContext.magicDir)
+      const lexicalProfile = {
+        /** 当前实际生效的分词器：jieba = 主通道；bigram = 兜底（降级） */
+        method: probe.method,
+        /** jieba 不可用/切分异常的原因（method=bigram 时必非空；禁止静默降级） */
+        degradedReason: jiebaUnavailableReason(),
+        userDict: probe.userDict ?? false,
+        fingerprint: {
+          current: fingerprint.current.value,
+          recorded: fingerprint.recorded?.fingerprint ?? null,
+          requiresReindex: fingerprint.requiresReindex,
+          reason: fingerprint.reason,
+        },
+      }
+      if (lexicalProfile.method === "bigram") {
+        wiringWarnings.push({
+          code: "LEXICAL_BIGRAM_FALLBACK",
+          detail: `分词主通道降级为 bigram（${lexicalProfile.degradedReason ?? "原因未知"}）：词级判别力下降，长尾召回会变差`,
+          fixHint: "安装 @node-rs/jieba（optionalDependency）或检查平台二进制是否可用；生效后 memory:reindex --apply 重算 searchText",
+        })
+      }
+      if (lexicalProfile.fingerprint.requiresReindex) {
+        wiringWarnings.push({
+          code: "LEXICAL_FINGERPRINT_STALE",
+          detail: `检索指纹需重索引：${lexicalProfile.fingerprint.reason}`,
+          fixHint: "运行 add-coder memory:reindex --probe 查看明细 → --apply 重建 → 回填脚本重算 searchText",
+        })
+      }
+
       return textResponse(JSON.stringify({
         repositoryRef,
         backlog: { candidate: backlog.CANDIDATE ?? 0, pending: backlog.PENDING ?? 0, byStatus: backlog },
         leakage: { checkedRecalls: recentRecalls.length, crossRepositorySelections: leakage },
         providers: { embedding: embeddingHealth },
         index: ftsHealth ?? { component: "fts", status: "unavailable", detail: "无 lexical adapter" },
+        // 词法口径（新增字段）：主通道分词器 / 降级原因 / 指纹是否需重索引
+        lexicalProfile,
         // 接线状态（新增字段，既有字段保持不变）：ok = 四项告警全空
         wiring: {
           status: wiringWarnings.length === 0 ? "ok" : "warning",

@@ -24,6 +24,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { expandForIndex } from "../../templates/core/scripts/mcp-server/shared/memory/retrieval/cjk-tokenize.js"
 import {
   applyMemoryExpectedState,
   expectedStateSqlRelPath,
@@ -49,6 +50,7 @@ function createPrismaBaseTables(db: DatabaseSync): void {
     status TEXT NOT NULL DEFAULT 'CANDIDATE',
     topic TEXT NOT NULL,
     content TEXT NOT NULL,
+    searchText TEXT NOT NULL DEFAULT '',
     scopeType TEXT NOT NULL,
     scopeValue TEXT NOT NULL,
     repositoryRef TEXT NOT NULL
@@ -175,17 +177,22 @@ describe("sqlite 记忆期望态闭环（init 唯一消费点）", () => {
 
       withDb(dbPath, (db) => {
         db.prepare(
-          'INSERT INTO "AddMemory" (id, kind, topic, content, scopeType, scopeValue, repositoryRef) VALUES (?,?,?,?,?,?,?)',
-        ).run("m1", "LESSON", "sqlite 记忆", "SQLite 下 FTS5 期望态必须由 init 应用", "REPOSITORY", "r1", "r1")
+          'INSERT INTO "AddMemory" (id, kind, topic, content, searchText, scopeType, scopeValue, repositoryRef) VALUES (?,?,?,?,?,?,?,?)',
+        ).run(
+          "m1", "LESSON", "sqlite 记忆", "SQLite 下 FTS5 期望态必须由 init 应用",
+          // 写入期产出 searchText（Plan Task 2.1/2.4：索引列改为写入侧展开文本，FTS5 只按空格切 token）
+          expandForIndex("sqlite 记忆 SQLite 下 FTS5 期望态必须由 init 应用"),
+          "REPOSITORY", "r1", "r1",
+        )
         const hit = db
           .prepare("SELECT memory_id FROM add_memory_fts WHERE add_memory_fts MATCH ?")
-          .all('"期望态必须"') as { memory_id: string }[]
+          .all('"期望"') as { memory_id: string }[]
         expect(hit.map((h) => h.memory_id)).toEqual(["m1"])
 
         db.prepare('DELETE FROM "AddMemory" WHERE id = ?').run("m1")
         const gone = db
           .prepare("SELECT memory_id FROM add_memory_fts WHERE add_memory_fts MATCH ?")
-          .all('"期望态必须"') as { memory_id: string }[]
+          .all('"期望"') as { memory_id: string }[]
         expect(gone).toEqual([])
       })
     } finally {

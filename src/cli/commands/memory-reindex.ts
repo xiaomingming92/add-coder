@@ -8,6 +8,7 @@
 //         2 = 无法探测/应用（上下文缺失、库不可达、Node 不支持等**基础设施**失败——不静默当成功）。
 import { resolveMagicDir } from "../../shared/paths.js"
 import { detectBackend, type FtsBackend } from "../../lib/memory-fts-objects.js"
+import { checkFtsFingerprint, computeFtsFingerprint, writeRecordedFingerprint } from "../../lib/memory-fts-fingerprint.js"
 import {
   backendForProvider,
   createPrismaCliAdapter,
@@ -88,6 +89,21 @@ function printReport(report: ReindexReport, mode: "probe" | "apply", io: NonNull
   const head = mode === "apply" ? "记忆 FTS 期望态 · 重建" : "记忆 FTS 期望态 · 探测"
   io.log(`${head}（backend=${report.backend}，source=${report.source}）`)
   io.log(`  完成度 ${report.present}/${report.total}（${report.progress}%）`)
+  // 检索指纹（Plan 轮 2 Task 2.7）：期望态完整 ≠ 历史 searchText 与当前分词器同源。
+  // 指纹不一致（jieba 版本 / 用户词典 / tokenization 契约变化）时，历史行会"索引在、命中不了"且不报错。
+  try {
+    const projectRoot = process.cwd()
+    const check = checkFtsFingerprint(projectRoot, resolveMagicDir(projectRoot))
+    if (check.requiresReindex) {
+      io.log(`  ⚠️ 检索指纹：需重索引 —— ${check.reason}`)
+      io.log("     → 处置：add-coder memory:reindex --apply 后由回填脚本重算 searchText（指纹随重建写入）")
+    } else {
+      io.log(`  ✅ 检索指纹一致（${check.current.value}）`)
+    }
+  } catch (error) {
+    // 指纹不可得（首次部署 / 路径不可解析）不阻断探测主流程，但必须显式说明
+    io.log(`  ⚠️ 检索指纹：无法判定（${error instanceof Error ? error.message : String(error)}）`)
+  }
   if (mode === "apply" && report.rebuilt.length > 0) {
     io.log(`  本次重建（${report.rebuilt.length}）：${report.rebuilt.join(", ")}`)
   }
@@ -118,8 +134,22 @@ export async function memoryReindexCommand(
   try {
     const adapter = resolveAdapter(projectRoot, options, deps)
     const report = mode === "apply" ? await reindexVia(adapter) : await probeVia(adapter)
+    // 先写指纹标记、后出报告（顺序有意义）：否则报告里的指纹行会先报"未记录 ⇒ 需重索引"，
+    // 紧接着又打印"已记录"，用户会以为逻辑坏了（2026-09-21 实测发现的顺序 wart）。
+    let fingerprintNote: string | null = null
+    if (mode === "apply" && report.missing.length === 0) {
+      try {
+        const magicDir = resolveMagicDir(projectRoot)
+        const path = writeRecordedFingerprint(projectRoot, magicDir, computeFtsFingerprint({ projectRoot, magicDir }))
+        fingerprintNote = `  检索指纹：已记录（${path}）`
+      } catch (e) {
+        // 写标记失败不改变重建结果，但必须可见（不静默）
+        fingerprintNote = `  ⚠️ 检索指纹写入失败：${e instanceof Error ? e.message : String(e)}（下次 probe 仍会提示需重索引）`
+      }
+    }
     if (options.json) io.log(JSON.stringify(report, null, 2))
     else printReport(report, mode, io)
+    if (fingerprintNote && !options.json) io.log(fingerprintNote)
     if (mode === "probe") return 0
     return report.missing.length > 0 ? 1 : 0
   } catch (e) {

@@ -18,8 +18,8 @@
 
 | 能力 | Postgres | SQLite | 不可用时的降级 |
 |------|----------|--------|----------------|
-| 词法检索（CJK/拉丁） | `pg_trgm` + 3 个 GIN 索引 | FTS5 `trigram` 虚拟表 + 3 个同步触发器 | 无降级（基线能力，缺失即缺陷） |
-| 短查询（<3 字符） | trigram 直接命中 | adapter 回退 `LIKE` | 自动回退，不改变状态 |
+| 词法检索（CJK/拉丁） | **主通道**：`AddMemory.searchText` 的 `tsvector` **表达式索引**（扩展无关）+ **分词器 = jieba 主 / bigram 兜底**；`pg_trgm` 降为**补充通道**（子串/模糊） | FTS5 虚表（列 = **`searchText`**，`tokenize = unicode61`）+ 3 个同步触发器；分词口径与 PG 统一 | 无降级（基线能力，缺失即缺陷）；**分词器降级必须显式**（`get_memory_health.lexicalProfile.method` / `memory:reindex --probe` 指纹行）[2026-09-21 修订: 轮 3/4 —— 补 jieba 主通道、`searchText` 列与 unicode61；`@node-rs/jieba` 为 optionalDependency，装不上即 bigram 兜底] |
+| 短查询（1-2 字符中文） | bigram 分词后**可索引命中**（`端口`→token `端口`） | 同左（同一 tokenization 契约） | 自动回退，不改变状态 |
 | 向量检索 | `pgvector`（Phase 5，**未交付**） | `sqlite-vec`（Phase 5，**未交付**） | 跳过向量通道 → `fts-only` |
 | 嵌入提供者 | `EmbeddingProvider=local-onnx`（Phase 5，**未交付**） | 同左 | provider `none` → 不召向量 |
 | 证据链 / 召回审计 | `AddMemoryEvidence(Link)` / `AddMemoryRecall(Item)` | 同左 | 无降级（写入即证据；失败即报错） |
