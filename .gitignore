@@ -32,6 +32,10 @@ debug-dump/
 # Runtime reports
 */reports/
 
+# 记忆运行态产物（l1/l2 快照由 memory-jobs 随跑随刷新、fts-fingerprint 随重建写入、
+# evidence-queue* 为 append-only 队列进度 —— 全是机器本地状态，不入库）
+*/memory/
+
 # HITL sentinel files (runtime artifacts)
 .hitl-tongyi-*
 .hitl-bohui-*
