@@ -166,6 +166,8 @@ export const AddMemoryRowSchema = z.looseObject({
   status: MemoryStatusSchema,
   topic: z.string(),
   content: z.string(),
+  /** 检索展开文本（写入期产出：jieba 词级 / bigram token 串）；主通道索引建立在该列 tsvector 表达式上 */
+  searchText: z.string().default(""),
   summary: z.string().nullable(),
   scopeType: MemoryScopeTypeSchema,
   scopeValue: z.string(),

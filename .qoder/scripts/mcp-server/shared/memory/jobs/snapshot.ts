@@ -36,6 +36,15 @@ export function renderSnapshotMarkdown(level: "L1" | "L2", items: RecalledMemory
     `[Memory ${level} · 来源: AddMemory 治理库 · 生成于 ${generatedAt.toISOString()}]`,
     `<agent-memory source="add-memory" trust="governed">`,
   ]
+  // 空态显式标记（2026-09-21 接线 Plan Task 1.1.4）：
+  // 零条快照也必须可区分于"未接线"——否则文件不存在既可能是没跑 job、也可能是没有已治理记忆，自检无法判定。
+  if (items.length === 0) {
+    lines.push(
+      level === "L1"
+        ? "- 本仓库暂无已治理记忆（ACTIVE=0）：快照已接线，但尚无通过治理的记忆可注入"
+        : "- 本次查询未命中已治理记忆（ACTIVE=0）",
+    )
+  }
   for (const it of items) {
     lines.push(
       `- [${it.kind}] ${it.topic}（置信 ${it.confidence.toFixed(2)}）`,

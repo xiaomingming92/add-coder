@@ -5,7 +5,9 @@
  * 因此全部函数必须是同步、纯环境变量读取，禁止任何 IO/DB 访问。
  *
  * 开关：
- * - ADD_MEMORY_RECALL_MODE = off | shadow | inject（默认 shadow：召回可执行并落审计，但 Hook 不注入上下文）
+ * - ADD_MEMORY_RECALL_MODE = off | shadow | inject（**默认 inject**：召回并注入 L1；
+ *   2026-09-21 人类决策 —— 默认 shadow 会让记忆功能形同未启用。非法值回落 shadow（安全侧，且必然打印档位）。
+ *   退回不注入：设 ADD_MEMORY_RECALL_MODE=shadow）
  * - ADD_MEMORY_MAX_TOKENS：L1 注入 token 预算（默认 600）
  * - ADD_MEMORY_EVIDENCE = off | on（默认 on：PostToolUse 白名单采证入队）
  */
@@ -13,7 +15,7 @@
 export type RecallMode = "off" | "shadow" | "inject"
 
 export function recallMode(env: NodeJS.ProcessEnv = process.env): RecallMode {
-  const v = (env.ADD_MEMORY_RECALL_MODE ?? "shadow").toLowerCase()
+  const v = (env.ADD_MEMORY_RECALL_MODE ?? "inject").toLowerCase()
   return v === "off" || v === "inject" ? v : "shadow"
 }
 
