@@ -1,0 +1,11 @@
+-- 补漏：PlanLifecycleStatus 增 REOPENED（源自 add-coder-plan-close-entry-plan-v1 的可逆生命周期决策）
+--
+-- 为什么需要这条：
+--   `prisma/add.prisma` 的枚举已含 REOPENED，但迁移历史里没有它 —— 当时是**直接 ALTER TYPE 打在库上**的。
+--   db-ensure 的流程是「重建干净 shadow → 应用迁移 → 与期望态 diff → 把 delta 应用到主库」，
+--   重建出的 shadow 因此**不含** REOPENED ⇒ 每次 diff 都生成同一条 ADD VALUE，打到主库（已存在）即报
+--   `enum label already exists (42710)`，`db:ensure` 幂等出口永远不绿（本 Plan 的 2.3.3 卡点）。
+--
+-- IF NOT EXISTS：对"已手工加过该值"的库是 no-op，对干净库正常添加 ⇒ 两种历史都能收敛。
+-- 注：PostgreSQL 12+ 允许 ADD VALUE 在事务块内执行（本仓 PG 16），故可与 Atlas 的事务包裹共存。
+ALTER TYPE "public"."PlanLifecycleStatus" ADD VALUE IF NOT EXISTS 'REOPENED' AFTER 'CLOSED';
