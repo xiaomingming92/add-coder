@@ -97,6 +97,82 @@ projectName = "$PROJECT_NAME"
 mcpServerCommand = "$MCP_SERVER_COMMAND"
 projectRoot = "$PROJECT_DIR"
 
+# ── 声明式特殊占位符：token → 取值来源 id（脚本按声明解析；新增 token 只改本表）──
+[replace_specials]
+PROJECT_DIR = "project.dir"
+PROJECT_NAME = "project.name"
+MCP_SERVER_COMMAND = "add-coder.mcpServerCommand"
+ENTRY_MAGIC_DIR = "entry.magic_dir"
+
+# ── AGENTS.md 入口文件（2026-09-21 Plan）：真源按 adapter 渲染 → 各 magic 根目录 ──
+# 注：TOML 里 `[configs.replacements]` 是**挂在最近一个 [[configs]] 条目上的子表**（非全局），
+# 故每条 AGENTS 条目后各自带一份 replacements，才能拿到 {{magicDir}} 的声明式取值。
+[[configs]]
+src = "templates/core/AGENTS.md"
+dest = ".add/AGENTS.md"
+name = "AGENTS.md (.add)"
+magic_dir = ".add"
+placeholder_policy = "replace"
+
+[configs.replacements]
+projectName = "$PROJECT_NAME"
+magicDir = "$ENTRY_MAGIC_DIR"
+
+[[configs]]
+src = "templates/core/AGENTS.md"
+dest = ".claude/AGENTS.md"
+name = "AGENTS.md (.claude)"
+magic_dir = ".claude"
+placeholder_policy = "replace"
+
+[configs.replacements]
+projectName = "$PROJECT_NAME"
+magicDir = "$ENTRY_MAGIC_DIR"
+
+[[configs]]
+src = "templates/core/AGENTS.md"
+dest = ".codex/AGENTS.md"
+name = "AGENTS.md (.codex)"
+magic_dir = ".codex"
+placeholder_policy = "replace"
+
+[configs.replacements]
+projectName = "$PROJECT_NAME"
+magicDir = "$ENTRY_MAGIC_DIR"
+
+[[configs]]
+src = "templates/core/AGENTS.md"
+dest = ".qoder/AGENTS.md"
+name = "AGENTS.md (.qoder)"
+magic_dir = ".qoder"
+placeholder_policy = "replace"
+
+[configs.replacements]
+projectName = "$PROJECT_NAME"
+magicDir = "$ENTRY_MAGIC_DIR"
+
+[[configs]]
+src = "templates/core/AGENTS.md"
+dest = ".trae/AGENTS.md"
+name = "AGENTS.md (.trae)"
+magic_dir = ".trae"
+placeholder_policy = "replace"
+
+[configs.replacements]
+projectName = "$PROJECT_NAME"
+magicDir = "$ENTRY_MAGIC_DIR"
+
+[[configs]]
+src = "templates/core/AGENTS.md"
+dest = ".vscode/AGENTS.md"
+name = "AGENTS.md (.vscode)"
+magic_dir = ".vscode"
+placeholder_policy = "replace"
+
+[configs.replacements]
+projectName = "$PROJECT_NAME"
+magicDir = "$ENTRY_MAGIC_DIR"
+
 # ── 通用类别：批量同步到所有 magic 目录 ──
 [[categories]]
 name = "templates"

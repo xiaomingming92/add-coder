@@ -181,6 +181,8 @@ interface SyncMagicRules {
         placeholder_policy?: string;
         replacements?: Record<string, string>;
     }>;
+    /** 声明式特殊占位符：token 名 → 取值来源 id（脚本按声明解析；新增 token 只改规则不改代码） */
+    replace_specials?: Record<string, string>;
 }
 
 function genCollabContractRules(rules: TomlData): string {
@@ -254,6 +256,13 @@ function genSyncMagicRules(rules: TomlData): string {
         return `    { src: "${c.src}", dest: "${c.dest}", name: "${c.name}", magicDir: "${c.magic_dir}", placeholderPolicy: "${c.placeholder_policy ?? "none"}"${repl} }`;
     }).join(",\n");
 
+    // 声明式特殊占位符（token → 取值来源 id）：脚本据此解析，新增 token 只改规则
+    // 断言不必要（`d.replace_specials` 已声明为 `Record<string,string>`，`?? {}` 后类型不变）：
+    // 2026-09-21 修 —— 该断言触发 `@typescript-eslint/no-unnecessary-type-assertion`，使 `eslint src/` 非零。
+    const specialEntries = Object.entries(d.replace_specials ?? {})
+        .map(([token, sourceId]) => `        ${token}: "${sourceId}"`)
+        .join(",\n");
+
     return `export const SYNC_MAGIC_CONFIG = {
     PROJECT_NAME: "${projectName}",
     MAGIC_DIRS: [${magicDirs}],
@@ -261,6 +270,9 @@ function genSyncMagicRules(rules: TomlData): string {
     LOG_EXTENSIONS: [${logExts}],
     CONFIG_CHECK: {
 ${checkEntries}
+    },
+    SPECIALS: {
+${specialEntries}
     },
     HOOKS: [
 ${hookEntries}

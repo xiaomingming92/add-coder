@@ -220,22 +220,33 @@ function resolveProjectName(projectDir: string): string {
   return pkg.name
 }
 
-/** 纯函数：按替换表渲染占位符 {{key}} → value；$PROJECT_DIR/$PROJECT_NAME/$MCP_SERVER_COMMAND 特殊值动态解析 */
+/**
+ * 纯函数：按替换表渲染占位符 {{key}} → value。
+ * [2026-09-21 Plan `add-coder-agents-template-and-step3-execution-modes-plan-v1`]
+ * **特殊占位符由规则声明**（`sync-magic-rules.toml [replace_specials]` → 生成物 `SYNC_MAGIC_CONFIG.SPECIALS`），
+ * 本脚本只按声明取值：project.dir / project.name / add-coder.mcpServerCommand / entry.magic_dir。
+ * 未知来源 id 原样返回，随后被 `detectUnresolvedPlaceholders` 抓成违规（不静默）。新增 token 只改规则、不改本脚本。
+ */
 function renderConfigTemplate(
   content: string,
   replacements: Record<string, string>,
   projectDir: string,
   projectName: string,
   mcpServerCommand: string,
+  magicDir: string,
 ): string {
   const special: Record<string, string> = {
-    $PROJECT_DIR: projectDir,
-    $PROJECT_NAME: projectName,
-    $MCP_SERVER_COMMAND: mcpServerCommand,
+    "project.dir": projectDir,
+    "project.name": projectName,
+    "add-coder.mcpServerCommand": mcpServerCommand,
+    "entry.magic_dir": magicDir,
   }
+  const declared = (SYNC_MAGIC_CONFIG as unknown as { SPECIALS?: Record<string, string> }).SPECIALS ?? {}
   let out = content
   for (const [key, rawValue] of Object.entries(replacements)) {
-    const value = special[rawValue] ?? rawValue
+    const token = rawValue.startsWith("$") ? rawValue.slice(1) : null
+    const sourceId = token ? declared[token] : undefined
+    const value = sourceId ? (special[sourceId] ?? `$UNKNOWN_SOURCE(${sourceId})`) : rawValue
     out = out.split(`{{${key}}}`).join(value)
   }
   return out
@@ -277,7 +288,7 @@ function syncConfigs(
     }
     mkdirSync(dirname(destAbs), { recursive: true })
     if (c.placeholderPolicy === "replace") {
-      const rendered = renderConfigTemplate(readFileSync(srcAbs, "utf-8"), c.replacements ?? {}, projectDir, projectName, defaults.mcpServerCommand)
+      const rendered = renderConfigTemplate(readFileSync(srcAbs, "utf-8"), c.replacements ?? {}, projectDir, projectName, defaults.mcpServerCommand, c.magicDir)
       const unresolved = detectUnresolvedPlaceholders(rendered)
       if (unresolved.length > 0) {
         violations.push(`${c.name}: 替换后仍有占位符残留 ${unresolved.join(", ")}`)

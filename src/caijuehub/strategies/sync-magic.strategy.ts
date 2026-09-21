@@ -11,6 +11,12 @@ export const SYNC_MAGIC_CONFIG = {
     hookPathRe: "((?:\\.qoder|\\.claude|\\.trae|\\.codex|\\.vscode|\\.add)/hooks/[^\\s\"']+\\.mjs)",
     legacyShRe: "\\.sh(?=[\"'\\s)])",
     },
+    SPECIALS: {
+        PROJECT_DIR: "project.dir",
+        PROJECT_NAME: "project.name",
+        MCP_SERVER_COMMAND: "add-coder.mcpServerCommand",
+        ENTRY_MAGIC_DIR: "entry.magic_dir"
+    },
     HOOKS: [
     { src: "templates/adapters/claude/hooks", dest: ".claude/hooks", name: "claude hooks", magicDir: ".claude" },
     { src: "templates/adapters/qoder/hooks", dest: ".qoder/hooks", name: "qoder hooks", magicDir: ".qoder" },
@@ -24,7 +30,13 @@ export const SYNC_MAGIC_CONFIG = {
     { src: "templates/adapters/claude/settings.json", dest: ".claude/settings.json", name: "claude settings", magicDir: ".claude", placeholderPolicy: "none" },
     { src: "templates/adapters/trae/hooks.json", dest: ".trae/hooks.json", name: "trae hooks.json", magicDir: ".trae", placeholderPolicy: "none" },
     { src: "templates/adapters/codex/hooks.json", dest: ".codex/hooks.json", name: "codex hooks.json", magicDir: ".codex", placeholderPolicy: "none" },
-    { src: "templates/adapters/vscode/settings.json", dest: ".vscode/settings.json", name: "vscode settings (Agent Host MCP)", magicDir: ".vscode", placeholderPolicy: "replace", replacements: { projectName: "$PROJECT_NAME", mcpServerCommand: "$MCP_SERVER_COMMAND", projectRoot: "$PROJECT_DIR" } }
+    { src: "templates/adapters/vscode/settings.json", dest: ".vscode/settings.json", name: "vscode settings (Agent Host MCP)", magicDir: ".vscode", placeholderPolicy: "replace", replacements: { projectName: "$PROJECT_NAME", mcpServerCommand: "$MCP_SERVER_COMMAND", projectRoot: "$PROJECT_DIR" } },
+    { src: "templates/core/AGENTS.md", dest: ".add/AGENTS.md", name: "AGENTS.md (.add)", magicDir: ".add", placeholderPolicy: "replace", replacements: { projectName: "$PROJECT_NAME", magicDir: "$ENTRY_MAGIC_DIR" } },
+    { src: "templates/core/AGENTS.md", dest: ".claude/AGENTS.md", name: "AGENTS.md (.claude)", magicDir: ".claude", placeholderPolicy: "replace", replacements: { projectName: "$PROJECT_NAME", magicDir: "$ENTRY_MAGIC_DIR" } },
+    { src: "templates/core/AGENTS.md", dest: ".codex/AGENTS.md", name: "AGENTS.md (.codex)", magicDir: ".codex", placeholderPolicy: "replace", replacements: { projectName: "$PROJECT_NAME", magicDir: "$ENTRY_MAGIC_DIR" } },
+    { src: "templates/core/AGENTS.md", dest: ".qoder/AGENTS.md", name: "AGENTS.md (.qoder)", magicDir: ".qoder", placeholderPolicy: "replace", replacements: { projectName: "$PROJECT_NAME", magicDir: "$ENTRY_MAGIC_DIR" } },
+    { src: "templates/core/AGENTS.md", dest: ".trae/AGENTS.md", name: "AGENTS.md (.trae)", magicDir: ".trae", placeholderPolicy: "replace", replacements: { projectName: "$PROJECT_NAME", magicDir: "$ENTRY_MAGIC_DIR" } },
+    { src: "templates/core/AGENTS.md", dest: ".vscode/AGENTS.md", name: "AGENTS.md (.vscode)", magicDir: ".vscode", placeholderPolicy: "replace", replacements: { projectName: "$PROJECT_NAME", magicDir: "$ENTRY_MAGIC_DIR" } }
     ],
     CATEGORIES: [
     { name: "templates", icon: "📚", bake: false },
