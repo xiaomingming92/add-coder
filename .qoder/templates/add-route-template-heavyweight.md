@@ -116,6 +116,8 @@ Task N ──→ Task M（说明依赖原因）
 
 ### 每个 Task 完成后（重型强制执行）
 
+> **适用模式**：`stepwise`（默认）。`delegated`（托管）下**仍执行本块的三件事**（`[T]` 验证 → `record_dev_operation` → `tasks.md` 勾选），但不逐 Task 停下汇报；仅在 Step 3 定义的两个停止条件触发时打断（见 `add-paradigm` SKILL Step 3「执行风格」）。
+
 1. 验证该 Task 的 checklist `[T]` 项
 2. 调用 `record_dev_operation` 记录 ADD-7 审计
 3. **验证并更新项目状态**：将该 Task 在 `tasks.md` 中逐子项勾选为 `[x]`

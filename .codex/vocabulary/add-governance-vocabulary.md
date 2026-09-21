@@ -27,6 +27,8 @@
 | `Handoff` / `handoff` / `交接` | **二段式**: ①先读 `.codex/plans/index.md` 按 planName 匹配路径 → 定位 handoff；②无匹配才全局 glob `*-handoff*.md` | 🔴 P0 |
 | `add-route` / `执行路线图` | **二段式**: ①先读 `.codex/plans/index.md` 定位 plan → 查其 add-route；②调 `check_add_route_status`；③无匹配才全局 glob | 🔴 P0 |
 | `devlog` / `开发日志` | **双触发**: ①用户说"devlog 记录下"→ 立即写；②Step 8 收敛通过 → 自动写（无需提醒）| 🔴 P0 |
+| `托管实施` / `托管模式` / `delegated` | Plan 元信息记 `executionMode: delegated` → Step 3 连续实施轮内全部 Task，**不逐步同步进度**；每个 Task 的审计/勾选/[T] 验证照做；仅在①文档↔代码不对齐 ②基线低于预期（tsc/test/validate-docs 失败或 DPS<80 / RAHS<90）时停下走 HITL | 🔴 P0 |
+| `单步实施` / `逐 Task` / `stepwise` | 记 `executionMode: stepwise`（缺省值）→ 每个 Task 完成后停下等确认 | 🟡 P1 |
 | `index.md` / `Plan索引` | 读 `.codex/plans/index.md`（匹配依赖优先）。**当用户问及任何 doc 类型（Plan/Review/Handoff/add-route）但未给明确路径时，此条优先于上述所有 doc 类型触发词执行** | 🔴 P0 |
 | `gateway.md` / `gateway报告` / `运行时报告` | 读 `.codex/reports/add-coder-runtime-report/gateway.md` | 🟡 P1 |
 | `report-handoff` / `report交接` | 读 `.codex/templates/report-handoff-template.md` | 🟡 P1 |

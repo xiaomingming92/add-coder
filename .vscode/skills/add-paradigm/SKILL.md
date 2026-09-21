@@ -716,6 +716,19 @@ export function agentAudit(phase: AgentAuditPhase, detail: string, extra?: Recor
 
 ## Step 3：业务逻辑实现与审计植入
 
+> **执行风格（`executionMode`，写在 Plan 元信息；缺省 `stepwise`）**——两种风格**都完整遵守 ADD**，差别只在"是否逐步向用户同步进度"：
+>
+> | 取值 | 行为 | HITL 触点 |
+> |------|------|-----------|
+> | `stepwise`（默认） | 逐轮逐 Task 单步：每个 Task 完成后停下等人确认（见下方「每个 Task 完成后」） | 每个 Task 后 |
+> | `delegated`（托管） | 轮内连续实施全部 Task，**不逐步同步进度**；每个 Task 的审计落库/`tasks.md` 勾选/`[T]` 验证照做 | 仅两个停止条件触发时 |
+>
+> **停止条件（可判定，复用既有工具，不新增自定义判据）**：
+> 1. **文档与代码不对齐**：`check_spec_sync` 报未归因漂移，或实现偏离 Plan/Spec 的 WHEN-THEN；
+> 2. **代码基线低于预期**：`npx tsc --noEmit` / `pnpm test` / `npx tsx scripts/validate-docs.ts` 任一失败，或 `check_dps < 80` / `check_rahs < 90`。
+>
+> 触达后：停下 → 列证据清单 → HITL 裁决（继续 delegated / 切回 stepwise）。**不得**借托管跳过审计落库、跳过闸门，或跨轮直冲 Step 8。
+
 **功能实现与审计点同步进行，不分离。**
 
 ### 3.0 前置守卫：add-route 存在性交叉校验（强制执行）
