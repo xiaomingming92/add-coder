@@ -26,6 +26,7 @@
 - [六、一条完整链路走一遍](#六一条完整链路走一遍)
 - [七、add-coder 升级后怎么更新本地文件](#七add-coder-升级后怎么更新本地文件)
 - [八、技术栈约束 profile（add-coder stack）](#八技术栈约束-profileadd-coder-stack)
+- [九、排障：工具报 "currently disabled by the user"（VS Code Copilot）](#九排障工具报-currently-disabled-by-the-user-vs-code-copilot)
 
 ---
 
@@ -386,3 +387,39 @@ npx add-coder init
 - 启用 `machineserver` 后，MCP `get_project_context` 返回的规则会**追加 profile 全文**，AI 上下文可见后端链路约束（服务边界/幂等/契约/可观测）
 - 未设置时零技术栈假设，AI 依据项目实际代码推断
 - profile 文件缺失/stack.json 损坏时按中性处理，不阻断 init/sync
+
+---
+
+## 九、排障：工具报 "currently disabled by the user"（VS Code Copilot）
+
+**症状**：VS Code + GitHub Copilot Chat 下调用治理工具，稳定返回
+
+```
+ERROR: Tool mcp_add-dev-tools_update_hitl is currently disabled by the user, and cannot be called.
+```
+
+但你**从未禁用任何工具**。这是 Copilot Chat 的**虚拟工具折叠**造成的误报：当**所有 MCP 服务器的工具总数 ≥ `virtualTools.threshold / 2`（默认 64）** 时，超过部分会被折叠成 `activate_fallback_*` 代理，未激活就调用即报"禁用"。add-coder 自身 47 个工具叠加 Pylance 等常见扩展后必然越线（Pylance 等官方扩展同受害，属宿主通用行为）。
+
+### 根治：一行设置
+
+在**用户级 `settings.json` 或工作区级 `.vscode/settings.json`**（二选一）加入：
+
+```json
+"github.copilot.chat.virtualTools.threshold": 0
+```
+
+`0` ⇒ 阈值 = ∞ ⇒ 折叠整体禁用，全部工具始终直连。**改完需重载 VS Code 窗口**（`Developer: Reload Window`）才生效。自查：VS Code 项目下跑 `npx add-coder status`，缺键会给出告警与修复指引。
+
+### 临时解法：激活折叠代理（存量会话）
+
+1. 在**当前工具列表**里找描述含 `Contains the tools:` 的 `activate_fallback_*` 代理；
+2. 调用它 —— 返回 `Tools activated: ...` 列出它携带的成员工具；
+3. 重试原先失败的工具（本会话内有效）。
+
+> ⚠️ **代理名会随会话槽位重算而重构，勿缓存**：名字形如 `activate_fallback_mcp_add-dev-tools_get_memory_1`，同一环境下可能变成 `..._get_hook_events_1`。每次都以当前工具列表为准，不要写进脚本或笔记复用。
+
+### 受影响的工具族与完整说明
+
+`plan_*` / `review_*` / `status_*` / `update_*` / `render_hitl_approval` / `record_dev_operation` / `query_audit_logs` / `get_project_context` / `get_memory` —— 折叠按字母序裁剪，治理工具恰好落在被裁区间，表现为 HITL 审批链（TONGYI 无法落库 → 哨兵不生成 → Plan 写入被 PreToolUse 阻断）与 ADD-7 审计链同时中断。
+
+完整口径（触发条件、设置语义、上游反馈草稿、Codex 侧同类面板问题）见 [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md)「工具可见性」章节。问题来源：[Issue #21](https://github.com/xiaomingming92/add-coder/issues/21)。

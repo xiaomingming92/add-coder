@@ -133,7 +133,7 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 |---|---|---|---|
 | Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 11/16 | `.claude/hooks/*.mjs` (settings.json command) |
 | Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 11/16 | `.qoder/hooks/*.mjs` (settings.json command) |
-| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/16 | `.vscode/hooks/*.mjs` (Agent Host dual channel) |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/16 | `.vscode/hooks/*.mjs` (Agent Host dual channel)<br>**Required setting**: `"github.copilot.chat.virtualTools.threshold": 0` + reload the window (see the "工具可见性" / tool-visibility section of that doc — otherwise governance tools get folded by the host and misreported as disabled) |
 | Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/16 | `hooks.json` → `.trae/hooks/*.mjs` |
 | Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 5/16 | `.codex/hooks.json` → `.codex/hooks/*.mjs` |
 

@@ -93,6 +93,94 @@ VS Code Copilot hooks 产物位于 **项目根目录** 的 `.vscode/hooks/`（14
 
 ---
 
+## 工具可见性：VirtualTools 折叠（VS Code 用户必配项）
+
+> **一句话**：Copilot Chat 会在**所有 MCP 服务器的工具总数**越过阈值时把部分工具"折叠"成代理，未激活就调用会稳定误报 `currently disabled by the user`。必配项一劳永逸关掉折叠；降级流程用于尚未改设置的存量会话。
+> **证据来源**：[GitHub Issue #21](https://github.com/xiaomingming92/add-coder/issues/21)（含源码级根因定位与请求级工具快照对比）。
+
+### VS Code 用户必配项：关闭虚拟工具折叠
+
+把下面这行加进 **用户级 `settings.json`** 或 **工作区级 `.vscode/settings.json`**（二选一即可）：
+
+```json
+"github.copilot.chat.virtualTools.threshold": 0
+```
+
+已有 `settings.json` 的话，直接粘这一行进大括号内即可；从零建文件的完整形态：
+
+```json
+{
+  "github.copilot.chat.virtualTools.threshold": 0
+}
+```
+
+**设置语义**：
+
+| 项 | 值 |
+|---|---|
+| 归属 | GitHub Copilot Chat 扩展注册的实验设置（不在 VS Code core 设置里） |
+| 类型 / 取值域 | `number`，`0`–`128` |
+| 默认值 | `128` |
+| 设为 `0` 的含义 | 阈值 = ∞ ⇒ **虚拟工具折叠整体禁用** ⇒ 全部工具始终直连 |
+
+**触发条件（务必看清口径）**：折叠的判定基准是 **所有 MCP 服务器的工具总数 ≥ `threshold/2`**，默认即 **≥ 64 个工具**——**不是**单个服务器的工具数。
+
+- add-coder 自身注册 **47** 个工具；
+- 叠加常见扩展（Pylance 19 个、Java Debug、Python 等）后**必然越线**；
+- 因此任何 VS Code + Copilot Chat 用户都会遇到，与是否只装了 add-coder 无关。
+
+**生效方式**：改完设置后 **需重载 VS Code 窗口**（`Ctrl/Cmd+Shift+P` → `Developer: Reload Window`，或关闭重开）。只重开会话、或 reload 扩展都不会生效。
+
+**自查**：在 VS Code 项目下执行
+
+```bash
+npx add-coder status
+```
+
+未配置时会输出缺键告警与修复指引（只报告，不写你的设置文件）。
+
+### 工具假禁用的降级流程
+
+**症状**（未配置必配项时）：
+
+```
+ERROR: Tool mcp_<server>_<name> is currently disabled by the user, and cannot be called.
+```
+
+> ⚠️ **这是误报**：你从未在 UI 里禁用任何工具。真实原因是该工具被折叠进虚拟工具代理，而代理尚未被激活。
+
+**处置三步**：
+
+1. 在**当前会话的工具列表**里找描述含 `Contains the tools:` 字样的 `activate_fallback_*` 代理（形如 `activate_fallback_mcp_add-dev-tools_get_memory_1`）；
+2. 调用该代理 —— 返回文本会以 `Tools activated: ...` 列出它携带的成员工具；
+3. 重试原先失败的目标工具（本会话内有效）。
+
+> ⚠️ **代理名会变，勿缓存**：代理名由「折叠段首个工具名 + 树编号」拼成，会随会话槽位重算而**重构**（实测同一环境从 `get_memory` 组变为 `get_hook_events` 组，旧名字随即失效）。**每次都以当前工具列表为准**，不要把代理名写进脚本、提示词或笔记里复用。
+
+**受影响的治理工具族**（折叠按字母序裁掉后 N-1 个，治理工具恰好集中在字母序后半段）：
+
+| 工具族 | 具体工具 | 断链后果 |
+|---|---|---|
+| Plan 追踪 | `plan_track` / `plan_status` / `plan_sync` | 进度不落库、`tasks.md` 勾选无法同步 |
+| Review 追踪 | `review_track` / `review_status` / `review_sync` | P0/P1 缺陷无法入库与回写 |
+| 状态与人机审核 | `status_hitl` / `update_hitl` / `render_hitl_approval` | **审批无法落库** → TONGYI 哨兵不生成 → Plan/Review 写入被 PreToolUse 阻断 |
+| 审计链 | `record_dev_operation` / `query_audit_logs` | **ADD-7 开发操作审计断链**、稀疏推理恢复失效 |
+| 上下文与记忆 | `get_project_context` / `get_memory` | 会话恢复与记忆召回不可用 |
+| 关键字面 | `plan_*` / `review_*` / `status_*` / `update_*` | 上述族名的共同前缀，可用于快速判断"是不是折叠误伤" |
+
+**降级流程与必配项的关系**：降级流程是**临时手段**（仅本会话有效，下次开窗又要重新激活）；必配项是**根治**（一次配置，全部工具始终直连）。生产/日常使用请配置必配项。
+
+### 附录：为什么这是宿主问题（可据此向上游反馈）
+
+本问题**不是 add-coder 的实现缺陷**：折叠由 Copilot Chat 扩展自身的虚拟工具分组机制（源码内 `VirtualToolGrouper`，可通过 bundle 中 `Contains the tools:` 字样定位）触发；同为受害者的还有 **Pylance**（19 个工具中 14 个被折叠）、**Java Debug**、**Python** 等官方或知名扩展 —— 属宿主通用行为。
+
+可向上游反馈两点：
+
+1. **错误文案具误导性**：`disabled by the user` 会让用户去 UI 里找一个根本不存在的"禁用开关"，而真实原因是虚拟工具折叠未激活；建议文案区分"用户禁用"与"折叠未激活"两种状态。
+2. **折叠机制会命中 MCP 服务器的治理关键工具**：折叠按字母序裁剪，审批 / 审计类工具（`update_hitl` / `record_dev_operation` / `query_audit_logs` 等）恰好落在被裁区间，对大工具集 MCP 服务器造成可用性影响；建议折叠策略至少保证关键工具直连，或提供显式开关。
+
+---
+
 ## 自定义 Hook 源切换
 
 VS Code Copilot 的 `.vscode/hooks/*.mjs` 为 VS Code 原生 node 产物（14 入口）。项目同时产出 `.claude/` 目录（含 Claude Code 完整 hook 体系 + settings.json），两套体系可切换。

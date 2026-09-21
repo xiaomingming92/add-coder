@@ -178,7 +178,7 @@ hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中
 |---|---|---|---|
 | Claude Code | [ADD-governance-claude-code.md](./templates/core/docs/ADD-governance-claude-code.md) | 11/16 | `.claude/hooks/*.mjs`（settings.json command） |
 | Qoder CN | [ADD-governance-qoder-cn.md](./templates/core/docs/ADD-governance-qoder-cn.md) | 11/16 | `.qoder/hooks/*.mjs`（settings.json command） |
-| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/16 | `.vscode/hooks/*.mjs`（Agent Host 双通道） |
+| VS Code Copilot | [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md) | 10/16 | `.vscode/hooks/*.mjs`（Agent Host 双通道）<br>**必配项**：`"github.copilot.chat.virtualTools.threshold": 0` + 重载窗口（见该文档「工具可见性」章节，否则治理工具会被宿主折叠误报禁用） |
 | Trae | [ADD-governance-trae.md](./templates/core/docs/ADD-governance-trae.md) | 6/16 | `hooks.json` → `.trae/hooks/*.mjs` |
 | Codex | [ADD-governance-codex.md](./templates/core/docs/ADD-governance-codex.md) | 5/16 | `.codex/hooks.json` → `.codex/hooks/*.mjs` |
 
@@ -566,6 +566,14 @@ published 2 weeks ago by wujixmm <wujixmm@gmail.com>
 **要点**：三家官方条款均为"**默认开启共享、需用户主动退出**"（opt-out）模式。**但产品实测层面**：Qoder / Qoder CN 的退出开关在实际产品中不可用（Qoder CN v1.10.0 无切换功能，CLI 配置亦无对应开关），条款上的退出承诺在 CN 产品中无落地入口，实际效果即强制共享。Qoder 明确将用户内容（含代码）用于改进服务并保留 5 年；Trae 明确将数据用于模型训练（可通过隐私模式限制）；Qoder CN 官方条款范围最窄（仅反馈后的聊天记录、不含代码）。
 
 **建议**：涉及商业机密或个人数据的项目，使用前请逐项核对官方条款，并主动检查产品设置：Qoder（国际版）尝试关闭"共享与改进"；Qoder CN（v1.10.0 实测无开关）与 Trae CN 请结合隐私模式与最小化输入策略使用；必要时改用数据完全本地化的替代方案。
+
+---
+
+## ⚠️ 已知问题 / 限制
+
+| # | 现象 | 影响 | 处置 |
+|---|---|---|---|
+| 1 | VS Code Copilot 下部分 MCP 工具稳定返回 `Tool mcp_<server>_<name> is currently disabled by the user`（**用户从未禁用任何工具**） | 实测 26/47 治理工具不可用：`update_hitl` / `status_hitl` / `plan_*` / `review_*` / `render_hitl_approval` / `record_dev_operation` / `query_audit_logs` / `get_project_context` / `get_memory` ⇒ HITL 审批链 + ADD-7 审计链同时中断 | 宿主 Copilot Chat 的 VirtualTools 折叠机制所致，**非 add-coder 实现缺陷**（触发条件是「所有 MCP 服务器工具总数 ≥ 64」，Pylance 等扩展同受害）。**必配项**：在用户级或工作区级 `settings.json` 加入 `"github.copilot.chat.virtualTools.threshold": 0` 并**重载 VS Code 窗口**；存量会话临时解法则按[降级流程](./templates/core/docs/ADD-governance-vscode-copilot.md)先激活 `activate_fallback_*` 代理。详见 [ADD-governance-vscode-copilot.md](./templates/core/docs/ADD-governance-vscode-copilot.md)「工具可见性」章节 · Issue [#21](https://github.com/xiaomingming92/add-coder/issues/21) |
 
 ---
 

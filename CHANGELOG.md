@@ -12,6 +12,7 @@
 
 ### 修复
 
+- **HITL core widget 在 Codex 报 "This app couldn't be loaded"（资源 URI 缓存键）**：宿主把 MCP Apps 的 resource URI 当**缓存键**（官方规范：「Treat the resource URI as a cache key. When you make a breaking change to the HTML, JavaScript, or CSS, publish a new URI and update every tool that references it.」），而 `hitl-approval-widget.html` 在 2026-09-18 改过、URI 未变 ⇒ 宿主持续命中旧组件缓存。现改为**机制化**：`shared/hitl-ui.ts` 新增 `getHitlApprovalWidgetUri()` = 基名 `ui://add-coder/hitl-approval` + widget 内容 sha256 前 8 位（进程内 memoize；文件缺失回退基名，fail-open），**资源注册与工具 `_meta.ui.resourceUri` / `openai/outputTemplate` 共用同一函数**，改 HTML/JS/CSS 即自动换 URI，不再依赖人记得手动 bump；`render_hitl_approval` 出参补 `ui.requiresHostFlag` 与否决提示（明确两个排查项：宿主实验开关、MCP server 重连）。回归：`tests/hitl-widget.test.ts` 新增「内容变 ⇒ URI 必变 / 文件缺失 ⇒ 回退基名 / 工具 `_meta` 同步指向新 URI」用例（5 passed）
 - **`check_spec_sync` 永远命中 v1 路线图**（farm-agent 多 v2 Plan 暴露）：add-route 解析按 planKeyword **去版本后缀取首个匹配** → 多版本共存时恒命中日期最早的 v1，于是拿旧版路线图的附录比对当前工作区，实测报出 **37 个"未登记"假告警**。新增 `gateway/plan-resolve.ts` 作为 Plan↔兄弟制品版本配对**单一真源**（Plan 取版本最高且排除 `.hitl` / devlog / handoff / add-route / review 兄弟产物；add-route 走「同目录同版本 → 同基名最高版本 → 关键词兜底」；**版本落后显式告警，不静默降级**），`check_spec_sync` / `check_dps` / `check_add_route_status` / `check_add_route_completeness` / `check_rahs` 五个闸门工具统一改用（六端同步分发）。farm-agent 实测：Plan 由 `...-plan-v2.hitl.md` 纠正为 `...-plan-v2.md`，add-route v1 → v2，未登记 **37 → 12**；显式传 `-plan-v1` 时仍正确配对 v1
 - **`check_spec_sync` 未登记噪声无法归因**：git diff 是全仓范围，多 Plan 在飞时其它 Plan 的交付物被算进本 Plan → 现先按其它 add-route 的附录分摊归属（命中即归属、全部命中提前结束），单列「属于其它 Plan 已登记的交付物（本 Plan 不判定）」，farm-agent 实测 16 个文件被正确归因
 - **git diff 路径引号/八进制转义（同族第三例）**：`core.quotepath=false` 在路径含特殊字符时仍可能加引号，而带引号的 `".codex/..."` 既躲过 magic 前缀豁免、也与附录里的真实中文路径比不中 → `check_spec_sync` / `check_rahs` 统一改 `--name-only -z`（NUL 分隔，git 永不加引号），路径解析收敛到 `splitGitPathList`
@@ -20,6 +21,14 @@
 ### 模板
 
 - **`[W]` 接线判据回灌**（自 farm-agent 2026-09-18 回流 P0 #R9，同类事故三例均"纯函数与单测齐全、生产不可达"）：`review-implementation-template` 新增 **§6.2 接线可达性核对**——被调用方逐项核对表（symbol / 期望调用点 / grep 非测试命中 / 端到端产出 / 判定）+ 4 条可否证伪判据，明确"实现了 / 有单测 / 已导出"**不作为通过理由**；`review-implementation-template.schema.json` 增 `wiring` 章节且 **`required: true`**（硬判据，不接受降级——历史 review-implementation 文档会因此多一条 `MISSING_SECTION`，已知并接受）；`checklist-template` 图例新增 `[W]` 接线验证并补一条检查项。farm 域符号名泛化为 `{symbol}` / 占用通道表述，溯源保留在 `[来源: farm-agent 2026-09-18 回流 P0 #R9]`（六端同步分发）
+
+### 文档
+
+- **VS Code Copilot 工具"假禁用"（Issue [#21](https://github.com/xiaomingming92/add-coder/issues/21)）**：Copilot Chat 的虚拟工具折叠（扩展 bundle 内 `VirtualToolGrouper`，可通过 `Contains the tools:` 字样定位）在**所有 MCP 服务器工具总数 ≥ `virtualTools.threshold` / 2（默认 128/2 = 64）** 时按 toolset 分组、组内按字母序只留前 N-1 个直连，其余折叠进 `activate_fallback_*` 代理；未激活代理即调用 → 稳定误报 `Tool mcp_<server>_<name> is currently disabled by the user`（实测 **26/47** 工具受影响：`update_hitl` / `status_hitl` / `plan_*` / `review_*` / `render_hitl_approval` / `record_dev_operation` / `query_audit_logs` / `get_project_context` / `get_memory` 等 ⇒ HITL 审批链（TONGYI 不落库 → 哨兵不生成 → Plan 写入被 PreToolUse 阻断）与 ADD-7 审计链同时断裂）。根因在宿主，非 add-coder 实现缺陷（Pylance 19 个工具中 14 个被折叠、Java Debug / Python 同受害）⇒ 本轮只做**宿主适配 + 文档化**：`ADD-governance-vscode-copilot.md` 新增「工具可见性」章节（必配项 `"github.copilot.chat.virtualTools.threshold": 0` ⇒ 阈值=∞ ⇒ 折叠整体禁用 + **需重载 VS Code 窗口生效** + 触发条件口径写准为"全局工具总数"；降级流程：先在当前工具列表里找描述含 `Contains the tools:` 的 `activate_fallback_*` 代理激活再重试，**代理名随会话槽位重算而重构、勿缓存**；附录：可向上游反馈的两点——错误文案误导 + 折叠命中治理关键工具）；`ADD-governance-codex.md` 新增「HITL 审批面板：三前提与降级路径」（宿主实验开关 `enable_mcp_apps` / 改过工具元数据或资源 URI 后必须重连 MCP server / 面板不可用时的 markdown + `update_hitl(_fallback)` 降级入口，并明确**不**为宿主实验旗标引入常驻看门狗）；README §⑦ IDE 表格 VS Code Copilot 行补必配项指针 + 新增「已知问题 / 限制」索引（中英同步）；GUIDE 新增第九节 VS Code 排障流程；六端同步分发
+
+### 新增
+
+- **`add-coder status` 宿主适配自检（建议性，Issue #21 配套）**：VS Code 端项目下探测工作区级 `.vscode/settings.json` 与用户级设置文件（win32 `%APPDATA%` / darwin `Library/Application Support` / linux `~/.config`，均含 `Code` 与 `Code - Insiders` 变体，容忍 JSONC 注释与尾随逗号），在缺键或取值非 0 时输出告警 + 可复制修复片段 + 治理文档路径；**只报告，不写用户设置、不改退出码**（模板缺失的 exit 1 语义不变，仅把宿主自检提到退出判定之前，保证目标用户不会因模板缺失而看不到本项）；文件解析失败显式输出，不静默当通过。**端识别不只看配置**——`status` 走 `loadConfig(projectRoot)` 时 `magicDir` 默认空串，故补布局证据（`.vscode/mcp.json` 存在 / `.vscode/settings.json` 含 `mcp` 段或 `github.copilot.chat.*`），否则自检对真实用户永不触发。`tests/cli/status-host-check.test.ts` 覆盖「缺失 / 为 0 / 非 0（含字符串 `"0"`）/ JSONC」四态 + 三平台路径 + 四态门控（13 用例）；并用 dist 构建产物在临时 VS Code 项目上实测告警态与通过态（`find -newermt` 为空 ⇒ 未写任何文件）
 
 ---
 ## [0.3.38] - 2026-09-16
