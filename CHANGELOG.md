@@ -5,7 +5,7 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
-## [Unreleased] - 2026-09-22
+## [未发布] - 待下个版本
 
 > 2026-09-22 当日工作；**纯文档回流**（README 中/英 · DEVELOPMENT · docs/caijuehub.md），无代码与产物变更。
 > 编号提示：README 能力清单新增第 ⑤ 条，旧 ⑤–⑪ 顺延为 ⑥–⑫ —— 历史条目里的 `README §编号`（§⑦ / §⑩ / §⑪ 等）需 **+1 重映射**。
