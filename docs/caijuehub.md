@@ -167,6 +167,29 @@ if (N < CFG.FFT_COLD_START) return [...CFG.FFT_DEFAULT_WEIGHTS];
 | `dps-scoring` | `dps-scoring-rules.toml` | `dps-scoring.strategy.ts` | `gateway.ts` |
 | `collab-contract` | `collab-contract-rules.toml` | `collab-contract.strategy.ts` | `contract.ts`（契约裁决参数） |
 
+## 与 add-coder 的边界：单向供应链
+
+caijuehub 是**供给侧**，add-coder 是**消费侧**，两者只允许单向流动：
+
+```
+*-rules.toml（真源，人类 / AI 编辑）
+        │  npm run generate（transcribe 工厂链）
+        ▼
+*.strategy.ts（生成物，禁止手改）
+        │  import { XXX_CONFIG }（薄壳消费）
+        ▼
+业务代码（sync.ts / hitl.ts / gateway.ts / contract.ts …）——只读不改规则
+```
+
+| 规则 | 说明 |
+|------|------|
+| **只改 TOML，不改生成物** | `*.strategy.ts` 由 `transcribe.ts` 生成，手改会在下一轮 `generate` 被覆盖；生成区段带 `GENERATED` 标记 |
+| **消费方只 import** | 业务代码读策略常量，不反向写规则、不硬编码参数副本——需要新参数就回 TOML 加字段 |
+| **新域要三处齐** | 规则文件 + 生成器函数（注册进 `GENERATORS`）+ `caijue.toml` 条目，缺一即「未接线」（见「新增裁决入口」） |
+| **校验交给适应度函数** | 「改了真源没重跑生成器」「生成物被手改」「副本漂移」三类问题的可执行检查 → [DEVELOPMENT.md §三 比对口径](../DEVELOPMENT.md#三唯一真源原则) · [§十九 架构适应度函数](../DEVELOPMENT.md#十九架构适应度函数fitness-function) |
+
+> 反向依赖（业务代码回头改规则，或直接读 TOML 绕过生成物）是**架构违规**，不是风格问题：它会让「改规则不改代码」的保证失效，也让生成物与真源长出两套并行语义。
+
 ## 原则
 
 - **规则声明 ≠ 业务逻辑**：TOML 定义「做什么」，TypeScript 实现「怎么做」

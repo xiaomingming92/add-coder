@@ -117,7 +117,46 @@ RAHS (Runtime Architecture Health Score) — 运行时架构健康度
 
 > 阈值与参数都是可读的 TOML 真源（`dps-scoring-rules.toml`），不是魔数；`check_dps` 已适配五端 spec 引用解析（qoder / claude / add / vscode / codex·trae，`tests/dps-adapter.test.ts` 覆盖）。
 
-### ⑤ 跨轮记忆，而非每轮失忆
+### ⑤ 架构适应度函数：把架构约定写成会失败的门禁
+
+> **别的项目把架构约定写在文档里，add-coder 把它写成「跑起来、会失败」的检查。** 「应该有」不算数，「跑不过」才算数。
+
+**架构适应度函数（fitness function）** = 把一条架构约定翻译成可执行检查：有入口、有断言、违反即非 0 退出（或 blocking 卡位直接拦住）。它不回答「代码看起来对不对」，只回答「这棵树现在是否满足约定，且任何人可复现同一结论」。
+
+| 维度 | 常见做法 | add-coder |
+|------|---------|-----------|
+| **判据** | 文档里写「应该有 hook / 应该走契约层」 | 可执行断言：注册表驱动 + 内容哈希比对 + 运行时相位取证 |
+| **接线的定义** | 文件存在就算接上了 | **判据三件套**：生产点（非测试代码、运行时可达）+ 注册表条目 + 运行时相位（日志取证）——「生成了」≠「接线了」 |
+| **失败方式** | `console.warn` 一下，退出码恒 0 | 违反即非 0 退出 / blocking 卡位拦截，失败信息点名文件与卡位 |
+| **可复现** | 「我本地跑过 sync」 | 同树同输入 = 同结论；判据用**内容哈希**，mtime 只作「要不要重算」的触发 |
+| **覆盖面** | 只查产物本身 | 源清单闭包到**上游输入**：改了真源没重跑生成器 = 必须报 |
+
+**四类反模式，逐条给出可执行判据**（同一个根因的四种表现：把「看起来做完」当「做完」）：
+
+| 反模式 | 可执行判据 |
+|--------|-----------|
+| **写了不接线** | 判据三件套：生产点 + 注册表条目 + 运行时相位 |
+| **基类不派生** | 契约定必覆写点，用类型检查器在编译期失败（绕不过去） |
+| **模板玩法造轮子** | 同一能力只允许一处定义 + 平行实现黑名单 |
+| **故意狭隘实现** | 边界矩阵逐格断言 + 硬编码哨兵扫描 |
+
+**这套机制不是没翻过车**——实测两条前科（脱敏，只记机制与教训）：① **恒绿桩**：唯一执行入口把 readiness 传成恒真函数，于是 skill 声明的 `dependsOn` / `requiredReadiness` / `onStale` 全部形同虚设，门禁永远是绿的；② **把产物当源**：漂移检查的源清单只登记了产物，上游改了、没重跑采集，仍报「无漂移」。教训是同一句话：**判据必须在生产点上取真值，注册表必须闭包到上游输入。**
+
+**三个概念怎么咬合**（这是整套治理的骨架，不是三套并列的功能）：
+
+```
+单一真源        →  "正确答案在哪"     :  templates/ + TOML + 注册表（判据用内容哈希）
+架构适应度函数   →  "怎么知道它是对的" :  可执行检查（非 0 退出 / blocking 卡位）
+caijuehub       →  "规则从哪来、怎么变":  TOML → generate → *.strategy.ts → 消费方
+```
+
+- **caijuehub 只管供给侧**：TOML 真源 → `npm run generate` → `*.strategy.ts` 生成物，消费方只 import、不反向写；手改生成物会在下一轮被覆盖，所以由适应度函数在写入侧拦住（`GENERATED` 区段禁手改）。
+- **单一真源是声明，适应度函数是判据**：没有判据的真源迟早腐化成「文档里的一句约定」——改真源忘了 sync、生成物被手改、副本漂移，三件事都只有检查能拦住。
+- **现有可跑家族**：`npm run generate:check`（生成幂等）· `npm run contributors:check` · `npm run release:preflight` · `npx tsx scripts/validate-docs.ts --strict`（17 类文档注册表，未注册类型即抛）· 校验层卡位矩阵 · 产物-进程新鲜度四态。「告警脚本 exit 0」与「门禁」在文档里分栏写明，不冒充。
+
+> 深入：[DEVELOPMENT.md §三 单一真源](./DEVELOPMENT.md#三唯一真源原则)（真源注册表与比对口径）· [DEVELOPMENT.md §十九 架构适应度函数](./DEVELOPMENT.md#十九架构适应度函数fitness-function)（四类反模式全表 + 执行卡位）。
+
+### ⑥ 跨轮记忆，而非每轮失忆
 
 > **别的工具在「记」，add-coder 在「治理记忆」。** 记忆不是上下文工程，是治理工程。
 
@@ -149,7 +188,7 @@ AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达�
 > 如实登记：Hybrid `MRR@5` 实测 0.4867 < 0.75 门槛（FTS-only 0.6551、Recall@5 0.9592）——**门槛不下调**，由排序校准线程以数据校准替代手调：记忆能力可跑、可查、可裁决，不靠指标注水。
 > 真源落点、表结构、开发流程见 [DEVELOPMENT.md](./DEVELOPMENT.md) §十七。
 
-### ⑥ Policy-Update-Loop：治理自我进化
+### ⑦ Policy-Update-Loop：治理自我进化
 
 > **静态模板会腐化，闭环治理会进化。** 规则不是写死的常量，是能被审计数据推动的参数。
 
@@ -166,7 +205,7 @@ AI 对话的致命缺陷：上次讨论的架构决策、已修复的 Bug、达�
 | **演进证据** | 无留痕 | 每次拦截、每次判分、每次裁决都进审计库——可回查、可统计、可复算 |
 | **尚未闭环** | — | 边界报告（Runtime Report）端到端实践待 [DEMO 仓库](#-预告)演示（如实登记） |
 
-### ⑦ 多 IDE 的 Hook 即治理层
+### ⑧ 多 IDE 的 Hook 即治理层
 
 hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中的 16 个确定性治理卡位**（14 通用 + 2 Claude 特有）。每个 IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）有各自的 hook 机制，但治理逻辑统一——架构一致，适配层不同。
 
@@ -188,7 +227,7 @@ hook 不是「通知推送」，而是 **ADD 范式在 IDE agent 生命周期中
 
 > 实施 Plan: [add-coder-hook-node-refactor-plan-v1](./.qoder/plans/2026-08/14/add-coder-hook-node-refactor-plan-v1.md)（协议层 v2，已闭环）| 前序: [add-coder-hook-full-alignment-plan-v1](./.qoder/plans/2026-07/17/add-coder-hook-full-alignment-plan-v1.md) | 触发源: [GitHub Issue #6](https://github.com/xiaomingming92/add-coder/issues/6)
 
-### ⑧ HITL 人机审核：审批即基础设施
+### ⑨ HITL 人机审核：审批即基础设施
 
 AI 写代码绕过人类决策是 AI coding 最大的结构性风险。add-coder 的 HITL 不是"弹个框问一下"，而是**架构级强制审批**：
 
@@ -199,7 +238,7 @@ AI 写代码绕过人类决策是 AI coding 最大的结构性风险。add-coder
 | **caijuehub 驱动** | 交互模式由 TOML 声明，新增 IDE 只加一行配置 |
 | **hook 强制拦截** | 无 `.hitl-tongyi` 哨兵 → 禁止写入正式 Plan/Review 文件 |
 
-### ⑨ IDE 代办清单：Plan 任务直通编码面板
+### ⑩ IDE 代办清单：Plan 任务直通编码面板
 
 Plan 里的 Task 不应该停留在文档里。add-coder 将 tasks.md 末尾的 JSON 任务清单直接加载到 IDE 代办面板，完成一个勾一个，进度实时可见。session-init 两场景分流——新对话让用户选 Plan，编码阶段自动定位当前 Plan 加载。
 
@@ -207,7 +246,7 @@ Plan 里的 Task 不应该停留在文档里。add-coder 将 tasks.md 末尾的 
 tasks.md §IDE JSON → TodoWrite → IDE 面板
 ```
 
-### ⑩ 并发契约体系：协作层 + 进程层双层
+### ⑪ 并发契约体系：协作层 + 进程层双层
 
 多个 Agent 同时改一个仓库，没有契约必然冲突——改同一批文件、审计归因混乱。add-coder 把并行协作变成**经 HITL 审批的契约体系**，分两层：
 
@@ -221,7 +260,7 @@ tasks.md §IDE JSON → TodoWrite → IDE 面板
 >
 > 📜 溯源：并发契约原创时间戳 → [CHANGELOG v0.3.18「并发协作契约」](https://github.com/xiaomingming92/add-coder/blob/main/CHANGELOG.md#0318---2026-08-05)；"酷"的工程学定义 → [what-makes-software-cool.md](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md)——契约的审计分桶与完成判定（DPS ≥ 80）正长在"熵值管控"四维上。
 
-### ⑪ Codex MCP 原生接入（v0.3.25）
+### ⑫ Codex MCP 原生接入（v0.3.25）
 
 > **不是给 Codex 外挂一个 MCP，而是把治理原生落进去。** 「已生成模板」≠「端到端已验证」——以下是**实测打通的 6 步**。
 
