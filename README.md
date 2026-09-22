@@ -730,7 +730,46 @@ RAHS (Runtime Architecture Health Score) — runtime architecture health
 
 All DPS parameters are driven by caijuehub TOML — AI can run→analyze weak spots→tune→rerun, all without touching code.
 
-### ⑤ Cross-Session Memory, Not Per-Session Amnesia
+### ⑤ Architectural Fitness Functions: Architecture Rules as Gates That Fail
+
+> **Others write architecture rules down in docs; add-coder writes them as checks that run and fail.** "Should be there" doesn't count — "won't pass" does.
+
+An **architectural fitness function** is one architecture rule translated into an executable check: an entry point, assertions, and a non-zero exit (or a blocking checkpoint that stops the write) when violated. It does not answer "does the code look right" — it answers "does this tree satisfy the rule right now, reproducibly, for anyone".
+
+| Dimension | Common practice | add-coder |
+|-----------|-----------------|-----------|
+| **Basis** | "There should be a hook / it should go through the contract layer" | Executable assertions: registry-driven + content-hash comparison + runtime-phase evidence |
+| **What "wired" means** | The file exists, so it is wired | **The three-part criterion**: production site (non-test, reachable at runtime) + registry entry + runtime phase (log evidence) — "generated" ≠ "wired" |
+| **Failure mode** | `console.warn` and move on, exit code always 0 | Non-zero exit / blocking checkpoint; the failure names the file and the checkpoint |
+| **Reproducibility** | "I ran sync earlier" | Same tree + same inputs = same verdict; the basis is a **content hash**, mtime only triggers a recompute |
+| **Coverage** | Only the artifact itself | The source list closes over **upstream inputs**: source of truth edited without rerunning the generator = must report |
+
+**Four anti-patterns, each with an executable criterion** (four faces of one root cause: mistaking "looks done" for "done"):
+
+| Anti-pattern | Executable criterion |
+|--------------|----------------------|
+| **Written but not wired** | The three-part criterion: production site + registry entry + runtime phase |
+| **Base class not derived** | Pin mandatory overrides with the type checker so it fails at compile time (no way around) |
+| **Reinventing the template wheel** | One capability, one definition + a blacklist of parallel implementations |
+| **Deliberately narrow implementation** | Boundary matrix asserted cell by cell + hardcoded-sentinel scan |
+
+**This machinery has crashed before** — two measured post-mortems (anonymized: mechanism and lesson only): ① **the always-green stub**: the single execution entry passed readiness as a constant-true function, so the skill's declared `dependsOn` / `requiredReadiness` / `onStale` were dead letters and the gate stayed permanently green; ② **treating the artifact as the source**: the drift check's source list only covered the artifact, so an upstream edit without a re-collect still reported "no drift". Same lesson both times: **the basis must be read at the production site, and the registry must close over upstream inputs.**
+
+**How the three concepts interlock** (this is the skeleton of the whole governance story, not three parallel features):
+
+```
+Single source of truth → "where is the correct answer"  : templates/ + TOML + registry (content-hash basis)
+Fitness functions      → "how do we know it is correct" : executable checks (non-zero exit / blocking checkpoint)
+caijuehub              → "where do rules come from"     : TOML → generate → *.strategy.ts → consumers
+```
+
+- **caijuehub only supplies**: TOML source → `npm run generate` → `*.strategy.ts` artifacts; consumers import, never write back. A hand-edited artifact gets overwritten on the next generate, so the fitness functions block it on the write side (`GENERATED` regions are off-limits).
+- **A single source of truth is a declaration; a fitness function is the verdict**: a source of truth without a verdict rots into "a sentence in the docs" — source edited without sync, artifact hand-edited, copies drifted: only a check catches all three.
+- **The family you can run today**: `npm run generate:check` (generation idempotency) · `npm run contributors:check` · `npm run release:preflight` · `npx tsx scripts/validate-docs.ts --strict` (17 registered doc types; an unregistered type throws) · the validation-layer checkpoint matrix · the artifact–process freshness states. The docs keep "warn-only scripts" and "gates" in separate columns — no pretending.
+
+> Deep dive: [DEVELOPMENT.md §3 Single Source of Truth](./DEVELOPMENT.md#三唯一真源原则) (registry and comparison basis) · [DEVELOPMENT.md §19 Architectural Fitness Functions](./DEVELOPMENT.md#十九架构适应度函数fitness-function) (full anti-pattern table + execution checkpoints).
+
+### ⑥ Cross-Session Memory, Not Per-Session Amnesia
 
 The fatal flaw of AI conversations: architectural decisions from last session, bugs fixed, agreements reached — all forgotten in the next conversation. add-coder solves this at the architecture level:
 
@@ -738,7 +777,7 @@ The fatal flaw of AI conversations: architectural decisions from last session, b
 - **Plan Index** — All Plans are centrally indexed via `index.md`, supporting fuzzy-match quick lookup
 - **DevLog Timeline** — Every operation is written to the `{YYYY-MM}/{DD}/` timeline, enabling full historical state traceability
 
-### ⑥ Policy-Update-Loop: Self-Evolving Governance
+### ⑦ Policy-Update-Loop: Self-Evolving Governance
 
 Not a static template, but a **closed-loop adaptive system**:
 
@@ -752,7 +791,7 @@ Execute → Audit → Boundary Report → Rule Adjustment → Next Execution
 - **Audit → Rule Adjustment (✓ live)**: caijuehub rule center — edit rules, not code: DPS 4-dimensional scoring with **FFT adaptive weights** (auto re-weighting from historical data), `check_doc_similarity` quantitative re-check (look-alike documents auto-detected) — audit data drives governance rule evolution
 - **Boundary Report (Report system)**: runtime boundary report loop pending DEMO repo — end-to-end Policy-Update-Loop and Report system practice
 
-### ⑦ Multi-IDE Hooks as the Governance Layer
+### ⑧ Multi-IDE Hooks as the Governance Layer
 
 Hooks are not "notification push" — they are the **IDE runtime interception layer**:
 
@@ -781,7 +820,7 @@ Each IDE（Claude Code / Qoder CN / VS Code Copilot / Trae / Codex）has its own
 
 > **All 16 checkpoints pre-positioned across all six ends**: 86 hook entry artifacts fully distributed (14/16/14/14/14/14), sharing the governance contract layer (core base classes). "Registered Events" counts what each IDE's native event model can register — ends with fewer native events (Codex 5 / Trae 6) already have artifacts in place; zero-code activation once the IDE event model expands.
 
-### ⑧ HITL Human-in-the-Loop: Approval as Infrastructure
+### ⑨ HITL Human-in-the-Loop: Approval as Infrastructure
 
 AI generating code without human oversight is the greatest structural risk in AI coding. add-coder's HITL is not "a popup checkbox" — it is **architecture-level mandatory approval**:
 
@@ -792,7 +831,7 @@ AI generating code without human oversight is the greatest structural risk in AI
 | **caijuehub-driven** | Interaction mode declared in TOML; adding a new IDE = one line of config |
 | **Hook enforcement** | No `.hitl-tongyi` sentinel → blocked from writing formal Plan/Review files |
 
-### ⑨ IDE Task Panel: Plan Tasks Directly in Your Editor
+### ⑩ IDE Task Panel: Plan Tasks Directly in Your Editor
 
 Tasks in Plan docs shouldn't stay in docs. add-coder loads the JSON task list from tasks.md directly into the IDE task panel — check off as you go, progress visible in real time. session-init dual-scenario dispatch — new thread lets user pick a Plan; coding phase auto-locates the current Plan and loads.
 
@@ -800,7 +839,7 @@ Tasks in Plan docs shouldn't stay in docs. add-coder loads the JSON task list fr
 tasks.md §IDE JSON → TodoWrite → IDE panel
 ```
 
-### ⑩ Concurrency Contract: Multi-Agent Collaboration, Contractualized
+### ⑪ Concurrency Contract: Multi-Agent Collaboration, Contractualized
 
 Multiple agents working one repository without a contract is a guaranteed conflict storm — overlapping file edits, tangled audit attribution. add-coder turns parallel collaboration into a **HITL-approved contract**:
 
@@ -814,6 +853,44 @@ Multiple agents working one repository without a contract is a guaranteed confli
 > Contract template: `templates/core/templates/collab-contract-template.md` (synced into the project's `.add/templates/` after init); contract creation/major changes go through `COLLAB_CONTRACT` approval.
 >
 > 📜 Provenance: concurrency-contract original timestamp → [CHANGELOG v0.3.18 "collab-contract"](https://github.com/xiaomingming92/add-coder/blob/main/CHANGELOG.md#0318---2026-08-05); the engineering definition of "cool" → [what-makes-software-cool.md](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md) — the contract's audit bucketing and completion criteria (DPS ≥ 80) are built directly on the four dimensions of "entropy control".
+
+---
+
+### ⑫ Codex MCP Native Integration (v0.3.25)
+
+> **Not bolting an MCP onto Codex, but landing the governance natively.** "Templates generated" ≠ "verified end-to-end" — these are the **6 steps actually proven on a real machine**.
+
+| Dimension | Common approach | add-coder × Codex |
+|-----------|-----------------|-------------------|
+| **Setup cost** | Hand-written launch scripts, custom wrappers | Three CLI steps: `init --adapter=codex` → `--print-mcp-config` (no disk writes, no project init) → paste or `--write-user-config` (backup first + duplicate guard) |
+| **Governance surface** | Tool calls only, no lifecycle governance | **Native hooks**: `.codex/hooks.json` → `.codex/hooks/*.mjs` (14 entries pre-baked into the package, invoked directly by `node`; Codex exposes 5/16 native events — the rest are pre-allocated and enable with zero code once events ship) |
+| **Approval** | You can only ask in chat | **Native HITL**: `create_hitl` routes through MCP Apps (it will not expand a high-dimensional `inputRequired` in Codex); when the panel is unavailable it falls back to a markdown proposal + instance HTML, and the verdict is still recorded to DB / docs |
+| **Runtime state** | Artifacts changed, no idea whether the running process is current | **Four artifact–process freshness states** + `.mcp-restart-required` marker: after `sync`, it names which server to restart |
+| **Multi-project** | A mis-pasted config silently connects to the wrong DB | `env.PROJECT_ROOT` injected at render time; a mismatch exits at mcp-server startup (process-layer contract §4) |
+| **Platform** | Needs WSL / manual path edits | win32 automatically emits the native `cmd /c npx.cmd` branch (no WSL indirection in PowerShell) |
+
+```bash
+# 1. Install add-coder (skip if already installed)
+npm i -g add-coder
+
+# 2. Initialize the Codex adapter (hooks templates + config.toml source of truth)
+add-coder init --adapter=codex
+
+# 3. Print a ready-to-use config.toml snippet (no disk writes, no project init)
+add-coder init --adapter=codex --print-mcp-config
+
+# 4a. Paste the snippet into ~/.codex/config.toml (Windows: %USERPROFILE%\.codex\config.toml)
+# 4b. Or write it automatically (explicit confirmation + backup first + duplicate guard)
+add-coder init --adapter=codex --write-user-config
+
+# 5. Restart Codex (App / CLI / IDE extension — config.toml changes need a restart to take effect)
+
+# 6. Verify: the add_coder MCP server shows up in Codex with the full tool set callable (29 tools)
+```
+
+**Naming compatibility**: the MCP server ID is normalized to `add_coder` (hyphen → underscore, a Codex constraint).
+
+> As-is disclosure: some Codex builds (measured on `26.908`) do not render the approval widget; approval then goes through a markdown proposal + instance HTML + a chat decision — the chain still works and the verdict is still recorded to DB / docs.
 
 ---
 
