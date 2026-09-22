@@ -5,21 +5,9 @@
 > 版本号格式遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
-## [未发布] - 待下个版本
-
-> 2026-09-22 当日工作；**纯文档回流**（README 中/英 · DEVELOPMENT · docs/caijuehub.md），无代码与产物变更。
-> 编号提示：README 能力清单新增第 ⑤ 条，旧 ⑤–⑪ 顺延为 ⑥–⑫ —— 历史条目里的 `README §编号`（§⑦ / §⑩ / §⑪ 等）需 **+1 重映射**。
-
-### 文档
-
-| 变更 | 根因 → 做法 | 验收证据 | 来源 |
-| --- | --- | --- | --- |
-| **README 能力清单新增「⑤ 架构适应度函数」，旧 ⑤–⑪ 顺延为 ⑥–⑫（中/英同步）** | 「适应度函数（可执行、会失败的架构检查）/ 单一真源 / caijuehub」三者的关系此前没有任何一处成文——外部读者与 AI 都看不到「怎么知道架构没腐化」，只能自己拼。→ 新条目写全：判据三件套（生产点 + 注册表条目 + 运行时相位）、四类反模式逐条可执行判据（写了不接线 / 基类不派生 / 模板玩法造轮子 / 故意狭隘实现）、两条实测前科（恒绿桩 / 把产物当源，脱敏只写机制与教训）、三概念咬合图、现有可跑家族清单 | 中文 ①–⑫ 与英文 ①–⑫ 逐条对齐（英文同时补回此前缺失的 Codex MCP 条目）；DEV §三 / §十九 锚点实测可达 | `f2e74c1` + 本次 |
-| **DEVELOPMENT §三 补「注册表与比对口径」；新增 §十九 架构适应度函数（19.1–19.4）+ TOC** | 「单一真源」此前只有声明、没有判据：mtime 当判据、整文件哈希把混合区段误报成漂移、生成物新鲜度只看时间、注册表漏登记静默放行——四类假阴性都实测过。→ §三 落四条口径（内容哈希 / 区段比对 / 输入指纹 / 漏登记即失败）+ 两条派生要求（源清单闭包到上游输入、比对在明确作用域内）；§十九 写清合格适应度函数四要素、两条前科、四类反模式、执行卡位（写入前 / 提交前 / 发布前 / 收尾 / 巡检）、与单一真源 + caijuehub 的闭环关系 | 章节扩到 一–十九；锚点 `#三唯一真源原则` / `#十九架构适应度函数fitness-function` 自测可达 | 本次 |
-| **docs/caijuehub.md 新增「与 add-coder 的边界：单向供应链」** | caijuehub 与 add-coder 的边界（谁是真源、谁只消费、生成物能不能手改）此前要靠读者自己拼。→ 单向供应链图 + 四条规则（只改 TOML / 消费方只 import / 新域三处齐 / 校验交适应度函数），并明确「反向依赖 = 架构违规」 | 与 DEVELOPMENT §三 / §十九 双向链接（2 处锚点） | 本次 |
-
----
 ## [0.3.40] - 2026-09-21
+
+> **文档回流（09-22 并入本段）**：架构适应度函数 / 单一真源比对口径 / caijuehub 边界三项于 09-22 成文并落 README·DEVELOPMENT·caijuehub（`f2e74c1` + `c456ff6`），按「该是谁的就归谁」并入本段；README 能力清单新增第 ⑤ 条 ⇒ 旧 ⑤–⑪ 顺延为 ⑥–⑫，历史条目里的 `README §编号` 需 **+1 重映射**。
 
 > 2026-09-21 当日工作；6 条审计链全部 CLOSED —— `…memory-cjk-bigram-baseline-plan-v1`（75/75，RAHS 91 🟢）、
 > `…multi-host-adapter-alignment-plan-v1`（47/47）、`…copilot-virtualtools-visibility-plan-v1`（30/30）、
@@ -53,6 +41,8 @@
 
 | 变更 | 根因 → 做法 | 验收证据 | 来源 |
 | --- | --- | --- | --- |
+| **README 能力清单新增「⑤ 架构适应度函数」，旧 ⑤–⑪ 顺延为 ⑥–⑫（中/英同步）** | 「适应度函数（可执行、会失败的架构检查）/ 单一真源 / caijuehub」三者的关系此前没有任何一处成文——外部读者与 AI 都看不到「怎么知道架构没腐化」，只能自己拼。→ 新条目写全：判据三件套（生产点 + 注册表条目 + 运行时相位）、四类反模式逐条可执行判据（写了不接线 / 基类不派生 / 模板玩法造轮子 / 故意狭隘实现）、两条实测前科（恒绿桩 / 把产物当源，脱敏只写机制与教训）、三概念咬合图、现有可跑家族清单；英文镜像同步补齐（含此前缺失的 ⑫ Codex MCP 条目） | 中文 ①–⑫ 与英文 ①–⑫ 逐条对齐；DEV §三 / §十九 锚点实测可达 | `f2e74c1` + `c456ff6` |
+| **DEVELOPMENT 新增 §十九 架构适应度函数（19.1–19.4）+ §三「注册表与比对口径」；`docs/caijuehub.md` 补「与 add-coder 的边界：单向供应链」** | 「单一真源」此前只有声明、没有判据（mtime 当判据 / 整文件哈希把混合区段误报成漂移 / 生成物新鲜度只看时间 / 注册表漏登记静默放行），且适应度函数与单一真源、caijuehub 的闭环关系没有成文落点。→ §三 落四条口径 + 两条派生要求（源清单闭包到上游输入、比对在明确作用域内）；§十九 写清合格适应度函数四要素、两条前科、四类反模式、执行卡位（写入前 / 提交前 / 发布前 / 收尾 / 巡检）与 caijuehub 的闭环；caijuehub 侧明确 TOML 真源 → `npm run generate` → `*.strategy.ts` 生成物 → 消费方只 import（反向依赖 = 架构违规） | 章节扩到 一–十九；锚点 `#三唯一真源原则` / `#十九架构适应度函数fitness-function` 自测可达；caijuehub 双向链接 2 处 | `f2e74c1` + `c456ff6` |
 | **`status` 宿主自检文案加固** | 必配项是宿主实验设置，若被改名/移除，旧文案会产出永远消不掉的告警。→ 缺失态补「若你的 Copilot / VS Code 版本已不再提供该设置项，可忽略本告警（建议性检查，不影响退出码）」，文案抽为纯函数 `virtualToolsNoticeLines()` 以便断言 | 用例 13 → 15 | `…copilot-virtualtools-visibility-plan-v1` |
 | **VS Code Copilot 工具"假禁用"（Issue [#21](https://github.com/xiaomingming92/add-coder/issues/21)）：修复措施** | 折叠根因在宿主：Copilot Chat 的 `VirtualToolGrouper` 在**全局 MCP 工具总数 ≥ `virtualTools.threshold` / 2（默认 64）**时按 toolset 分组、组内按字母序只留前 N-1 个直连，其余折进 `activate_fallback_*`；未激活代理即调用 → 稳定误报 `Tool mcp_<server>_<name> is currently disabled by the user`（实测 **26/47**：`plan_*` / `review_*` / `status_*` / `update_hitl` 等字母序后段全中 ⇒ HITL 审批链（TONGYI 不落库 → 哨兵不生成 → Plan 正文写入被 PreToolUse 阻断）与 ADD-7 审计链同时断裂；Pylance 19 中 14、Java Debug / Python 同受害）。→ **修复措施（逐条对齐 issue 建议 1–4）**：①**必配项** `"github.copilot.chat.virtualTools.threshold": 0`（阈值=∞ ⇒ 折叠整体禁用，**需重载 VS Code 窗口生效**）落到 `ADD-governance-vscode-copilot.md`「工具可见性」章节 + README §⑦ 指针 + 新增「已知问题 / 限制」索引（中英同步）；②**诊断入口** `add-coder status` 建议性自检 —— 缺键或取值非 0 即输出告警 + 可复制修复片段 + 文档路径（**只报告，不替用户改 settings**）；③**降级流程** —— 先在当前工具列表激活描述含 `Contains the tools:` 的 `activate_fallback_*` 代理再重试目标工具（**代理名随会话槽位重算、勿缓存**）；④**上游反馈草稿** 登记两点（错误文案误导、折叠命中治理关键工具）。另 `ADD-governance-codex.md` 增「HITL 审批面板：三前提与降级路径」（宿主开关 `enable_mcp_apps` / 改过工具元数据或资源 URI 后必须重连 MCP server / markdown + `update_hitl(_fallback)` 降级入口，且**不**为宿主实验旗标加常驻看门狗） | issue 报的触发线 64、受影响 26/47 在文档里逐条可核对；六端 `ADD-governance-*.md` 同步分发；GUIDE 第九节 VS Code 排障流程 | `…copilot-virtualtools-visibility-plan-v1`（30/30） |
 
