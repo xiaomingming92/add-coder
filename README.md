@@ -1,7 +1,7 @@
 # add-coder
 
 Make 0.75 into one.——让治理派重新定义生产关系，迈向人类 1 级文明时代。
-> 🀄中文 | 🔤[English](#-english-readme)
+> 🀄中文 | 🔤[English](#-english-readme) <br/>
 💡 [酷 = 标准符合度 × 熵值管控 —— 我把"酷"从形容词算成了可验证的工程属性](https://github.com/xiaomingming92/add-coder/blob/main/docs/what-makes-software-cool.md)（ADD 范式设计哲学，附 benchmark 实证）
 
 > [![NPM downloads](https://img.shields.io/npm/dt/add-coder)](https://www.npmjs.com/package/add-coder) [![NPM version](https://img.shields.io/npm/v/add-coder)](https://www.npmjs.com/package/add-coder) [![GitHub stars](https://img.shields.io/github/stars/xiaomingming92/add-coder)](https://github.com/xiaomingming92/add-coder) <br/>
