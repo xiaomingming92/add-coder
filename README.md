@@ -11,6 +11,7 @@ Make 0.75 into one.——让治理派重新定义生产关系，迈向人类 1 �
 
 > 🎉 **里程碑**：0.1.0 发布后 **19 天累计突破 5000 次下载**（首次过死亡谷）。完整 npm 实况数据（下载曲线、依赖、版本矩阵）见文末 [📊 npm 实况数据](#-npm-实况数据)。<br/>
 > 虽然人生不如意之事十之八九，但有了 add-coder 和各位的加入，定会留下你们的精彩！别只下载——[提 Issue](https://github.com/xiaomingming92/add-coder/issues) · [参与讨论](https://github.com/xiaomingming92/add-coder/discussions)
+> 大预告没有几个版本就到下一个里程碑：会让保守派觉得激进派过于保守👐
 
 ---
 
